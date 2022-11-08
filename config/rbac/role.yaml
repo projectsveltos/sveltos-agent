@@ -1,0 +1,86 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - classifierreports
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+- apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - classifierreports/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - classifiers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - classifiers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - classifiers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - projectsveltos.io
+  resources:
+  - nodes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - projectsveltos.io
+  resources:
+  - nodes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - projectsveltos.io
+  resources:
+  - nodes/status
+  verbs:
+  - get
+  - patch
+  - update
