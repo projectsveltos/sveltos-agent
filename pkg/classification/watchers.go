@@ -98,8 +98,8 @@ func (m *manager) buildList(ctx context.Context) (map[schema.GroupVersionKind]bo
 func (m *manager) addGVKsForClassifier(classifier *libsveltosv1alpha1.Classifier,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
-	for i := range classifier.Spec.DeployedResources {
-		resource := &classifier.Spec.DeployedResources[i]
+	for i := range classifier.Spec.DeployedResourceConstraints {
+		resource := &classifier.Spec.DeployedResourceConstraints[i]
 		gvk := schema.GroupVersionKind{
 			Group:   resource.Group,
 			Kind:    resource.Kind,

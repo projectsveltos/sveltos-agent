@@ -83,9 +83,9 @@ var _ = Describe("Controllers: node controller", func() {
 		Expect(len(reconciler.GVKClassifiers)).To(Equal(0))
 	})
 
-	It("updateMaps updates map of Classifier using DeployedResources verion as criteria", func() {
+	It("updateMaps updates map of Classifier using DeployedResourceConstraints verion as criteria", func() {
 		classifier := getClassifierWithResourceConstraints()
-		Expect(len(classifier.Spec.DeployedResources) > 0).To(BeTrue())
+		Expect(len(classifier.Spec.DeployedResourceConstraints) > 0).To(BeTrue())
 		Expect(testEnv.Create(watcherCtx, classifier)).To(Succeed())
 		Expect(waitForObject(watcherCtx, testEnv.Client, classifier)).To(Succeed())
 
@@ -101,9 +101,9 @@ var _ = Describe("Controllers: node controller", func() {
 		Expect(reconciler.VersionClassifiers.Len()).To(Equal(0))
 		Expect(len(reconciler.GVKClassifiers)).To(Equal(1))
 		gvk := schema.GroupVersionKind{
-			Group:   classifier.Spec.DeployedResources[0].Group,
-			Version: classifier.Spec.DeployedResources[0].Version,
-			Kind:    classifier.Spec.DeployedResources[0].Kind,
+			Group:   classifier.Spec.DeployedResourceConstraints[0].Group,
+			Version: classifier.Spec.DeployedResourceConstraints[0].Version,
+			Kind:    classifier.Spec.DeployedResourceConstraints[0].Kind,
 		}
 		v, ok := reconciler.GVKClassifiers[gvk]
 		Expect(ok).To(BeTrue())
@@ -146,14 +146,14 @@ var _ = Describe("Controllers: node controller", func() {
 
 	It("reconcileDelete remove classifier from GVKClassifiers map", func() {
 		classifier := getClassifierWithResourceConstraints()
-		Expect(len(classifier.Spec.DeployedResources) > 0).To(BeTrue())
+		Expect(len(classifier.Spec.DeployedResourceConstraints) > 0).To(BeTrue())
 		Expect(testEnv.Create(watcherCtx, classifier)).To(Succeed())
 		Expect(waitForObject(watcherCtx, testEnv.Client, classifier)).To(Succeed())
 
 		gvk := schema.GroupVersionKind{
-			Group:   classifier.Spec.DeployedResources[0].Group,
-			Version: classifier.Spec.DeployedResources[0].Version,
-			Kind:    classifier.Spec.DeployedResources[0].Kind,
+			Group:   classifier.Spec.DeployedResourceConstraints[0].Group,
+			Version: classifier.Spec.DeployedResourceConstraints[0].Version,
+			Kind:    classifier.Spec.DeployedResourceConstraints[0].Kind,
 		}
 
 		reconciler := &controllers.ClassifierReconciler{
