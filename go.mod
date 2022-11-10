@@ -9,7 +9,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.1.6
 	github.com/onsi/gomega v1.20.1
 	github.com/pkg/errors v0.9.1
-	github.com/projectsveltos/libsveltos v0.0.0-20221106220321-123254a9d12d
+	github.com/projectsveltos/libsveltos v0.0.0-20221110193915-a4a0752520cd
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/text v0.3.7
 	k8s.io/api v0.25.3
@@ -19,7 +19,7 @@ require (
 	k8s.io/component-base v0.25.3
 	k8s.io/klog/v2 v2.70.1
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
-	sigs.k8s.io/cluster-api v1.2.4
+	sigs.k8s.io/cluster-api v1.2.5
 	sigs.k8s.io/controller-runtime v0.12.3
 )
 
@@ -67,9 +67,9 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/spf13/cobra v1.5.0 // indirect
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
-	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
+	golang.org/x/net v0.0.0-20220906165146-f3363e06e74c // indirect
 	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb // indirect
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
