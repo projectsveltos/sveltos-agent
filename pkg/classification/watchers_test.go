@@ -32,25 +32,25 @@ import (
 )
 
 var (
-	pods = libsveltosv1alpha1.DeployedResource{
+	pods = libsveltosv1alpha1.DeployedResourceConstraint{
 		Group:   "",
 		Version: "v1",
 		Kind:    "Pod",
 	}
 
-	kubeadmconfigs = libsveltosv1alpha1.DeployedResource{
+	kubeadmconfigs = libsveltosv1alpha1.DeployedResourceConstraint{
 		Group:   "bootstrap.cluster.x-k8s.io",
 		Version: "v1beta1",
 		Kind:    "Kubeadmconfig",
 	}
 
-	classifiers = libsveltosv1alpha1.DeployedResource{
+	classifiers = libsveltosv1alpha1.DeployedResourceConstraint{
 		Group:   "lib.projectsveltos.io",
 		Version: "v1alpha1",
 		Kind:    "Classifier",
 	}
 
-	debuggingConfigurations = libsveltosv1alpha1.DeployedResource{
+	debuggingConfigurations = libsveltosv1alpha1.DeployedResourceConstraint{
 		Group:   "lib.projectsveltos.io",
 		Version: "v1alpha1",
 		Kind:    "DebuggingConfiguration",
@@ -79,7 +79,7 @@ var _ = Describe("Manager: watchers", func() {
 
 	It("buildList: builds list of resources to watch", func() {
 		classifier := getClassifierWithKubernetesConstraints(version25, libsveltosv1alpha1.ComparisonEqual)
-		classifier.Spec.DeployedResources = []libsveltosv1alpha1.DeployedResource{
+		classifier.Spec.DeployedResourceConstraints = []libsveltosv1alpha1.DeployedResourceConstraint{
 			pods,
 			kubeadmconfigs,
 		}
@@ -107,8 +107,8 @@ var _ = Describe("Manager: watchers", func() {
 		gvks, err := classification.BuildList(manager, context.TODO())
 		Expect(err).To(BeNil())
 		Expect(len(gvks)).To(Equal(2))
-		for i := range classifier.Spec.DeployedResources {
-			r := classifier.Spec.DeployedResources[i]
+		for i := range classifier.Spec.DeployedResourceConstraints {
+			r := classifier.Spec.DeployedResourceConstraints[i]
 			gvk := schema.GroupVersionKind{
 				Group:   r.Group,
 				Version: r.Version,

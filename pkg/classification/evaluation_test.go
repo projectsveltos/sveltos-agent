@@ -475,7 +475,7 @@ var _ = Describe("Manager: evaluation", func() {
 				ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
 					{Key: randomString(), Value: randomString()},
 				},
-				DeployedResources: []libsveltosv1alpha1.DeployedResource{
+				DeployedResourceConstraints: []libsveltosv1alpha1.DeployedResourceConstraint{
 					{
 						Namespace: namespace,
 						MinCount:  &countMin,
@@ -512,7 +512,7 @@ var _ = Describe("Manager: evaluation", func() {
 		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client, nil, 10)
 		manager := classification.GetManager()
 
-		isMatch, err := classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResources[0])
+		isMatch, err := classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeFalse())
 
@@ -523,7 +523,7 @@ var _ = Describe("Manager: evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
 		Expect(waitForObject(context.TODO(), testEnv.Client, u)).To(Succeed())
 
-		isMatch, err = classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResources[0])
+		isMatch, err = classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeTrue())
 
@@ -537,7 +537,7 @@ var _ = Describe("Manager: evaluation", func() {
 			Expect(waitForObject(context.TODO(), testEnv.Client, u)).To(Succeed())
 		}
 
-		isMatch, err = classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResources[0])
+		isMatch, err = classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeFalse())
 	})
@@ -557,7 +557,7 @@ var _ = Describe("Manager: evaluation", func() {
 				ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
 					{Key: randomString(), Value: randomString()},
 				},
-				DeployedResources: []libsveltosv1alpha1.DeployedResource{
+				DeployedResourceConstraints: []libsveltosv1alpha1.DeployedResourceConstraint{
 					{
 						Namespace: namespace,
 						LabelFilters: []libsveltosv1alpha1.LabelFilter{
@@ -599,7 +599,7 @@ var _ = Describe("Manager: evaluation", func() {
 		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client, nil, 10)
 		manager := classification.GetManager()
 
-		isMatch, err := classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResources[0])
+		isMatch, err := classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeFalse())
 
@@ -618,7 +618,7 @@ var _ = Describe("Manager: evaluation", func() {
 
 		// Use Eventually so cache is in sync
 		Eventually(func() bool {
-			isMatch, err = classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResources[0])
+			isMatch, err = classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
 			return err == nil && isMatch
 		}, timeout, pollingInterval).Should(BeTrue())
 	})
@@ -635,7 +635,7 @@ var _ = Describe("Manager: evaluation", func() {
 				ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
 					{Key: randomString(), Value: randomString()},
 				},
-				DeployedResources: []libsveltosv1alpha1.DeployedResource{
+				DeployedResourceConstraints: []libsveltosv1alpha1.DeployedResourceConstraint{
 					{
 						Namespace: namespace,
 						FieldFilters: []libsveltosv1alpha1.FieldFilter{
@@ -673,7 +673,7 @@ var _ = Describe("Manager: evaluation", func() {
 		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client, nil, 10)
 		manager := classification.GetManager()
 
-		isMatch, err := classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResources[0])
+		isMatch, err := classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeFalse())
 
@@ -692,7 +692,7 @@ var _ = Describe("Manager: evaluation", func() {
 
 		// Use Eventually so cache is in sync
 		Eventually(func() bool {
-			isMatch, err = classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResources[0])
+			isMatch, err = classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
 			return err == nil && isMatch
 		}, timeout, pollingInterval).Should(BeTrue())
 	})

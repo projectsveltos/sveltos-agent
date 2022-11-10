@@ -72,7 +72,7 @@ var _ = Describe("Classification", func() {
 				ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
 					{Key: randomString(), Value: randomString()},
 				},
-				DeployedResources: []libsveltosv1alpha1.DeployedResource{
+				DeployedResourceConstraints: []libsveltosv1alpha1.DeployedResourceConstraint{
 					{
 						MinCount: &minCount,
 						MaxCount: &maxCount,

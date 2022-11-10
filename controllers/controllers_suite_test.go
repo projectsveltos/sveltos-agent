@@ -187,7 +187,7 @@ func getClassifierWithResourceConstraints() *libsveltosv1alpha1.Classifier {
 			ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
 				{Key: randomString(), Value: randomString()},
 			},
-			DeployedResources: []libsveltosv1alpha1.DeployedResource{
+			DeployedResourceConstraints: []libsveltosv1alpha1.DeployedResourceConstraint{
 				{
 					Group:   randomString(),
 					Version: randomString(),

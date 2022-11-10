@@ -166,8 +166,8 @@ func (m *manager) isVersionAMatch(ctx context.Context,
 func (m *manager) areResourcesAMatch(ctx context.Context,
 	classifier *libsveltosv1alpha1.Classifier) (bool, error) {
 
-	for i := range classifier.Spec.DeployedResources {
-		r := &classifier.Spec.DeployedResources[i]
+	for i := range classifier.Spec.DeployedResourceConstraints {
+		r := &classifier.Spec.DeployedResourceConstraints[i]
 		isMatch, err := m.isResourceAMatch(ctx, r)
 		if err != nil {
 			return false, err
@@ -180,7 +180,7 @@ func (m *manager) areResourcesAMatch(ctx context.Context,
 }
 
 func (m *manager) isResourceAMatch(ctx context.Context,
-	deployedResource *libsveltosv1alpha1.DeployedResource) (bool, error) {
+	deployedResource *libsveltosv1alpha1.DeployedResourceConstraint) (bool, error) {
 
 	gvk := schema.GroupVersionKind{
 		Group:   deployedResource.Group,

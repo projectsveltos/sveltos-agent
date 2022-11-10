@@ -189,12 +189,12 @@ func (r *ClassifierReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *ClassifierReconciler) updateMaps(classifier *libsveltosv1alpha1.Classifier) {
-	gvks := make([]schema.GroupVersionKind, len(classifier.Spec.DeployedResources))
-	for i := range classifier.Spec.DeployedResources {
+	gvks := make([]schema.GroupVersionKind, len(classifier.Spec.DeployedResourceConstraints))
+	for i := range classifier.Spec.DeployedResourceConstraints {
 		gvk := schema.GroupVersionKind{
-			Group:   classifier.Spec.DeployedResources[i].Group,
-			Version: classifier.Spec.DeployedResources[i].Version,
-			Kind:    classifier.Spec.DeployedResources[i].Kind,
+			Group:   classifier.Spec.DeployedResourceConstraints[i].Group,
+			Version: classifier.Spec.DeployedResourceConstraints[i].Version,
+			Kind:    classifier.Spec.DeployedResourceConstraints[i].Kind,
 		}
 		gvks[i] = gvk
 	}
