@@ -50,7 +50,7 @@ var (
 )
 
 const (
-	timeout         = 40 * time.Second
+	timeout         = 60 * time.Second
 	pollingInterval = 2 * time.Second
 )
 
@@ -91,19 +91,14 @@ var _ = BeforeSuite(func() {
 		}
 	}()
 
-	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
-		time.Sleep(time.Second)
-	}
-
 	classifierCRD, err := utils.GetUnstructured(crd.GetClassifierCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, classifierCRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, classifierCRD)).To(Succeed())
 
 	classifierReportCRD, err := utils.GetUnstructured(crd.GetClassifierReportCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, classifierReportCRD)).To(Succeed())
-
-	Expect(waitForObject(ctx, testEnv.Client, classifierCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, classifierReportCRD)).To(Succeed())
 
 	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
