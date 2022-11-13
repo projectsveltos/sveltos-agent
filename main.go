@@ -32,6 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	"github.com/projectsveltos/classifier-agent/controllers"
+	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	"github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 	//+kubebuilder:scaffold:imports
 )
@@ -62,6 +64,12 @@ func main() {
 	pflag.Parse()
 
 	ctrl.SetLogger(klog.Background())
+
+	ctx := ctrl.SetupSignalHandler()
+
+	logsettings.RegisterForLogSettings(ctx,
+		libsveltosv1alpha1.ComponentClassifierAgent, ctrl.Log.WithName("log-setter"),
+		ctrl.GetConfigOrDie())
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
