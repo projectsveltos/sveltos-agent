@@ -74,6 +74,15 @@ var _ = Describe("Classification: crd", Serial, func() {
 			Expect(apierrors.IsNotFound(err)).To(BeTrue())
 		}
 
+		By("Posting ServiceMonitor CRD")
+		var serviceMonitor *unstructured.Unstructured
+		serviceMonitor, err = libsveltosutils.GetUnstructured([]byte(serviceMonitorCRD))
+		Expect(err).To(BeNil())
+		Expect(k8sClient.Create(context.TODO(), serviceMonitor)).To(Succeed())
+
+		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: "servicemonitors.monitoring.coreos.com"},
+			currentServiceMonitorCRD)).To(Succeed())
+
 		minCount := 3
 		maxCount := 5
 
@@ -110,15 +119,6 @@ var _ = Describe("Classification: crd", Serial, func() {
 				types.NamespacedName{Namespace: utils.ReportNamespace, Name: classifier.Name}, classifierReport)
 			return err == nil && !classifierReport.Spec.Match
 		}, timeout, pollingInterval).Should(BeTrue())
-
-		By("Posting ServiceMonitor CRD")
-		var serviceMonitor *unstructured.Unstructured
-		serviceMonitor, err = libsveltosutils.GetUnstructured([]byte(serviceMonitorCRD))
-		Expect(err).To(BeNil())
-		Expect(k8sClient.Create(context.TODO(), serviceMonitor)).To(Succeed())
-
-		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: "servicemonitors.monitoring.coreos.com"},
-			currentServiceMonitorCRD)).To(Succeed())
 
 		By("Creating enough ServiceMonitor for cluster to match Classifier")
 		for i := 0; i < minCount; i++ {
