@@ -5,7 +5,7 @@
 
 # classifier_agent
 
-<img src="https://raw.githubusercontent.com/projectsveltos/classifier-agent/release-0.2/logos/logo.png" width="200">
+<img src="https://raw.githubusercontent.com/projectsveltos/classifier-agent/v0.2.0/logos/logo.png" width="200">
 
 Classify cluster and report back to management cluster.
 
