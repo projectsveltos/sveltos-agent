@@ -509,7 +509,8 @@ var _ = Describe("Manager: evaluation", func() {
 
 		watcherCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client, nil, 10)
+		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), nil, 10, false)
 		manager := classification.GetManager()
 
 		isMatch, err := classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
@@ -596,7 +597,8 @@ var _ = Describe("Manager: evaluation", func() {
 
 		watcherCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client, nil, 10)
+		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), nil, 10, false)
 		manager := classification.GetManager()
 
 		isMatch, err := classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
@@ -670,7 +672,8 @@ var _ = Describe("Manager: evaluation", func() {
 
 		watcherCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client, nil, 10)
+		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), nil, 10, false)
 		manager := classification.GetManager()
 
 		isMatch, err := classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
@@ -722,6 +725,128 @@ var _ = Describe("Manager: evaluation", func() {
 		err := c.Get(context.TODO(), types.NamespacedName{Name: classifier.Name, Namespace: utils.ReportNamespace}, classifier)
 		Expect(err).ToNot(BeNil())
 		Expect(apierrors.IsNotFound(err)).To(BeTrue())
+	})
+
+	It("getManamegentClusterClient returns client to access management cluster", func() {
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "projectsveltos",
+			},
+		}
+		err := testEnv.Create(context.TODO(), ns)
+		if err != nil {
+			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+		}
+		Expect(waitForObject(context.TODO(), testEnv.Client, ns)).To(Succeed())
+
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: libsveltosv1alpha1.ClassifierSecretNamespace,
+				Name:      libsveltosv1alpha1.ClassifierSecretName,
+			},
+			Data: map[string][]byte{
+				"data": testEnv.Kubeconfig,
+			},
+		}
+
+		Expect(testEnv.Create(context.TODO(), secret)).To(Succeed())
+		Expect(waitForObject(context.TODO(), testEnv.Client, secret)).To(Succeed())
+
+		watcherCtx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), nil, 10, false)
+		manager := classification.GetManager()
+
+		c, err := classification.GetManamegentClusterClient(manager, context.TODO(), klogr.New())
+		Expect(err).To(BeNil())
+		Expect(c).ToNot(BeNil())
+	})
+
+	It("sendClassifierReport sends classifierReport to management cluster", func() {
+		classifier := getClassifierWithKubernetesConstraints(version24, libsveltosv1alpha1.ComparisonGreaterThan)
+		classifier.Spec.ClassifierLabels = []libsveltosv1alpha1.ClassifierLabel{
+			{Key: randomString(), Value: randomString()},
+		}
+		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
+		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: utils.ReportNamespace,
+			},
+		}
+		err := testEnv.Create(context.TODO(), ns)
+		if err != nil {
+			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+		}
+		Expect(waitForObject(context.TODO(), testEnv.Client, ns)).To(Succeed())
+
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: libsveltosv1alpha1.ClassifierSecretNamespace,
+				Name:      libsveltosv1alpha1.ClassifierSecretName,
+			},
+			Data: map[string][]byte{
+				"data": testEnv.Kubeconfig,
+			},
+		}
+
+		err = testEnv.Create(context.TODO(), secret)
+		if err != nil {
+			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+		}
+		Expect(waitForObject(context.TODO(), testEnv.Client, secret)).To(Succeed())
+
+		isMatch := true
+		phase := libsveltosv1alpha1.ReportDelivering
+		classifierReport := &libsveltosv1alpha1.ClassifierReport{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: utils.ReportNamespace,
+				Name:      classifier.Name,
+			},
+			Spec: libsveltosv1alpha1.ClassifierReportSpec{
+				ClassifierName: classifier.Name,
+				Match:          isMatch,
+			},
+			Status: libsveltosv1alpha1.ClassifierReportStatus{
+				Phase: &phase,
+			},
+		}
+
+		Expect(testEnv.Create(context.TODO(), classifierReport)).To(Succeed())
+		Expect(waitForObject(context.TODO(), testEnv.Client, classifierReport)).To(Succeed())
+
+		clusterNamespace := utils.ReportNamespace
+		clusterName := randomString()
+		watcherCtx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, nil, 10, false)
+		manager := classification.GetManager()
+
+		Expect(classification.SendClassifierReport(manager, context.TODO(), classifier)).To(Succeed())
+
+		// sendClassifierReport creates classifier in manager.clusterNamespace
+
+		// Use Eventually so cache is in sync
+		classifierReportName := libsveltosv1alpha1.GetClassifierReportName(classifier.Name, clusterName)
+		Eventually(func() error {
+			currentClassifierReport := &libsveltosv1alpha1.ClassifierReport{}
+			return testEnv.Get(context.TODO(),
+				types.NamespacedName{Namespace: clusterNamespace, Name: classifierReportName}, currentClassifierReport)
+		}, timeout, pollingInterval).Should(BeNil())
+
+		currentClassifierReport := &libsveltosv1alpha1.ClassifierReport{}
+		Expect(testEnv.Get(context.TODO(),
+			types.NamespacedName{Namespace: clusterNamespace, Name: classifierReportName}, currentClassifierReport)).To(Succeed())
+		Expect(currentClassifierReport.Spec.ClusterName).To(Equal(clusterName))
+		Expect(currentClassifierReport.Spec.ClusterNamespace).To(Equal(clusterNamespace))
+		Expect(currentClassifierReport.Spec.ClassifierName).To(Equal(classifier.Name))
+		Expect(currentClassifierReport.Spec.Match).To(Equal(isMatch))
+		v, ok := currentClassifierReport.Labels[libsveltosv1alpha1.ClassifierReportClusterLabel]
+		Expect(ok).To(BeTrue())
+		Expect(v).To(Equal(libsveltosv1alpha1.GetClusterInfo(clusterNamespace, clusterName)))
 	})
 })
 

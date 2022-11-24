@@ -51,6 +51,10 @@ type manager struct {
 	client.Client
 	config *rest.Config
 
+	sendReport       bool
+	clusterNamespace string
+	clusterName      string
+
 	watchMu *sync.Mutex
 	// rebuildResourceToWatch indicates (value different from zero) that list
 	// of resources to watch needs to be rebuilt
@@ -79,7 +83,7 @@ type manager struct {
 
 // InitializeManager initializes a manager implementing the ClassifierInterface
 func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, c client.Client,
-	react ReactToNotification, intervalInSecond uint) {
+	clusterNamespace, clusterName string, react ReactToNotification, intervalInSecond uint, sendReport bool) {
 
 	if managerInstance == nil {
 		getManagerLock.Lock()
@@ -100,6 +104,9 @@ func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, 
 			managerInstance.watchers = make(map[schema.GroupVersionKind]context.CancelFunc)
 
 			managerInstance.react = react
+			managerInstance.sendReport = sendReport
+			managerInstance.clusterNamespace = clusterNamespace
+			managerInstance.clusterName = clusterName
 
 			go managerInstance.evaluateClassifiers(ctx)
 			go managerInstance.buildResourceToWatch(ctx)
