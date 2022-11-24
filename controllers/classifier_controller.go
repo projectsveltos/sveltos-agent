@@ -38,11 +38,20 @@ import (
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 )
 
+type Mode int64
+
+const (
+	SendReports Mode = iota
+	DoNotSendReports
+)
+
 // ClassifierReconciler reconciles a Classifier object
 type ClassifierReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-
+	Scheme           *runtime.Scheme
+	RunMode          Mode
+	ClusterNamespace string
+	ClusterName      string
 	// Used to update internal maps and sets
 	Mux sync.Mutex
 	// key: GVK, Value: list of Classifiers based on that GVK
@@ -181,9 +190,14 @@ func (r *ClassifierReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return errors.Wrap(err, "error creating controller")
 	}
 
+	sendReport := false
+	if r.RunMode == SendReports {
+		sendReport = true
+	}
 	const intervalInSecond = 10
 	classification.InitializeManager(context.TODO(), mgr.GetLogger(),
-		mgr.GetConfig(), mgr.GetClient(), r.react, intervalInSecond)
+		mgr.GetConfig(), mgr.GetClient(), r.ClusterNamespace, r.ClusterName,
+		r.react, intervalInSecond, sendReport)
 
 	return nil
 }

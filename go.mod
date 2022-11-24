@@ -3,13 +3,14 @@ module github.com/projectsveltos/classifier-agent
 go 1.19
 
 require (
+	emperror.dev/errors v0.8.1
 	github.com/Masterminds/semver v1.5.0
 	github.com/TwinProduction/go-color v1.0.0
 	github.com/go-logr/logr v1.2.3
 	github.com/onsi/ginkgo/v2 v2.1.6
 	github.com/onsi/gomega v1.20.1
 	github.com/pkg/errors v0.9.1
-	github.com/projectsveltos/libsveltos v0.2.2-0.20221117231616-d7ca41ed41e0
+	github.com/projectsveltos/libsveltos v0.2.2-0.20221123222816-cabec7f620c4
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/text v0.3.7
 	k8s.io/api v0.25.3
@@ -66,6 +67,8 @@ require (
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/spf13/cobra v1.5.0 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
 	golang.org/x/net v0.0.0-20220906165146-f3363e06e74c // indirect
 	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb // indirect

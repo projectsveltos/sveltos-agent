@@ -40,7 +40,8 @@ var _ = Describe("Controllers: node controller", func() {
 
 	BeforeEach(func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client, nil, 10)
+		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), nil, 10, false)
 	})
 
 	AfterEach(func() {
