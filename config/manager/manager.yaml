@@ -39,7 +39,7 @@ spec:
         args:
         - --leader-elect
         - --v=5
-        - --run-mode=noreport
+        - --run-mode=do-not-send-report
         image: controller:latest
         name: manager
         securityContext:
