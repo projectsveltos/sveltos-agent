@@ -847,6 +847,10 @@ var _ = Describe("Manager: evaluation", func() {
 		v, ok := currentClassifierReport.Labels[libsveltosv1alpha1.ClassifierReportClusterLabel]
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(libsveltosv1alpha1.GetClusterInfo(clusterNamespace, clusterName)))
+
+		v, ok = currentClassifierReport.Labels[libsveltosv1alpha1.ClassifierLabelName]
+		Expect(ok).To(BeTrue())
+		Expect(v).To(Equal(classifier.Name))
 	})
 })
 
