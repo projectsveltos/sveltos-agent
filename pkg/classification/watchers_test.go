@@ -92,6 +92,7 @@ var _ = Describe("Manager: watchers", func() {
 			err := testEnv.Create(watcherCtx, classifier)
 			if err != nil {
 				Expect(meta.IsNoMatchError(err)).To(BeTrue())
+				return false
 			}
 			return true
 		}, timeout, pollingInterval).Should(BeTrue())

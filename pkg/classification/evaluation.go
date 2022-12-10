@@ -394,6 +394,8 @@ func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsvelt
 		return err
 	}
 
+	currentClassifierReport.Namespace = classifierReportNamespace
+	currentClassifierReport.Name = classifierReportName
 	currentClassifierReport.Spec.Match = classifierReport.Spec.Match
 	currentClassifierReport.Labels = map[string]string{
 		libsveltosv1alpha1.ClassifierReportClusterLabel: libsveltosv1alpha1.GetClusterInfo(m.clusterNamespace, m.clusterName),

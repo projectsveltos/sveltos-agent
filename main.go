@@ -111,6 +111,8 @@ func main() {
 		Mux:                sync.Mutex{},
 		GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 		VersionClassifiers: libsveltosset.Set{},
+		ClusterNamespace:   clusterNamespace,
+		ClusterName:        clusterName,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Classifier")
 		os.Exit(1)
