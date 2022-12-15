@@ -510,7 +510,7 @@ var _ = Describe("Manager: evaluation", func() {
 		watcherCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), nil, 10, false)
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, nil, 10, false)
 		manager := classification.GetManager()
 
 		isMatch, err := classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
@@ -598,7 +598,7 @@ var _ = Describe("Manager: evaluation", func() {
 		watcherCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), nil, 10, false)
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, nil, 10, false)
 		manager := classification.GetManager()
 
 		isMatch, err := classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
@@ -673,7 +673,7 @@ var _ = Describe("Manager: evaluation", func() {
 		watcherCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), nil, 10, false)
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, nil, 10, false)
 		manager := classification.GetManager()
 
 		isMatch, err := classification.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
@@ -755,7 +755,7 @@ var _ = Describe("Manager: evaluation", func() {
 		watcherCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), nil, 10, false)
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, nil, 10, false)
 		manager := classification.GetManager()
 
 		c, err := classification.GetManamegentClusterClient(manager, context.TODO(), klogr.New())
@@ -819,10 +819,11 @@ var _ = Describe("Manager: evaluation", func() {
 
 		clusterNamespace := utils.ReportNamespace
 		clusterName := randomString()
+		clusterType := libsveltosv1alpha1.ClusterTypeCapi
 		watcherCtx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, nil, 10, false)
+			clusterNamespace, clusterName, clusterType, nil, 10, false)
 		manager := classification.GetManager()
 
 		Expect(classification.SendClassifierReport(manager, context.TODO(), classifier)).To(Succeed())
@@ -843,6 +844,7 @@ var _ = Describe("Manager: evaluation", func() {
 		Expect(currentClassifierReport.Spec.ClusterName).To(Equal(clusterName))
 		Expect(currentClassifierReport.Spec.ClusterNamespace).To(Equal(clusterNamespace))
 		Expect(currentClassifierReport.Spec.ClassifierName).To(Equal(classifier.Name))
+		Expect(currentClassifierReport.Spec.ClusterType).To(Equal(clusterType))
 		Expect(currentClassifierReport.Spec.Match).To(Equal(isMatch))
 		v, ok := currentClassifierReport.Labels[libsveltosv1alpha1.ClassifierReportClusterLabel]
 		Expect(ok).To(BeTrue())

@@ -52,6 +52,7 @@ type ClassifierReconciler struct {
 	RunMode          Mode
 	ClusterNamespace string
 	ClusterName      string
+	ClusterType      libsveltosv1alpha1.ClusterType
 	// Used to update internal maps and sets
 	Mux sync.Mutex
 	// key: GVK, Value: list of Classifiers based on that GVK
@@ -130,18 +131,15 @@ func (r *ClassifierReconciler) reconcileDelete(
 	logger.V(logs.LogDebug).Info("reconcile delete")
 
 	logger.V(logs.LogDebug).Info("remove classifier from maps")
-	policyRef := libsveltosv1alpha1.PolicyRef{
-		Name: classifierScope.Name(),
-		Kind: libsveltosv1alpha1.ClassifierKind,
-	}
+	policyRef := getKeyFromObject(r.Scheme, classifierScope.Classifier)
 
 	r.Mux.Lock()
 	defer r.Mux.Unlock()
 
-	r.VersionClassifiers.Erase(&policyRef)
+	r.VersionClassifiers.Erase(policyRef)
 
 	for i := range r.GVKClassifiers {
-		r.GVKClassifiers[i].Erase(&policyRef)
+		r.GVKClassifiers[i].Erase(policyRef)
 	}
 
 	// Queue Classifier for evaluation
@@ -196,7 +194,7 @@ func (r *ClassifierReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	const intervalInSecond = 10
 	classification.InitializeManager(context.TODO(), mgr.GetLogger(),
-		mgr.GetConfig(), mgr.GetClient(), r.ClusterNamespace, r.ClusterName,
+		mgr.GetConfig(), mgr.GetClient(), r.ClusterNamespace, r.ClusterName, r.ClusterType,
 		r.react, intervalInSecond, sendReport)
 
 	return nil
@@ -213,16 +211,13 @@ func (r *ClassifierReconciler) updateMaps(classifier *libsveltosv1alpha1.Classif
 		gvks[i] = gvk
 	}
 
-	policyRef := libsveltosv1alpha1.PolicyRef{
-		Name: classifier.Name,
-		Kind: libsveltosv1alpha1.ClassifierKind,
-	}
+	policyRef := getKeyFromObject(r.Scheme, classifier)
 
 	r.Mux.Lock()
 	defer r.Mux.Unlock()
 
 	if classifier.Spec.KubernetesVersionConstraints != nil {
-		r.VersionClassifiers.Insert(&policyRef)
+		r.VersionClassifiers.Insert(policyRef)
 	}
 
 	for i := range gvks {
@@ -230,7 +225,7 @@ func (r *ClassifierReconciler) updateMaps(classifier *libsveltosv1alpha1.Classif
 		if !ok {
 			r.GVKClassifiers[gvks[i]] = &libsveltosset.Set{}
 		}
-		r.GVKClassifiers[gvks[i]].Insert(&policyRef)
+		r.GVKClassifiers[gvks[i]].Insert(policyRef)
 	}
 }
 
