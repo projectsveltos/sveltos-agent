@@ -50,6 +50,7 @@ var (
 	runMode              string
 	clusterNamespace     string
 	clusterName          string
+	clusterType          string
 )
 
 func main() {
@@ -113,6 +114,7 @@ func main() {
 		VersionClassifiers: libsveltosset.Set{},
 		ClusterNamespace:   clusterNamespace,
 		ClusterName:        clusterName,
+		ClusterType:        libsveltosv1alpha1.ClusterType(clusterType),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Classifier")
 		os.Exit(1)
@@ -165,6 +167,13 @@ func initFlags(fs *pflag.FlagSet) {
 		"cluster-name",
 		"",
 		"cluster name",
+	)
+
+	flag.StringVar(
+		&clusterType,
+		"cluster-type",
+		"",
+		"cluster type",
 	)
 
 	fs.BoolVar(&enableLeaderElection, "leader-elect", false,

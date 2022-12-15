@@ -386,6 +386,7 @@ func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsvelt
 			currentClassifierReport.Spec = classifierReport.Spec
 			currentClassifierReport.Spec.ClusterNamespace = m.clusterNamespace
 			currentClassifierReport.Spec.ClusterName = m.clusterName
+			currentClassifierReport.Spec.ClusterType = m.clusterType
 			currentClassifierReport.Labels = map[string]string{
 				libsveltosv1alpha1.ClassifierReportClusterLabel: libsveltosv1alpha1.GetClusterInfo(m.clusterNamespace, m.clusterName),
 				libsveltosv1alpha1.ClassifierLabelName:          classifierReport.Spec.ClassifierName,
@@ -397,6 +398,7 @@ func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsvelt
 
 	currentClassifierReport.Namespace = classifierReportNamespace
 	currentClassifierReport.Name = classifierReportName
+	currentClassifierReport.Spec.ClusterType = m.clusterType
 	currentClassifierReport.Spec.Match = classifierReport.Spec.Match
 	currentClassifierReport.Labels = map[string]string{
 		libsveltosv1alpha1.ClassifierReportClusterLabel: libsveltosv1alpha1.GetClusterInfo(m.clusterNamespace, m.clusterName),

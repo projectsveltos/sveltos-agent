@@ -41,7 +41,7 @@ var _ = Describe("Controllers: node controller", func() {
 	BeforeEach(func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
 		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), nil, 10, false)
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, nil, 10, false)
 	})
 
 	AfterEach(func() {
@@ -127,11 +127,8 @@ var _ = Describe("Controllers: node controller", func() {
 			VersionClassifiers: libsveltosset.Set{},
 		}
 
-		policyRef := libsveltosv1alpha1.PolicyRef{
-			Name: classifier.Name,
-			Kind: libsveltosv1alpha1.ClassifierKind,
-		}
-		reconciler.VersionClassifiers.Insert(&policyRef)
+		policyRef := controllers.GetKeyFromObject(scheme, classifier)
+		reconciler.VersionClassifiers.Insert(policyRef)
 
 		classifierScope, err := scope.NewClassifierScope(scope.ClassifierScopeParams{
 			Client:         testEnv.Client,
@@ -166,12 +163,9 @@ var _ = Describe("Controllers: node controller", func() {
 			VersionClassifiers: libsveltosset.Set{},
 		}
 
-		policyRef := libsveltosv1alpha1.PolicyRef{
-			Name: classifier.Name,
-			Kind: libsveltosv1alpha1.ClassifierKind,
-		}
+		policyRef := controllers.GetKeyFromObject(scheme, classifier)
 		reconciler.GVKClassifiers[gvk] = &libsveltosset.Set{}
-		reconciler.GVKClassifiers[gvk].Insert(&policyRef)
+		reconciler.GVKClassifiers[gvk].Insert(policyRef)
 
 		classifierScope, err := scope.NewClassifierScope(scope.ClassifierScopeParams{
 			Client:         testEnv.Client,

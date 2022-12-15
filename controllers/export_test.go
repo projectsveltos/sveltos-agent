@@ -32,3 +32,7 @@ var (
 	UpdateMaps      = (*ClassifierReconciler).updateMaps
 	ReconcileDelete = (*ClassifierReconciler).reconcileDelete
 )
+
+var (
+	GetKeyFromObject = getKeyFromObject
+)
