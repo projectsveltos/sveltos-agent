@@ -10,7 +10,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.1.6
 	github.com/onsi/gomega v1.20.1
 	github.com/pkg/errors v0.9.1
-	github.com/projectsveltos/libsveltos v0.2.2-0.20221215200137-0b4989374ab0
+	github.com/projectsveltos/libsveltos v0.2.2-0.20221218050351-8f2317402846
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/text v0.3.7
 	k8s.io/api v0.25.3

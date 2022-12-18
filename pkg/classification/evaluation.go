@@ -371,7 +371,8 @@ func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsvelt
 
 	logger.V(logs.LogDebug).Info("send classifierReport to management cluster")
 
-	classifierReportName := libsveltosv1alpha1.GetClassifierReportName(classifier.Name, m.clusterName)
+	classifierReportName := libsveltosv1alpha1.GetClassifierReportName(classifier.Name,
+		m.clusterName, &m.clusterType)
 	classifierReportNamespace := m.clusterNamespace
 
 	currentClassifierReport := &libsveltosv1alpha1.ClassifierReport{}
@@ -387,10 +388,9 @@ func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsvelt
 			currentClassifierReport.Spec.ClusterNamespace = m.clusterNamespace
 			currentClassifierReport.Spec.ClusterName = m.clusterName
 			currentClassifierReport.Spec.ClusterType = m.clusterType
-			currentClassifierReport.Labels = map[string]string{
-				libsveltosv1alpha1.ClassifierReportClusterLabel: libsveltosv1alpha1.GetClusterInfo(m.clusterNamespace, m.clusterName),
-				libsveltosv1alpha1.ClassifierLabelName:          classifierReport.Spec.ClassifierName,
-			}
+			currentClassifierReport.Labels = libsveltosv1alpha1.GetClassifierReportLabels(
+				classifier.Name, m.clusterName, &m.clusterType,
+			)
 			return agentClient.Create(ctx, currentClassifierReport)
 		}
 		return err
@@ -400,10 +400,10 @@ func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsvelt
 	currentClassifierReport.Name = classifierReportName
 	currentClassifierReport.Spec.ClusterType = m.clusterType
 	currentClassifierReport.Spec.Match = classifierReport.Spec.Match
-	currentClassifierReport.Labels = map[string]string{
-		libsveltosv1alpha1.ClassifierReportClusterLabel: libsveltosv1alpha1.GetClusterInfo(m.clusterNamespace, m.clusterName),
-		libsveltosv1alpha1.ClassifierLabelName:          classifierReport.Spec.ClassifierName,
-	}
+	currentClassifierReport.Labels = libsveltosv1alpha1.GetClassifierReportLabels(
+		classifier.Name, m.clusterName, &m.clusterType,
+	)
+
 	return agentClient.Update(ctx, currentClassifierReport)
 }
 

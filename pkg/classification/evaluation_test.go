@@ -19,6 +19,7 @@ package classification_test
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -831,7 +832,7 @@ var _ = Describe("Manager: evaluation", func() {
 		// sendClassifierReport creates classifier in manager.clusterNamespace
 
 		// Use Eventually so cache is in sync
-		classifierReportName := libsveltosv1alpha1.GetClassifierReportName(classifier.Name, clusterName)
+		classifierReportName := libsveltosv1alpha1.GetClassifierReportName(classifier.Name, clusterName, &clusterType)
 		Eventually(func() error {
 			currentClassifierReport := &libsveltosv1alpha1.ClassifierReport{}
 			return testEnv.Get(context.TODO(),
@@ -846,9 +847,13 @@ var _ = Describe("Manager: evaluation", func() {
 		Expect(currentClassifierReport.Spec.ClassifierName).To(Equal(classifier.Name))
 		Expect(currentClassifierReport.Spec.ClusterType).To(Equal(clusterType))
 		Expect(currentClassifierReport.Spec.Match).To(Equal(isMatch))
-		v, ok := currentClassifierReport.Labels[libsveltosv1alpha1.ClassifierReportClusterLabel]
+		v, ok := currentClassifierReport.Labels[libsveltosv1alpha1.ClassifierReportClusterNameLabel]
 		Expect(ok).To(BeTrue())
-		Expect(v).To(Equal(libsveltosv1alpha1.GetClusterInfo(clusterNamespace, clusterName)))
+		Expect(v).To(Equal(clusterName))
+
+		v, ok = currentClassifierReport.Labels[libsveltosv1alpha1.ClassifierReportClusterTypeLabel]
+		Expect(ok).To(BeTrue())
+		Expect(v).To(Equal(strings.ToLower(string(libsveltosv1alpha1.ClusterTypeCapi))))
 
 		v, ok = currentClassifierReport.Labels[libsveltosv1alpha1.ClassifierLabelName]
 		Expect(ok).To(BeTrue())
