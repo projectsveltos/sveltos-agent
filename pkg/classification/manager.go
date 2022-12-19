@@ -26,16 +26,13 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2/klogr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	"github.com/projectsveltos/libsveltos/lib/crd"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 )
 
@@ -115,7 +112,8 @@ func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, 
 			go managerInstance.evaluateClassifiers(ctx)
 			go managerInstance.buildResourceToWatch(ctx)
 			// Start a watcher for CustomResourceDefinition
-			go managerInstance.watchCustomResourceDefinition(ctx)
+			go crd.WatchCustomResourceDefinition(ctx, managerInstance.config,
+				restartIfNeeded, managerInstance.log)
 		}
 	}
 }
@@ -139,80 +137,6 @@ func (m *manager) EvaluateClassifier(classifierName string) {
 	defer m.mu.Unlock()
 
 	m.jobQueue = append(m.jobQueue, classifierName)
-}
-
-func (m *manager) watchCustomResourceDefinition(ctx context.Context) {
-	gvk := schema.GroupVersionKind{
-		Group:   "apiextensions.k8s.io",
-		Version: "v1",
-		Kind:    "CustomResourceDefinition",
-	}
-
-	dcinformer, err := m.getDynamicInformer(&gvk)
-	if err != nil {
-		m.log.Error(err, "Failed to get informer")
-		panic(1)
-	}
-
-	m.runCRDInformer(ctx.Done(), dcinformer.Informer())
-}
-
-func (m *manager) runCRDInformer(stopCh <-chan struct{}, s cache.SharedIndexInformer) {
-	handlers := cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			crd := &apiextensionsv1.CustomResourceDefinition{}
-			err := runtime.DefaultUnstructuredConverter.
-				FromUnstructured(obj.(*unstructured.Unstructured).UnstructuredContent(), crd)
-			if err != nil {
-				m.log.Error(err, "could not convert obj to CustomResourceDefinition")
-				return
-			}
-			for i := range crd.Spec.Versions {
-				gvk := &schema.GroupVersionKind{
-					Group:   crd.Spec.Group,
-					Version: crd.Spec.Versions[i].Name,
-					Kind:    crd.Spec.Names.Kind,
-				}
-				restartIfNeeded(gvk)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			crd := &apiextensionsv1.CustomResourceDefinition{}
-			err := runtime.DefaultUnstructuredConverter.
-				FromUnstructured(obj.(*unstructured.Unstructured).UnstructuredContent(), crd)
-			if err != nil {
-				m.log.Error(err, "could not convert obj to CustomResourceDefinition")
-				return
-			}
-			for i := range crd.Spec.Versions {
-				gvk := &schema.GroupVersionKind{
-					Group:   crd.Spec.Group,
-					Version: crd.Spec.Versions[i].Name,
-					Kind:    crd.Spec.Names.Kind,
-				}
-				restartIfNeeded(gvk)
-			}
-		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
-			crd := &apiextensionsv1.CustomResourceDefinition{}
-			err := runtime.DefaultUnstructuredConverter.
-				FromUnstructured(newObj.(*unstructured.Unstructured).UnstructuredContent(), crd)
-			if err != nil {
-				m.log.Error(err, "could not convert obj to CustomResourceDefinition")
-				return
-			}
-			for i := range crd.Spec.Versions {
-				gvk := &schema.GroupVersionKind{
-					Group:   crd.Spec.Group,
-					Version: crd.Spec.Versions[i].Name,
-					Kind:    crd.Spec.Names.Kind,
-				}
-				restartIfNeeded(gvk)
-			}
-		},
-	}
-	s.AddEventHandler(handlers)
-	s.Run(stopCh)
 }
 
 // If there is any classifier using this GVK, restart agent
