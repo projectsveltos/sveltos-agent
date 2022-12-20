@@ -17,29 +17,77 @@ limitations under the License.
 package utils_test
 
 import (
+	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/cluster-api/util"
 
+	"github.com/projectsveltos/classifier-agent/internal/test/helpers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 )
 
-func TestClassification(t *testing.T) {
+var (
+	testEnv *helpers.TestEnvironment
+	cancel  context.CancelFunc
+	ctx     context.Context
+	scheme  *runtime.Scheme
+)
+
+var (
+	cacheSyncBackoff = wait.Backoff{
+		Duration: 100 * time.Millisecond,
+		Factor:   1.5,
+		Steps:    8,
+		Jitter:   0.4,
+	}
+)
+
+func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Classification Suite")
 }
 
-func randomString() string {
-	const length = 10
-	return util.RandomString(length)
-}
+var _ = BeforeSuite(func() {
+	By("bootstrapping test environment")
+
+	ctx, cancel = context.WithCancel(context.TODO())
+
+	var err error
+	scheme, err = setupScheme()
+	Expect(err).To(BeNil())
+
+	testEnvConfig := helpers.NewTestEnvironmentConfiguration([]string{}, scheme)
+	testEnv, err = testEnvConfig.Build(scheme)
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		By("Starting the manager")
+		err = testEnv.StartManager(ctx)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to start the envtest manager: %v", err))
+		}
+	}()
+
+	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
+		time.Sleep(time.Second)
+	}
+})
+
+var _ = AfterSuite(func() {
+	cancel()
+	By("tearing down the test environment")
+	err := testEnv.Stop()
+	Expect(err).ToNot(HaveOccurred())
+})
 
 func setupScheme() (*runtime.Scheme, error) {
 	s := runtime.NewScheme()
@@ -50,20 +98,4 @@ func setupScheme() (*runtime.Scheme, error) {
 		return nil, err
 	}
 	return s, nil
-}
-
-func getNode(kubeletVer string) *corev1.Node {
-	return &corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: randomString(),
-			Labels: map[string]string{
-				"node-role.kubernetes.io/control-plane": "ok",
-			},
-		},
-		Status: corev1.NodeStatus{
-			NodeInfo: corev1.NodeSystemInfo{
-				KubeletVersion: kubeletVer,
-			},
-		},
-	}
 }

@@ -89,6 +89,7 @@ var _ = Describe("Controllers: node controller", func() {
 
 		reconciler := &controllers.NodeReconciler{
 			Client: testEnv.Client,
+			Config: testEnv.Config,
 			Scheme: scheme,
 		}
 
