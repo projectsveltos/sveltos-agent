@@ -22,59 +22,30 @@ import (
 
 	"github.com/go-logr/logr"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/rest"
 )
 
 const (
-	controlPlaneLabel = "node-role.kubernetes.io/control-plane"
 	// Namespace where reports will be generated
 	ReportNamespace = "projectsveltos"
 )
 
-func IsControlPlaneNode(node *corev1.Node) bool {
-	labels := node.Labels
-	if labels == nil {
-		return false
-	}
-	_, ok := labels[controlPlaneLabel]
-	return ok
-}
-
-func GetKubernetesVersion(ctx context.Context, c client.Client, logger logr.Logger) (string, error) {
-	nodeList := &corev1.NodeList{}
-
-	err := c.List(ctx, nodeList)
+func GetKubernetesVersion(ctx context.Context, cfg *rest.Config, logger logr.Logger) (string, error) {
+	discClient, err := discovery.NewDiscoveryClientForConfig(cfg)
 	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to get discovery client: %v", err))
 		return "", err
 	}
 
-	logger.V(logs.LogDebug).Info(fmt.Sprintf("found %d nodes", len(nodeList.Items)))
-	currentVersions := make(map[string]int)
-	for i := range nodeList.Items {
-		node := &nodeList.Items[i]
-		if IsControlPlaneNode(node) {
-			logger.V(logs.LogDebug).Info(fmt.Sprintf("node %s is control plane", node.Name))
-			version := node.Status.NodeInfo.KubeletVersion
-			logger.V(logs.LogDebug).Info(fmt.Sprintf("node %s is control plane. Version: %s",
-				node.Name, version))
-			if v, ok := currentVersions[version]; ok {
-				currentVersions[version] = v + 1
-			} else {
-				currentVersions[version] = 1
-			}
-		}
+	var k8sVersion *version.Info
+	k8sVersion, err = discClient.ServerVersion()
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to get version from discovery client: %v", err))
+		return "", err
 	}
 
-	versionCount := 0
-	version := ""
-	for k := range currentVersions {
-		if currentVersions[k] > versionCount {
-			version = k
-			versionCount = currentVersions[k]
-		}
-	}
-
-	logger.V(logs.LogDebug).Info(fmt.Sprintf("cluster version: %s", version))
-	return version, nil
+	logger.V(logs.LogDebug).Info(fmt.Sprintf("cluster version: %s", k8sVersion.String()))
+	return k8sVersion.String(), nil
 }

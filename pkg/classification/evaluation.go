@@ -134,7 +134,7 @@ func (m *manager) evaluateClassifierInstance(ctx context.Context, classifierName
 func (m *manager) isVersionAMatch(ctx context.Context,
 	classifier *libsveltosv1alpha1.Classifier) (bool, error) {
 
-	currentVersion, err := utils.GetKubernetesVersion(ctx, m.Client, m.log)
+	currentVersion, err := utils.GetKubernetesVersion(ctx, m.config, m.log)
 	if err != nil {
 		m.log.Error(err, "failed to get cluster kubernetes version")
 		return false, err
@@ -444,7 +444,7 @@ func (m *manager) createClassifierReport(ctx context.Context, classifier *libsve
 		return err
 	}
 
-	logger.V(logs.LogDebug).Info("creating ClassifierReport")
+	logger.V(logs.LogInfo).Info("creating ClassifierReport")
 	classifierReport = m.getClassifierReport(classifier.Name, isMatch)
 	err = m.Create(ctx, classifierReport)
 	if err != nil {

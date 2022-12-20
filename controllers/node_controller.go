@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -38,6 +39,7 @@ import (
 // NodeReconciler reconciles a Node object
 type NodeReconciler struct {
 	client.Client
+	*rest.Config
 	Scheme *runtime.Scheme
 
 	// kubernetesVersion is the current Kubernetes version
@@ -68,28 +70,27 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	logger = logger.WithValues("node", node.Name)
-	if utils.IsControlPlaneNode(node) {
-		version, err := utils.GetKubernetesVersion(ctx, r.Client, logger)
+
+	version, err := utils.GetKubernetesVersion(ctx, r.Config, logger)
+	if err != nil {
+		return reconcile.Result{}, nil
+	}
+	if version != r.kubernetesVersion {
+		// Re-evaluate all Classifiers using Kubernetes as one of the criteria
+		var list []string
+		list, err = r.findClassifierUsingKubernetesVersion(ctx, logger)
 		if err != nil {
-			return reconcile.Result{}, nil
+			return reconcile.Result{}, err
 		}
-		if version != r.kubernetesVersion {
-			// Re-evaluate all Classifiers using Kubernetes as one of the criteria
-			var list []string
-			list, err = r.findClassifierUsingKubernetesVersion(ctx, logger)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
 
-			manager := classification.GetManager()
-			for i := range list {
-				logger.V(logs.LogDebug).Info(fmt.Sprintf("classifier %s needs re-evaluation",
-					list[i]))
-				manager.EvaluateClassifier(list[i])
-			}
-
-			r.kubernetesVersion = version
+		manager := classification.GetManager()
+		for i := range list {
+			logger.V(logs.LogDebug).Info(fmt.Sprintf("classifier %s needs re-evaluation",
+				list[i]))
+			manager.EvaluateClassifier(list[i])
 		}
+
+		r.kubernetesVersion = version
 	}
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
