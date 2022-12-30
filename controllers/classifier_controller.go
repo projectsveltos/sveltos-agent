@@ -54,7 +54,7 @@ type ClassifierReconciler struct {
 	ClusterName      string
 	ClusterType      libsveltosv1alpha1.ClusterType
 	// Used to update internal maps and sets
-	Mux sync.Mutex
+	Mux sync.RWMutex
 	// key: GVK, Value: list of Classifiers based on that GVK
 	GVKClassifiers map[schema.GroupVersionKind]*libsveltosset.Set
 	// List of Classifier instances based on Kubernetes version
@@ -232,6 +232,9 @@ func (r *ClassifierReconciler) updateMaps(classifier *libsveltosv1alpha1.Classif
 // react gets called when an instance of passed in gvk has been modified.
 // This method queues all Classifier currently using that gvk to be evaluated.
 func (r *ClassifierReconciler) react(gvk *schema.GroupVersionKind) {
+	r.Mux.RLock()
+	defer r.Mux.RUnlock()
+
 	if gvk == nil {
 		return
 	}
