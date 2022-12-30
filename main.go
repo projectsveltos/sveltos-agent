@@ -109,7 +109,7 @@ func main() {
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
 		RunMode:            sendReports,
-		Mux:                sync.Mutex{},
+		Mux:                sync.RWMutex{},
 		GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 		VersionClassifiers: libsveltosset.Set{},
 		ClusterNamespace:   clusterNamespace,

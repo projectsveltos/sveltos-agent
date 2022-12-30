@@ -73,7 +73,7 @@ var _ = Describe("Controllers: node controller", func() {
 		reconciler := &controllers.ClassifierReconciler{
 			Client:             testEnv.Client,
 			Scheme:             scheme,
-			Mux:                sync.Mutex{},
+			Mux:                sync.RWMutex{},
 			GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 			VersionClassifiers: libsveltosset.Set{},
 		}
@@ -94,7 +94,7 @@ var _ = Describe("Controllers: node controller", func() {
 		reconciler := &controllers.ClassifierReconciler{
 			Client:             testEnv.Client,
 			Scheme:             scheme,
-			Mux:                sync.Mutex{},
+			Mux:                sync.RWMutex{},
 			GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 			VersionClassifiers: libsveltosset.Set{},
 		}
@@ -122,7 +122,7 @@ var _ = Describe("Controllers: node controller", func() {
 		reconciler := &controllers.ClassifierReconciler{
 			Client:             testEnv.Client,
 			Scheme:             scheme,
-			Mux:                sync.Mutex{},
+			Mux:                sync.RWMutex{},
 			GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 			VersionClassifiers: libsveltosset.Set{},
 		}
@@ -158,7 +158,7 @@ var _ = Describe("Controllers: node controller", func() {
 		reconciler := &controllers.ClassifierReconciler{
 			Client:             testEnv.Client,
 			Scheme:             scheme,
-			Mux:                sync.Mutex{},
+			Mux:                sync.RWMutex{},
 			GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 			VersionClassifiers: libsveltosset.Set{},
 		}
