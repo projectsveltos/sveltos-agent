@@ -19,17 +19,24 @@ package classification
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
+	"emperror.dev/errors"
 	"github.com/Masterminds/semver"
+	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/restmapper"
+	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/projectsveltos/classifier-agent/pkg/utils"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
@@ -111,6 +118,14 @@ func (m *manager) evaluateClassifierInstance(ctx context.Context, classifierName
 		return err
 	}
 
+	if m.sendReport {
+		err = m.sendClassifierReport(ctx, classifier)
+		if err != nil {
+			logger.Error(err, "failed to send ClassifierReport")
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -119,7 +134,7 @@ func (m *manager) evaluateClassifierInstance(ctx context.Context, classifierName
 func (m *manager) isVersionAMatch(ctx context.Context,
 	classifier *libsveltosv1alpha1.Classifier) (bool, error) {
 
-	currentVersion, err := utils.GetKubernetesVersion(ctx, m.Client, m.log)
+	currentVersion, err := utils.GetKubernetesVersion(ctx, m.config, m.log)
 	if err != nil {
 		m.log.Error(err, "failed to get cluster kubernetes version")
 		return false, err
@@ -291,6 +306,126 @@ func (m *manager) getClassifierReport(classifierName string, isMatch bool) *libs
 	}
 }
 
+// getManamegentClusterClient gets the Secret containing the Kubeconfig to access
+// management cluster and return magamenet cluster client.
+func (m *manager) getManamegentClusterClient(ctx context.Context, logger logr.Logger,
+) (client.Client, error) {
+
+	kubeconfigContent, err := m.getKubeconfig(ctx)
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to get management cluster kubeconfig: %v", err))
+		return nil, err
+	}
+
+	kubeconfigFile, err := os.CreateTemp("", "kubeconfig")
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to get store kubeconfig: %v", err))
+		return nil, err
+	}
+	defer os.Remove(kubeconfigFile.Name())
+
+	_, err = kubeconfigFile.Write(kubeconfigContent)
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to get store kubeconfig: %v", err))
+		return nil, err
+	}
+
+	restConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigFile.Name())
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to get management cluster config: %v", err))
+		return nil, err
+	}
+
+	s := runtime.NewScheme()
+	err = libsveltosv1alpha1.AddToScheme(s)
+	if err != nil {
+		return nil, err
+	}
+
+	agentClient, err := client.New(restConfig, client.Options{Scheme: s})
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to get management cluster client: %v", err))
+		return nil, err
+	}
+
+	return agentClient, nil
+}
+
+// sendClassifierReport sends classifierReport to management cluster
+func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsveltosv1alpha1.Classifier) error {
+	logger := m.log.WithValues("classifier", classifier.Name)
+
+	classifierReport := &libsveltosv1alpha1.ClassifierReport{}
+	err := m.Get(ctx,
+		types.NamespacedName{Namespace: utils.ReportNamespace, Name: classifier.Name}, classifierReport)
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to get classifier: %v", err))
+		return err
+	}
+
+	agentClient, err := m.getManamegentClusterClient(ctx, logger)
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to get management cluster client: %v", err))
+		return err
+	}
+
+	logger.V(logs.LogDebug).Info("send classifierReport to management cluster")
+
+	classifierReportName := libsveltosv1alpha1.GetClassifierReportName(classifier.Name,
+		m.clusterName, &m.clusterType)
+	classifierReportNamespace := m.clusterNamespace
+
+	currentClassifierReport := &libsveltosv1alpha1.ClassifierReport{}
+
+	err = agentClient.Get(ctx,
+		types.NamespacedName{Namespace: classifierReportNamespace, Name: classifierReportName},
+		currentClassifierReport)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			currentClassifierReport.Namespace = classifierReportNamespace
+			currentClassifierReport.Name = classifierReportName
+			currentClassifierReport.Spec = classifierReport.Spec
+			currentClassifierReport.Spec.ClusterNamespace = m.clusterNamespace
+			currentClassifierReport.Spec.ClusterName = m.clusterName
+			currentClassifierReport.Spec.ClusterType = m.clusterType
+			currentClassifierReport.Labels = libsveltosv1alpha1.GetClassifierReportLabels(
+				classifier.Name, m.clusterName, &m.clusterType,
+			)
+			return agentClient.Create(ctx, currentClassifierReport)
+		}
+		return err
+	}
+
+	currentClassifierReport.Namespace = classifierReportNamespace
+	currentClassifierReport.Name = classifierReportName
+	currentClassifierReport.Spec.ClusterType = m.clusterType
+	currentClassifierReport.Spec.Match = classifierReport.Spec.Match
+	currentClassifierReport.Labels = libsveltosv1alpha1.GetClassifierReportLabels(
+		classifier.Name, m.clusterName, &m.clusterType,
+	)
+
+	return agentClient.Update(ctx, currentClassifierReport)
+}
+
+func (m *manager) getKubeconfig(ctx context.Context) ([]byte, error) {
+	secret := &corev1.Secret{}
+	key := client.ObjectKey{
+		Namespace: libsveltosv1alpha1.ClassifierSecretNamespace,
+		Name:      libsveltosv1alpha1.ClassifierSecretName,
+	}
+
+	if err := m.Get(ctx, key, secret); err != nil {
+		return nil, errors.Wrap(err,
+			fmt.Sprintf("Failed to get secret %s", key))
+	}
+
+	for _, contents := range secret.Data {
+		return contents, nil
+	}
+
+	return nil, nil
+}
+
 // createClassifierReport creates ClassifierReport or updates it if already exists.
 func (m *manager) createClassifierReport(ctx context.Context, classifier *libsveltosv1alpha1.Classifier,
 	isMatch bool) error {
@@ -309,7 +444,7 @@ func (m *manager) createClassifierReport(ctx context.Context, classifier *libsve
 		return err
 	}
 
-	logger.V(logs.LogDebug).Info("creating ClassifierReport")
+	logger.V(logs.LogInfo).Info("creating ClassifierReport")
 	classifierReport = m.getClassifierReport(classifier.Name, isMatch)
 	err = m.Create(ctx, classifierReport)
 	if err != nil {

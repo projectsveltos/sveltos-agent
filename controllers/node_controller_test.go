@@ -84,10 +84,12 @@ var _ = Describe("Controllers: node controller", func() {
 		currentNode.Status = node.Status
 		Expect(testEnv.Status().Update(watcherCtx, &currentNode)).To(Succeed())
 
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client, nil, 10)
+		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, nil, 10, false)
 
 		reconciler := &controllers.NodeReconciler{
 			Client: testEnv.Client,
+			Config: testEnv.Config,
 			Scheme: scheme,
 		}
 

@@ -39,7 +39,7 @@ import (
 )
 
 const (
-	sendReports = "send-reports"
+	noReports = "do-not-send-reports"
 )
 
 var (
@@ -48,6 +48,9 @@ var (
 	enableLeaderElection bool
 	probeAddr            string
 	runMode              string
+	clusterNamespace     string
+	clusterName          string
+	clusterType          string
 )
 
 func main() {
@@ -95,21 +98,31 @@ func main() {
 		os.Exit(1)
 	}
 
+	sendReports := controllers.SendReports // do not send reports
+	if runMode == noReports {
+		sendReports = controllers.DoNotSendReports
+	}
+
 	// Do not change order. ClassifierReconciler initializes classification manager.
 	// NodeReconciler uses classification manager.
 	if err = (&controllers.ClassifierReconciler{
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
-		Mux:                sync.Mutex{},
+		RunMode:            sendReports,
+		Mux:                sync.RWMutex{},
 		GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 		VersionClassifiers: libsveltosset.Set{},
-	}).SetupWithManager(mgr); err != nil {
+		ClusterNamespace:   clusterNamespace,
+		ClusterName:        clusterName,
+		ClusterType:        libsveltosv1alpha1.ClusterType(clusterType),
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Classifier")
 		os.Exit(1)
 	}
 	if err = (&controllers.NodeReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Config: mgr.GetConfig(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Node")
 		os.Exit(1)
@@ -139,8 +152,29 @@ func initFlags(fs *pflag.FlagSet) {
 	flag.StringVar(
 		&runMode,
 		"run-mode",
-		sendReports,
+		noReports,
 		"indicates whether reports will be sent to management cluster or just created locally",
+	)
+
+	flag.StringVar(
+		&clusterNamespace,
+		"cluster-namespace",
+		"",
+		"cluster namespace",
+	)
+
+	flag.StringVar(
+		&clusterName,
+		"cluster-name",
+		"",
+		"cluster name",
+	)
+
+	flag.StringVar(
+		&clusterType,
+		"cluster-type",
+		"",
+		"cluster type",
 	)
 
 	fs.BoolVar(&enableLeaderElection, "leader-elect", false,

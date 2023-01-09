@@ -40,7 +40,8 @@ var _ = Describe("Controllers: node controller", func() {
 
 	BeforeEach(func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client, nil, 10)
+		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, nil, 10, false)
 	})
 
 	AfterEach(func() {
@@ -62,6 +63,7 @@ var _ = Describe("Controllers: node controller", func() {
 			err := testEnv.Create(watcherCtx, classifier)
 			if err != nil {
 				Expect(meta.IsNoMatchError(err)).To(BeTrue())
+				return false
 			}
 			return true
 		}, timeout, pollingInterval).Should(BeTrue())
@@ -71,7 +73,7 @@ var _ = Describe("Controllers: node controller", func() {
 		reconciler := &controllers.ClassifierReconciler{
 			Client:             testEnv.Client,
 			Scheme:             scheme,
-			Mux:                sync.Mutex{},
+			Mux:                sync.RWMutex{},
 			GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 			VersionClassifiers: libsveltosset.Set{},
 		}
@@ -92,7 +94,7 @@ var _ = Describe("Controllers: node controller", func() {
 		reconciler := &controllers.ClassifierReconciler{
 			Client:             testEnv.Client,
 			Scheme:             scheme,
-			Mux:                sync.Mutex{},
+			Mux:                sync.RWMutex{},
 			GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 			VersionClassifiers: libsveltosset.Set{},
 		}
@@ -120,16 +122,13 @@ var _ = Describe("Controllers: node controller", func() {
 		reconciler := &controllers.ClassifierReconciler{
 			Client:             testEnv.Client,
 			Scheme:             scheme,
-			Mux:                sync.Mutex{},
+			Mux:                sync.RWMutex{},
 			GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 			VersionClassifiers: libsveltosset.Set{},
 		}
 
-		policyRef := libsveltosv1alpha1.PolicyRef{
-			Name: classifier.Name,
-			Kind: libsveltosv1alpha1.ClassifierKind,
-		}
-		reconciler.VersionClassifiers.Insert(&policyRef)
+		policyRef := controllers.GetKeyFromObject(scheme, classifier)
+		reconciler.VersionClassifiers.Insert(policyRef)
 
 		classifierScope, err := scope.NewClassifierScope(scope.ClassifierScopeParams{
 			Client:         testEnv.Client,
@@ -159,17 +158,14 @@ var _ = Describe("Controllers: node controller", func() {
 		reconciler := &controllers.ClassifierReconciler{
 			Client:             testEnv.Client,
 			Scheme:             scheme,
-			Mux:                sync.Mutex{},
+			Mux:                sync.RWMutex{},
 			GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 			VersionClassifiers: libsveltosset.Set{},
 		}
 
-		policyRef := libsveltosv1alpha1.PolicyRef{
-			Name: classifier.Name,
-			Kind: libsveltosv1alpha1.ClassifierKind,
-		}
+		policyRef := controllers.GetKeyFromObject(scheme, classifier)
 		reconciler.GVKClassifiers[gvk] = &libsveltosset.Set{}
-		reconciler.GVKClassifiers[gvk].Insert(&policyRef)
+		reconciler.GVKClassifiers[gvk].Insert(policyRef)
 
 		classifierScope, err := scope.NewClassifierScope(scope.ClassifierScopeParams{
 			Client:         testEnv.Client,

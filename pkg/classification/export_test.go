@@ -43,6 +43,8 @@ var (
 	GetInstalledResources      = (*manager).getInstalledResources
 	StartWatcher               = (*manager).startWatcher
 	UpdateWatchers             = (*manager).updateWatchers
+	GetManamegentClusterClient = (*manager).getManamegentClusterClient
+	SendClassifierReport       = (*manager).sendClassifierReport
 )
 
 func Reset() {

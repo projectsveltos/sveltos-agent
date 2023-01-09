@@ -38,3 +38,7 @@ spec:
         - "--metrics-bind-address=127.0.0.1:8080"
         - "--leader-elect"
         - "--v=5"
+        - "--cluster-namespace="
+        - "--cluster-name="
+        - "--cluster-type="
+        - "--run-mode=do-not-send-reports"

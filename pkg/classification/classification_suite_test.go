@@ -26,7 +26,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,11 +48,6 @@ var (
 	scheme  *runtime.Scheme
 )
 
-const (
-	timeout         = 60 * time.Second
-	pollingInterval = 2 * time.Second
-)
-
 var (
 	cacheSyncBackoff = wait.Backoff{
 		Duration: 100 * time.Millisecond,
@@ -61,6 +55,11 @@ var (
 		Steps:    8,
 		Jitter:   0.4,
 	}
+)
+
+const (
+	timeout         = 60 * time.Second
+	pollingInterval = 2 * time.Second
 )
 
 func TestControllers(t *testing.T) {
@@ -132,22 +131,6 @@ func setupScheme() (*runtime.Scheme, error) {
 	return s, nil
 }
 
-func getNode(kubeletVer string) *corev1.Node {
-	return &corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: randomString(),
-			Labels: map[string]string{
-				"node-role.kubernetes.io/control-plane": "ok",
-			},
-		},
-		Status: corev1.NodeStatus{
-			NodeInfo: corev1.NodeSystemInfo{
-				KubeletVersion: kubeletVer,
-			},
-		},
-	}
-}
-
 func getClassifierWithKubernetesConstraints(k8sVersion string, comparison libsveltosv1alpha1.KubernetesComparison,
 ) *libsveltosv1alpha1.Classifier {
 
@@ -161,6 +144,9 @@ func getClassifierWithKubernetesConstraints(k8sVersion string, comparison libsve
 					Comparison: string(comparison),
 					Version:    k8sVersion,
 				},
+			},
+			ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
+				{Key: randomString(), Value: randomString()},
 			},
 		},
 	}
