@@ -180,7 +180,7 @@ var _ = Describe("Manager: watchers", func() {
 		manager := classification.GetManager()
 
 		gvk := &schema.GroupVersionKind{Group: classifiers.Group, Version: classifiers.Version, Kind: classifiers.Kind}
-		Expect(classification.StartWatcher(manager, gvk, nil)).To(BeNil())
+		Expect(classification.StartWatcher(manager, context.TODO(), gvk, nil)).To(BeNil())
 
 		watchers := classification.GetWatchers()
 		Expect(watchers).ToNot(BeNil())
@@ -198,7 +198,7 @@ var _ = Describe("Manager: watchers", func() {
 		gvk := schema.GroupVersionKind{Group: pods.Group, Version: pods.Version, Kind: pods.Kind}
 		resourceToWatch := []schema.GroupVersionKind{gvk}
 
-		Expect(classification.UpdateWatchers(manager, resourceToWatch)).To(Succeed())
+		Expect(classification.UpdateWatchers(manager, context.TODO(), resourceToWatch)).To(Succeed())
 		watchers := classification.GetWatchers()
 		Expect(watchers).ToNot(BeNil())
 		Expect(len(watchers)).To(Equal(1))
@@ -217,7 +217,7 @@ var _ = Describe("Manager: watchers", func() {
 			Version: debuggingConfigurations.Version, Kind: debuggingConfigurations.Kind}
 		resourceToWatch := []schema.GroupVersionKind{gvk1, gvk2}
 
-		Expect(classification.UpdateWatchers(manager, resourceToWatch)).To(Succeed())
+		Expect(classification.UpdateWatchers(manager, context.TODO(), resourceToWatch)).To(Succeed())
 		watchers := classification.GetWatchers()
 		Expect(watchers).ToNot(BeNil())
 		Expect(len(watchers)).To(Equal(1))

@@ -59,7 +59,7 @@ func (m *manager) buildResourceToWatch(ctx context.Context) {
 			} else {
 				m.log.V(logsettings.LogInfo).Info("list of resources to watch has changed")
 				// Updates watchers
-				err = m.updateWatchers(tmpResourceToWatch)
+				err = m.updateWatchers(ctx, tmpResourceToWatch)
 				if err != nil {
 					m.log.Error(err, "failed to update watchers")
 					atomic.StoreUint32(&m.rebuildResourceToWatch, 1)
@@ -136,7 +136,7 @@ func (m *manager) buildSortedList(gvksMap map[schema.GroupVersionKind]bool) []sc
 	return gvks
 }
 
-func (m *manager) updateWatchers(resourceToWatch []schema.GroupVersionKind) error {
+func (m *manager) updateWatchers(ctx context.Context, resourceToWatch []schema.GroupVersionKind) error {
 	m.log.V(logsettings.LogDebug).Info("update watchers")
 
 	apiResources, err := m.getInstalledResources()
@@ -153,7 +153,7 @@ func (m *manager) updateWatchers(resourceToWatch []schema.GroupVersionKind) erro
 			m.log.V(logsettings.LogDebug).Info(fmt.Sprintf("start watcher for %s", gvk.String()))
 			// Start watcher and invoke the registered method to react when an instance of this
 			// gvk is added/deleted/modified
-			err = m.startWatcher(gvk, m.react)
+			err = m.startWatcher(ctx, gvk, m.react)
 			if err != nil {
 				return err
 			}
@@ -231,7 +231,7 @@ func (m *manager) gvkInstalled(gvk *schema.GroupVersionKind,
 	return apiResources[*gvk]
 }
 
-func (m *manager) startWatcher(gvk *schema.GroupVersionKind, react ReactToNotification) error {
+func (m *manager) startWatcher(ctx context.Context, gvk *schema.GroupVersionKind, react ReactToNotification) error {
 	logger := m.log.WithValues("gvk", gvk.String())
 
 	if _, ok := m.watchers[*gvk]; ok {
@@ -247,7 +247,7 @@ func (m *manager) startWatcher(gvk *schema.GroupVersionKind, react ReactToNotifi
 		return err
 	}
 
-	watcherCtx, cancel := context.WithCancel(context.Background())
+	watcherCtx, cancel := context.WithCancel(ctx)
 	m.watchers[*gvk] = cancel
 	go m.runInformer(watcherCtx.Done(), dcinformer.Informer(), gvk, react, logger)
 	return nil

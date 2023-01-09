@@ -180,7 +180,7 @@ func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ClassifierReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ClassifierReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	_, err := ctrl.NewControllerManagedBy(mgr).
 		For(&libsveltosv1alpha1.Classifier{}).
 		Build(r)
@@ -193,7 +193,7 @@ func (r *ClassifierReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		sendReport = true
 	}
 	const intervalInSecond = 10
-	classification.InitializeManager(context.TODO(), mgr.GetLogger(),
+	classification.InitializeManager(ctx, mgr.GetLogger(),
 		mgr.GetConfig(), mgr.GetClient(), r.ClusterNamespace, r.ClusterName, r.ClusterType,
 		r.react, intervalInSecond, sendReport)
 
