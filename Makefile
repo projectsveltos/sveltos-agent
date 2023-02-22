@@ -38,7 +38,7 @@ BIN_DIR := bin
 GOBUILD=go build
 
 # Define Docker related variables.
-REGISTRY ?= gianlucam76
+REGISTRY ?= projectsveltos
 IMAGE_NAME ?= classifier-agent-manager
 ARCH ?= amd64
 OS ?= $(shell uname -s | tr A-Z a-z)
