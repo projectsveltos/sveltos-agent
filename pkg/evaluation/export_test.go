@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package classification
+package evaluation
 
 import (
 	"context"
@@ -23,14 +23,16 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 )
 
 // Those are used only for uts
 
+// Classifier
 var (
 	IsVersionAMatch            = (*manager).isVersionAMatch
 	IsResourceAMatch           = (*manager).isResourceAMatch
@@ -47,6 +49,16 @@ var (
 	SendClassifierReport       = (*manager).sendClassifierReport
 )
 
+// healthCheck
+var (
+	GetResourceHealthStatus   = (*manager).getResourceHealthStatus
+	FetchHealthCheckResources = (*manager).fetchHealthCheckResources
+	GetHealthStatus           = (*manager).getHealthStatus
+	CreateHealthCheckReport   = (*manager).createHealthCheckReport
+	SendHealthCheckReport     = (*manager).sendHealthCheckReport
+	CleanHealthCheckReport    = (*manager).cleanHealthCheckReport
+)
+
 func Reset() {
 	managerInstance = nil
 }
@@ -60,7 +72,7 @@ func GetUnknownResourcesToWatch() []schema.GroupVersionKind {
 }
 
 func InitializeManagerWithSkip(ctx context.Context, l logr.Logger, config *rest.Config, c client.Client,
-	react ReactToNotification, intervalInSecond uint) {
+	intervalInSecond uint) {
 
 	// Used only for testing purposes (so to avoid using testEnv when not required by test)
 	if managerInstance == nil {
@@ -69,7 +81,8 @@ func InitializeManagerWithSkip(ctx context.Context, l logr.Logger, config *rest.
 		if managerInstance == nil {
 			l.V(logs.LogInfo).Info(fmt.Sprintf("Creating manager now. Interval (in seconds): %d", intervalInSecond))
 			managerInstance = &manager{log: l, Client: c, config: config}
-			managerInstance.jobQueue = make([]string, 0)
+			managerInstance.classifierJobQueue = make(map[string]bool)
+			managerInstance.healthCheckJobQueue = make(map[string]bool)
 			managerInstance.interval = time.Duration(intervalInSecond) * time.Second
 			managerInstance.mu = &sync.Mutex{}
 
@@ -81,9 +94,8 @@ func InitializeManagerWithSkip(ctx context.Context, l logr.Logger, config *rest.
 
 			managerInstance.watchers = make(map[schema.GroupVersionKind]context.CancelFunc)
 
-			managerInstance.react = react
-
 			go managerInstance.evaluateClassifiers(ctx)
+			go managerInstance.evaluateHealthChecks(ctx)
 			go managerInstance.buildResourceToWatch(ctx)
 			// Do not start a watcher for CustomResourceDefinition. Meant to be used by ut only
 			// go managerInstance.watchCustomResourceDefinition(ctx)

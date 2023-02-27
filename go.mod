@@ -1,4 +1,4 @@
-module github.com/projectsveltos/classifier-agent
+module github.com/projectsveltos/classifier-health-agent
 
 go 1.19
 
@@ -10,8 +10,9 @@ require (
 	github.com/onsi/ginkgo/v2 v2.6.0
 	github.com/onsi/gomega v1.24.1
 	github.com/pkg/errors v0.9.1
-	github.com/projectsveltos/libsveltos v0.6.1-0.20230222215826-7e468f534c3c
+	github.com/projectsveltos/libsveltos v0.6.1-0.20230227185642-de1dfcff7379
 	github.com/spf13/pflag v1.0.5
+	github.com/yuin/gopher-lua v1.1.0
 	golang.org/x/text v0.5.0
 	k8s.io/api v0.25.3
 	k8s.io/apiextensions-apiserver v0.25.0

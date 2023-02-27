@@ -21,10 +21,11 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
+
+	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 )
 
 const (

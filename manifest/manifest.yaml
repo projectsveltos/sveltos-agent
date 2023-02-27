@@ -125,6 +125,51 @@ rules:
   - list
   - watch
 - apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - healthcheckreports
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+- apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - healthcheckreports/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - healthchecks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - healthchecks/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - healthchecks/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - projectsveltos.io
   resources:
   - nodes
@@ -295,7 +340,7 @@ spec:
         - --run-mode=do-not-send-reports
         command:
         - /manager
-        image: projectsveltos/classifier-agent-manager-amd64:main
+        image: projectsveltos/classifier-agent-manager-amd64:dev
         livenessProbe:
           httpGet:
             path: /healthz

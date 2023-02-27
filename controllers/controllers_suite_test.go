@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -36,7 +37,7 @@ import (
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/projectsveltos/classifier-agent/internal/test/helpers"
+	"github.com/projectsveltos/classifier-health-agent/internal/test/helpers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	"github.com/projectsveltos/libsveltos/lib/crd"
 	"github.com/projectsveltos/libsveltos/lib/utils"
@@ -58,9 +59,29 @@ var (
 	}
 )
 
+var (
+	luaScript = `
+	function evaluate()
+		hs = {}
+        hs.status = "Progressing"
+        hs.message = ""
+        if obj.status ~= nil then
+          if obj.status.health ~= nil then
+            hs.status = obj.status.health.status
+            if obj.status.health.message ~= nil then
+              hs.message = obj.status.health.message
+            end
+          end
+        end
+        return hs
+	end
+	`
+)
+
 const (
 	timeout         = 60 * time.Second
 	pollingInterval = 2 * time.Second
+	luaKey          = "lua"
 )
 
 func TestControllers(t *testing.T) {
@@ -100,6 +121,16 @@ var _ = BeforeSuite(func() {
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, classifierReportCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, classifierReportCRD)).To(Succeed())
+
+	healthCheckCRD, err := utils.GetUnstructured(crd.GetHealthCheckCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, healthCheckCRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, healthCheckCRD)).To(Succeed())
+
+	healthCheckCReportRD, err := utils.GetUnstructured(crd.GetHealthCheckReportCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, healthCheckCReportRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, healthCheckCReportRD)).To(Succeed())
 
 	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
 		time.Sleep(time.Second)
@@ -200,6 +231,19 @@ func getClassifierWithResourceConstraints() *libsveltosv1alpha1.Classifier {
 	}
 }
 
+func getHealthCheck() *libsveltosv1alpha1.HealthCheck {
+	return &libsveltosv1alpha1.HealthCheck{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: randomString(),
+		},
+		Spec: libsveltosv1alpha1.HealthCheckSpec{
+			Group:   randomString(),
+			Version: randomString(),
+			Kind:    randomString(),
+		},
+	}
+}
+
 func getControlPlaneNode() *corev1.Node {
 	return &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -214,4 +258,46 @@ func getControlPlaneNode() *corev1.Node {
 			},
 		},
 	}
+}
+
+// createConfigMapWithLuaScript creates a configMap with Data containing lua scrip
+func createConfigMapWithLuaScript(namespace, configMapName, script string) *corev1.ConfigMap {
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      configMapName,
+		},
+		Data: map[string]string{},
+	}
+
+	key := luaKey
+	if utf8.Valid([]byte(script)) {
+		cm.Data[key] = script
+	} else {
+		cm.BinaryData[key] = []byte(script)
+	}
+
+	Expect(addTypeInformationToObject(scheme, cm)).To(Succeed())
+
+	return cm
+}
+
+func addTypeInformationToObject(scheme *runtime.Scheme, obj client.Object) error {
+	gvks, _, err := scheme.ObjectKinds(obj)
+	if err != nil {
+		return fmt.Errorf("missing apiVersion or kind and cannot assign it; %w", err)
+	}
+
+	for _, gvk := range gvks {
+		if gvk.Kind == "" {
+			continue
+		}
+		if gvk.Version == "" || gvk.Version == runtime.APIVersionInternal {
+			continue
+		}
+		obj.GetObjectKind().SetGroupVersionKind(gvk)
+		break
+	}
+
+	return nil
 }

@@ -13,4 +13,9 @@ resources:
   domain: projectsveltos.io
   kind: Node
   version: v1
+- controller: true
+  domain: projectsveltos.io
+  group: lib.projectsveltos.io
+  kind: HealthCheck
+  version: v1alpha1
 version: "3"

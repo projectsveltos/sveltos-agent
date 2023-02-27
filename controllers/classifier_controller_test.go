@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,21 +27,21 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2/klogr"
 
-	"github.com/projectsveltos/classifier-agent/controllers"
-	"github.com/projectsveltos/classifier-agent/pkg/classification"
-	"github.com/projectsveltos/classifier-agent/pkg/scope"
+	"github.com/projectsveltos/classifier-health-agent/controllers"
+	"github.com/projectsveltos/classifier-health-agent/pkg/evaluation"
+	"github.com/projectsveltos/classifier-health-agent/pkg/scope"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 )
 
-var _ = Describe("Controllers: node controller", func() {
+var _ = Describe("Controllers: classifier controller", func() {
 	var watcherCtx context.Context
 	var cancel context.CancelFunc
 
 	BeforeEach(func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, nil, 10, false)
+		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
 	})
 
 	AfterEach(func() {
@@ -78,7 +78,7 @@ var _ = Describe("Controllers: node controller", func() {
 			VersionClassifiers: libsveltosset.Set{},
 		}
 
-		controllers.UpdateMaps(reconciler, classifier)
+		controllers.ClassifierUpdateMaps(reconciler, classifier)
 		Expect(reconciler.VersionClassifiers.Len()).To(Equal(1))
 		items := reconciler.VersionClassifiers.Items()
 		Expect(items[0].Name).To(Equal(classifier.Name))
@@ -99,7 +99,7 @@ var _ = Describe("Controllers: node controller", func() {
 			VersionClassifiers: libsveltosset.Set{},
 		}
 
-		controllers.UpdateMaps(reconciler, classifier)
+		controllers.ClassifierUpdateMaps(reconciler, classifier)
 		Expect(reconciler.VersionClassifiers.Len()).To(Equal(0))
 		Expect(len(reconciler.GVKClassifiers)).To(Equal(1))
 		gvk := schema.GroupVersionKind{
@@ -131,15 +131,13 @@ var _ = Describe("Controllers: node controller", func() {
 		reconciler.VersionClassifiers.Insert(policyRef)
 
 		classifierScope, err := scope.NewClassifierScope(scope.ClassifierScopeParams{
-			Client:         testEnv.Client,
-			Logger:         klogr.New(),
-			Classifier:     classifier,
-			ControllerName: "classifier",
+			Client:     testEnv.Client,
+			Logger:     klogr.New(),
+			Classifier: classifier,
 		})
 		Expect(err).To(BeNil())
 
-		_, err = controllers.ReconcileDelete(reconciler, classifierScope, klogr.New())
-		Expect(err).To(BeNil())
+		controllers.ClassifierReconcileDelete(reconciler, classifierScope, klogr.New())
 		Expect(reconciler.VersionClassifiers.Len()).To(Equal(0))
 	})
 
@@ -168,15 +166,13 @@ var _ = Describe("Controllers: node controller", func() {
 		reconciler.GVKClassifiers[gvk].Insert(policyRef)
 
 		classifierScope, err := scope.NewClassifierScope(scope.ClassifierScopeParams{
-			Client:         testEnv.Client,
-			Logger:         klogr.New(),
-			Classifier:     classifier,
-			ControllerName: "classifier",
+			Client:     testEnv.Client,
+			Logger:     klogr.New(),
+			Classifier: classifier,
 		})
 		Expect(err).To(BeNil())
 
-		_, err = controllers.ReconcileDelete(reconciler, classifierScope, klogr.New())
-		Expect(err).To(BeNil())
+		controllers.ClassifierReconcileDelete(reconciler, classifierScope, klogr.New())
 		Expect(reconciler.VersionClassifiers.Len()).To(Equal(0))
 		Expect(reconciler.GVKClassifiers[gvk].Len()).To(Equal(0))
 	})

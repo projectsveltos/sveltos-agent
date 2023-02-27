@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package classification
+package evaluation
 
 import (
 	"context"
@@ -35,6 +35,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/go-logr/logr"
+
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	"github.com/projectsveltos/libsveltos/lib/logsettings"
 )
@@ -76,6 +77,24 @@ func (m *manager) buildResourceToWatch(ctx context.Context) {
 }
 
 func (m *manager) buildList(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
+	resources, err := m.buildListForClassifiers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tmpResources, err := m.buildListForHealthChecks(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for k := range tmpResources {
+		resources[k] = true
+	}
+
+	return resources, nil
+}
+
+func (m *manager) buildListForClassifiers(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
 	classifiers := &libsveltosv1alpha1.ClassifierList{}
 	err := m.List(ctx, classifiers)
 	if err != nil {
@@ -95,6 +114,26 @@ func (m *manager) buildList(ctx context.Context) (map[schema.GroupVersionKind]bo
 	return resources, nil
 }
 
+func (m *manager) buildListForHealthChecks(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
+	healthChecks := &libsveltosv1alpha1.HealthCheckList{}
+	err := m.List(ctx, healthChecks)
+	if err != nil {
+		return nil, err
+	}
+
+	resources := make(map[schema.GroupVersionKind]bool)
+
+	for i := range healthChecks.Items {
+		healthCheck := &healthChecks.Items[i]
+		if !healthCheck.DeletionTimestamp.IsZero() {
+			continue
+		}
+		resources = m.addGVKsForHealthCheck(healthCheck, resources)
+	}
+
+	return resources, nil
+}
+
 func (m *manager) addGVKsForClassifier(classifier *libsveltosv1alpha1.Classifier,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
@@ -107,6 +146,19 @@ func (m *manager) addGVKsForClassifier(classifier *libsveltosv1alpha1.Classifier
 		}
 		resources[gvk] = true
 	}
+
+	return resources
+}
+
+func (m *manager) addGVKsForHealthCheck(healthCheck *libsveltosv1alpha1.HealthCheck,
+	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
+
+	gvk := schema.GroupVersionKind{
+		Group:   healthCheck.Spec.Group,
+		Kind:    healthCheck.Spec.Kind,
+		Version: healthCheck.Spec.Version,
+	}
+	resources[gvk] = true
 
 	return resources
 }
@@ -153,7 +205,7 @@ func (m *manager) updateWatchers(ctx context.Context, resourceToWatch []schema.G
 			m.log.V(logsettings.LogDebug).Info(fmt.Sprintf("start watcher for %s", gvk.String()))
 			// Start watcher and invoke the registered method to react when an instance of this
 			// gvk is added/deleted/modified
-			err = m.startWatcher(ctx, gvk, m.react)
+			err = m.startWatcher(ctx, gvk)
 			if err != nil {
 				return err
 			}
@@ -231,7 +283,13 @@ func (m *manager) gvkInstalled(gvk *schema.GroupVersionKind,
 	return apiResources[*gvk]
 }
 
-func (m *manager) startWatcher(ctx context.Context, gvk *schema.GroupVersionKind, react ReactToNotification) error {
+func (m *manager) react(gvk *schema.GroupVersionKind) {
+	m.reactClassifier(gvk)
+
+	m.reactHealthCheck(gvk)
+}
+
+func (m *manager) startWatcher(ctx context.Context, gvk *schema.GroupVersionKind) error {
 	logger := m.log.WithValues("gvk", gvk.String())
 
 	if _, ok := m.watchers[*gvk]; ok {
@@ -249,7 +307,7 @@ func (m *manager) startWatcher(ctx context.Context, gvk *schema.GroupVersionKind
 
 	watcherCtx, cancel := context.WithCancel(ctx)
 	m.watchers[*gvk] = cancel
-	go m.runInformer(watcherCtx.Done(), dcinformer.Informer(), gvk, react, logger)
+	go m.runInformer(watcherCtx.Done(), dcinformer.Informer(), gvk, m.react, logger)
 	return nil
 }
 
