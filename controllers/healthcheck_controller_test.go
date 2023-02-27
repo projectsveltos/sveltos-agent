@@ -23,9 +23,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2/klogr"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
@@ -66,8 +64,6 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 			Scheme:          scheme,
 			Mux:             sync.RWMutex{},
 			GVKHealthChecks: make(map[schema.GroupVersionKind]*libsveltosset.Set),
-			HealthCheckMap:  make(map[types.NamespacedName]*libsveltosset.Set),
-			ReferenceMap:    make(map[corev1.ObjectReference]*libsveltosset.Set),
 		}
 
 		controllers.HealthCheckUpdateMaps(reconciler, healthCheck)
@@ -100,8 +96,6 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 			Scheme:          scheme,
 			Mux:             sync.RWMutex{},
 			GVKHealthChecks: make(map[schema.GroupVersionKind]*libsveltosset.Set),
-			HealthCheckMap:  make(map[types.NamespacedName]*libsveltosset.Set),
-			ReferenceMap:    make(map[corev1.ObjectReference]*libsveltosset.Set),
 		}
 
 		policyRef := controllers.GetKeyFromObject(scheme, healthCheck)

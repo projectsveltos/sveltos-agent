@@ -33,15 +33,10 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/restmapper"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
-)
-
-const (
-	luaData = "lua"
 )
 
 type healthCheckStatus struct {
@@ -246,19 +241,12 @@ func (m *manager) getHealthStatus(ctx context.Context, healthCheck *libsveltosv1
 
 	resourceStatuses := make([]libsveltosv1alpha1.ResourceStatus, len(resources.Items))
 
-	var script string
-	script, err = m.fetchLuaScript(ctx, healthCheck)
-	if err != nil {
-		m.log.V(logs.LogInfo).Info(fmt.Sprintf("failed to fetch lua script: %v", err))
-		return nil, err
-	}
-
 	for i := range resources.Items {
 		resource := &resources.Items[i]
 		if !resource.GetDeletionTimestamp().IsZero() {
 			continue
 		}
-		s, err := m.getResourceHealthStatus(resource, script)
+		s, err := m.getResourceHealthStatus(resource, healthCheck.Spec.Script)
 		if err != nil {
 			return nil, err
 		}
@@ -400,95 +388,6 @@ func (m *manager) fetchHealthCheckResources(ctx context.Context, healthCheck *li
 	}
 
 	return list, nil
-}
-
-func (m *manager) fetchLuaScript(ctx context.Context, healthCheck *libsveltosv1alpha1.HealthCheck,
-) (string, error) {
-
-	if healthCheck.Spec.PolicyRef == nil {
-		return "", nil
-	}
-
-	var data string
-	var err error
-	if healthCheck.Spec.PolicyRef.Kind == string(libsveltosv1alpha1.ConfigMapReferencedResourceKind) {
-		var object *corev1.ConfigMap
-		object, err = m.getConfigMap(ctx, types.NamespacedName{
-			Namespace: healthCheck.Spec.PolicyRef.Namespace,
-			Name:      healthCheck.Spec.PolicyRef.Name,
-		})
-		if err == nil {
-			data = m.getContentOfConfigMap(object)
-		}
-	} else {
-		var object *corev1.Secret
-		object, err = m.getSecret(ctx, types.NamespacedName{
-			Namespace: healthCheck.Spec.PolicyRef.Namespace,
-			Name:      healthCheck.Spec.PolicyRef.Name})
-		if err == nil {
-			data = m.getContentOfSecret(object)
-		}
-	}
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			m.log.V(logs.LogInfo).Info(fmt.Sprintf("%s %s/%s does not exist yet",
-				healthCheck.Spec.PolicyRef.Kind, healthCheck.Spec.PolicyRef.Namespace, healthCheck.Spec.PolicyRef.Name))
-		}
-		return "", err
-	}
-
-	return data, nil
-}
-
-// getConfigMap retrieves any ConfigMap from the given name and namespace.
-func (m *manager) getConfigMap(ctx context.Context, configmapName types.NamespacedName) (*corev1.ConfigMap, error) {
-	configMap := &corev1.ConfigMap{}
-	configMapKey := client.ObjectKey{
-		Namespace: configmapName.Namespace,
-		Name:      configmapName.Name,
-	}
-	if err := m.Client.Get(ctx, configMapKey, configMap); err != nil {
-		return nil, err
-	}
-
-	return configMap, nil
-}
-
-// getSecret retrieves any Secret from the given secret name and namespace.
-func (m *manager) getSecret(ctx context.Context, secretName types.NamespacedName) (*corev1.Secret, error) {
-	secret := &corev1.Secret{}
-	secretKey := client.ObjectKey{
-		Namespace: secretName.Namespace,
-		Name:      secretName.Name,
-	}
-	if err := m.Client.Get(ctx, secretKey, secret); err != nil {
-		return nil, err
-	}
-
-	if secret.Type != libsveltosv1alpha1.ClusterProfileSecretType {
-		return nil, libsveltosv1alpha1.ErrSecretTypeNotSupported
-	}
-
-	return secret, nil
-}
-
-// getContentOfConfigMap returns the lua script (if present) contained in the ConfigMap
-func (m *manager) getContentOfConfigMap(configMap *corev1.ConfigMap) string {
-	if configMap.Data == nil {
-		return ""
-	}
-
-	return configMap.Data[luaData]
-}
-
-// getContentOfSecret returns the lua script (if present) contained in the Secret
-func (m *manager) getContentOfSecret(secret *corev1.Secret) string {
-	data := make(map[string]string)
-	for key, value := range secret.Data {
-		data[key] = string(value)
-	}
-
-	return data[luaData]
 }
 
 // getHealthCheckReport returns HealthCheckReport instance that needs to be created

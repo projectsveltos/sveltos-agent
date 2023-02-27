@@ -100,18 +100,6 @@ var _ = Describe("Classification", func() {
 	})
 
 	It("Evaluate healthCheck", Label("FV"), func() {
-		By("Creating a ConfigMap with lua script")
-		configMap := corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "projectsveltos",
-				Name:      randomString(),
-			},
-			Data: map[string]string{
-				"lua": luaPausedScript,
-			},
-		}
-		Expect(k8sClient.Create(context.TODO(), &configMap)).To(Succeed())
-
 		By("Creating a nginx deployment")
 		u, err := libsveltosutils.GetUnstructured([]byte(nginxDeployment))
 		Expect(err).To(BeNil())
@@ -128,11 +116,7 @@ var _ = Describe("Classification", func() {
 				Group:   "apps",
 				Version: "v1",
 				Kind:    "Deployment",
-				PolicyRef: &libsveltosv1alpha1.PolicyRef{
-					Kind:      string(libsveltosv1alpha1.ConfigMapReferencedResourceKind),
-					Namespace: configMap.Namespace,
-					Name:      configMap.Name,
-				},
+				Script:  luaPausedScript,
 			},
 		}
 
