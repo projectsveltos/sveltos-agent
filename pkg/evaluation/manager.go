@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package classification
+package evaluation
 
 import (
 	"context"
@@ -25,7 +25,9 @@ import (
 	"syscall"
 	"time"
 
+	"emperror.dev/errors"
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2/klogr"
@@ -62,8 +64,13 @@ type manager struct {
 	resourcesToWatch []schema.GroupVersionKind
 
 	mu *sync.Mutex
-	// jobQueue contains name of all Classifier instances that need to be evaluated
-	jobQueue []string
+
+	// classifierJobQueue contains name of all Classifier instances that need to be evaluated
+	classifierJobQueue map[string]bool
+
+	// healthCheckJobQueue contains name of all HealthCheck instances that need to be evaluated
+	healthCheckJobQueue map[string]bool
+
 	// interval is the interval at which queued Classifiers are evaluated
 	interval time.Duration
 
@@ -77,13 +84,14 @@ type manager struct {
 
 	// react is the method that gets invoked when any of the resources
 	// being watched changes
-	react ReactToNotification
+	reactClassifier  ReactToNotification
+	reactHealthCheck ReactToNotification
 }
 
 // InitializeManager initializes a manager implementing the ClassifierInterface
 func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, c client.Client,
 	clusterNamespace, clusterName string, cluserType libsveltosv1alpha1.ClusterType,
-	react ReactToNotification, intervalInSecond uint, sendReport bool) {
+	intervalInSecond uint, sendReport bool) {
 
 	if managerInstance == nil {
 		getManagerLock.Lock()
@@ -91,7 +99,8 @@ func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, 
 		if managerInstance == nil {
 			l.V(logs.LogInfo).Info(fmt.Sprintf("Creating manager now. Interval (in seconds): %d", intervalInSecond))
 			managerInstance = &manager{log: l, Client: c, config: config}
-			managerInstance.jobQueue = make([]string, 0)
+			managerInstance.classifierJobQueue = make(map[string]bool)
+			managerInstance.healthCheckJobQueue = make(map[string]bool)
 			managerInstance.interval = time.Duration(intervalInSecond) * time.Second
 			managerInstance.mu = &sync.Mutex{}
 
@@ -103,13 +112,13 @@ func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, 
 
 			managerInstance.watchers = make(map[schema.GroupVersionKind]context.CancelFunc)
 
-			managerInstance.react = react
 			managerInstance.sendReport = sendReport
 			managerInstance.clusterNamespace = clusterNamespace
 			managerInstance.clusterName = clusterName
 			managerInstance.clusterType = cluserType
 
 			go managerInstance.evaluateClassifiers(ctx)
+			go managerInstance.evaluateHealthChecks(ctx)
 			go managerInstance.buildResourceToWatch(ctx)
 			// Start a watcher for CustomResourceDefinition
 			go crd.WatchCustomResourceDefinition(ctx, managerInstance.config,
@@ -127,6 +136,14 @@ func GetManager() *manager {
 	return nil
 }
 
+func (m *manager) RegisterClassifierMethod(react ReactToNotification) {
+	m.reactClassifier = react
+}
+
+func (m *manager) RegisterHealthCheckMethod(react ReactToNotification) {
+	m.reactHealthCheck = react
+}
+
 func (m *manager) ReEvaluateResourceToWatch() {
 	atomic.StoreUint32(&m.rebuildResourceToWatch, 1)
 }
@@ -136,13 +153,32 @@ func (m *manager) EvaluateClassifier(classifierName string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.jobQueue = append(m.jobQueue, classifierName)
+	m.classifierJobQueue[classifierName] = true
 }
 
-// If there is any classifier using this GVK, restart agent
+// EvaluateHealthCheck queues a HealthCheck instance for evaluation
+func (m *manager) EvaluateHealthCheck(healthCheckName string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.healthCheckJobQueue[healthCheckName] = true
+}
+
+// If there is any classifier/healthCheck using this GVK, restart agent
 // On restart, agent will be able to start a watcher (a watcher
 // cannot be started on api-resources not present in the cluster)
 func restartIfNeeded(gvk *schema.GroupVersionKind) {
+	manager := GetManager()
+	if manager == nil {
+		return
+	}
+
+	restartIfClassifiersNeed(gvk)
+
+	restartIfHealthChecksNeed(gvk)
+}
+
+func restartIfClassifiersNeed(gvk *schema.GroupVersionKind) {
 	manager := GetManager()
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
@@ -159,4 +195,42 @@ func restartIfNeeded(gvk *schema.GroupVersionKind) {
 			}
 		}
 	}
+}
+
+func restartIfHealthChecksNeed(gvk *schema.GroupVersionKind) {
+	manager := GetManager()
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	logger := klogr.New()
+	logger.V(logs.LogDebug).Info(fmt.Sprintf("react to CustomResourceDefinition %s change",
+		gvk.String()))
+
+	for i := range manager.unknownResourcesToWatch {
+		tmpGVK := manager.unknownResourcesToWatch[i]
+		if reflect.DeepEqual(*gvk, tmpGVK) {
+			if killErr := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); killErr != nil {
+				panic("kill -TERM failed")
+			}
+		}
+	}
+}
+
+func (m *manager) getKubeconfig(ctx context.Context) ([]byte, error) {
+	secret := &corev1.Secret{}
+	key := client.ObjectKey{
+		Namespace: libsveltosv1alpha1.ClassifierSecretNamespace,
+		Name:      libsveltosv1alpha1.ClassifierSecretName,
+	}
+
+	if err := m.Get(ctx, key, secret); err != nil {
+		return nil, errors.Wrap(err,
+			fmt.Sprintf("Failed to get secret %s", key))
+	}
+
+	for _, contents := range secret.Data {
+		return contents, nil
+	}
+
+	return nil, nil
 }

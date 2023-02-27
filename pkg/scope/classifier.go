@@ -29,10 +29,9 @@ import (
 
 // ClassifierScopeParams defines the input parameters used to create a new Classifier Scope.
 type ClassifierScopeParams struct {
-	Client         client.Client
-	Logger         logr.Logger
-	Classifier     *libsveltosv1alpha1.Classifier
-	ControllerName string
+	Client     client.Client
+	Logger     logr.Logger
+	Classifier *libsveltosv1alpha1.Classifier
 }
 
 // NewClassifierScope creates a new Classifier Scope from the supplied parameters.
@@ -50,21 +49,19 @@ func NewClassifierScope(params ClassifierScopeParams) (*ClassifierScope, error) 
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
 	return &ClassifierScope{
-		Logger:         params.Logger,
-		client:         params.Client,
-		Classifier:     params.Classifier,
-		patchHelper:    helper,
-		controllerName: params.ControllerName,
+		Logger:      params.Logger,
+		client:      params.Client,
+		Classifier:  params.Classifier,
+		patchHelper: helper,
 	}, nil
 }
 
 // ClassifierScope defines the basic context for an actuator to operate upon.
 type ClassifierScope struct {
 	logr.Logger
-	client         client.Client
-	patchHelper    *patch.Helper
-	Classifier     *libsveltosv1alpha1.Classifier
-	controllerName string
+	client      client.Client
+	patchHelper *patch.Helper
+	Classifier  *libsveltosv1alpha1.Classifier
 }
 
 // PatchObject persists the feature configuration and status.
@@ -83,10 +80,4 @@ func (s *ClassifierScope) Close(ctx context.Context) error {
 // Name returns the Classifier name.
 func (s *ClassifierScope) Name() string {
 	return s.Classifier.Name
-}
-
-// ControllerName returns the name of the controller that
-// created the ClassifierScope.
-func (s *ClassifierScope) ControllerName() string {
-	return s.controllerName
 }

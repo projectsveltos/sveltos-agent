@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package classification
+package evaluation
 
 type ClassifierInterface interface {
 	// EvaluateClassifier requests a classifier to be
@@ -25,6 +25,15 @@ type ClassifierInterface interface {
 	// After an evaluation, a Classifier is automatically removed
 	// from queue containing all Classifiers which requires evaluation.
 	EvaluateClassifier(classifierName string)
+
+	// EvaluateHealthCheck requests a healthCheck to be
+	// evaluated.
+	// This method is idempotent. Invoking multiple times
+	// on same instance, will queue HealthCheck to be evaluated
+	// only once.
+	// After an evaluation, a HealthCheck is automatically removed
+	// from queue containing all HealthChecks which requires evaluation.
+	EvaluateHealthCheck(healthCheckName string)
 
 	// ReEvaluateResourceToWatch requests to rebuild the GVKs to watch.
 	// This evaluation is done asynchronously when at least one request

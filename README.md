@@ -1,5 +1,5 @@
-[![CI](https://github.com/projectsveltos/classifier-agent/actions/workflows/main.yaml/badge.svg)](https://github.com/projectsveltos/classifier-agent/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/projectsveltos/classifier-agent)](https://goreportcard.com/report/github.com/projectsveltos/classifier-agent)
+[![CI](https://github.com/projectsveltos/classifier-health-agent/actions/workflows/main.yaml/badge.svg)](https://github.com/projectsveltos/classifier-health-agent/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/projectsveltos/classifier-health-agent)](https://goreportcard.com/report/github.com/projectsveltos/classifier-health-agent)
 [![Slack](https://img.shields.io/badge/join%20slack-%23projectsveltos-brighteen)](https://join.slack.com/t/projectsveltos/shared_invite/zt-1hraownbr-W8NTs6LTimxLPB8Erj8Q6Q)
 [![License](https://img.shields.io/badge/license-Apache-blue.svg)](LICENSE)
 [![Twitter Follow](https://img.shields.io/twitter/follow/projectsveltos?style=social)](https://twitter.com/projectsveltos)
@@ -27,7 +27,7 @@ Please refer to [Classifier](https://projectsveltos.github.io/sveltos/labels_man
 
 ## License
 
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

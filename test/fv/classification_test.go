@@ -22,14 +22,14 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/projectsveltos/classifier-agent/pkg/utils"
+	"github.com/projectsveltos/classifier-health-agent/pkg/utils"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 )
 
@@ -62,7 +62,7 @@ var _ = Describe("Classification", func() {
 
 	It("React to classifier and deployed resources", Label("FV"), func() {
 		minCount := 3
-		maxCount := 5
+		maxCount := 8
 
 		classifier := libsveltosv1alpha1.Classifier{
 			ObjectMeta: metav1.ObjectMeta{
