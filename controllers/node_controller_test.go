@@ -28,9 +28,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/projectsveltos/classifier-health-agent/controllers"
-	"github.com/projectsveltos/classifier-health-agent/pkg/evaluation"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	"github.com/projectsveltos/sveltos-agent/controllers"
+	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 )
 
 var _ = Describe("Controllers: node controller", func() {

@@ -24,7 +24,7 @@ import (
 
 	"k8s.io/klog/v2/klogr"
 
-	"github.com/projectsveltos/classifier-health-agent/pkg/utils"
+	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
 var _ = Describe("Manager", func() {

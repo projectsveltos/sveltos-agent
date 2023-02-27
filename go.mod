@@ -1,4 +1,4 @@
-module github.com/projectsveltos/classifier-health-agent
+module github.com/projectsveltos/sveltos-agent
 
 go 1.19
 
