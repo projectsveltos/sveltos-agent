@@ -28,7 +28,7 @@ import (
 	"k8s.io/klog/v2/klogr"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
-	"github.com/projectsveltos/classifier-health-agent/controllers"
+	"github.com/projectsveltos/sveltos-agent/controllers"
 )
 
 var _ = Describe("HealthCheck Predicates: ConfigMapPredicates", func() {

@@ -35,12 +35,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/projectsveltos/classifier-health-agent/pkg/evaluation"
-	"github.com/projectsveltos/classifier-health-agent/pkg/scope"
-	"github.com/projectsveltos/classifier-health-agent/pkg/utils"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
+	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
+	"github.com/projectsveltos/sveltos-agent/pkg/scope"
+	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
 const (

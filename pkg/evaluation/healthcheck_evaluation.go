@@ -35,9 +35,9 @@ import (
 	"k8s.io/client-go/restmapper"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/projectsveltos/classifier-health-agent/pkg/utils"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
+	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
 const (

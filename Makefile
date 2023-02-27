@@ -39,7 +39,7 @@ GOBUILD=go build
 
 # Define Docker related variables.
 REGISTRY ?= projectsveltos
-IMAGE_NAME ?= classifier-agent-manager
+IMAGE_NAME ?= sveltos-agent-manager
 ARCH ?= amd64
 OS ?= $(shell uname -s | tr A-Z a-z)
 K8S_LATEST_VER ?= $(shell curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
@@ -263,4 +263,4 @@ deploy-projectsveltos: $(KUSTOMIZE)
 	$(KUSTOMIZE) build config/default | $(ENVSUBST) | $(KUBECTL) apply -f-
 
 	@echo "Waiting for projectsveltos manager to be available..."
-	$(KUBECTL) wait --for=condition=Available deployment/classifier-agent-manager -n projectsveltos --timeout=$(TIMEOUT)
+	$(KUBECTL) wait --for=condition=Available deployment/sveltos-agent-manager -n projectsveltos --timeout=$(TIMEOUT)

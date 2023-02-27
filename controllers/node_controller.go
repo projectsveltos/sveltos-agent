@@ -30,10 +30,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/projectsveltos/classifier-health-agent/pkg/evaluation"
-	"github.com/projectsveltos/classifier-health-agent/pkg/utils"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
+	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
+	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
 // NodeReconciler reconciles a Node object

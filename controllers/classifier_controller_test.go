@@ -27,11 +27,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2/klogr"
 
-	"github.com/projectsveltos/classifier-health-agent/controllers"
-	"github.com/projectsveltos/classifier-health-agent/pkg/evaluation"
-	"github.com/projectsveltos/classifier-health-agent/pkg/scope"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
+	"github.com/projectsveltos/sveltos-agent/controllers"
+	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
+	"github.com/projectsveltos/sveltos-agent/pkg/scope"
 )
 
 var _ = Describe("Controllers: classifier controller", func() {

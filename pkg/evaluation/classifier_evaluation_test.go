@@ -33,10 +33,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/projectsveltos/classifier-health-agent/pkg/evaluation"
-	"github.com/projectsveltos/classifier-health-agent/pkg/utils"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
+	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
 const (
