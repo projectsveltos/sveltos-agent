@@ -23,7 +23,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,9 +30,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
@@ -61,9 +58,6 @@ type HealthCheckReconciler struct {
 	Mux sync.RWMutex
 	// key: GVK, Value: list of HealthChecks based on that GVK
 	GVKHealthChecks map[schema.GroupVersionKind]*libsveltosset.Set
-
-	ReferenceMap   map[corev1.ObjectReference]*libsveltosset.Set // key: Referenced object; value: set of all HealthChecks referencing the resource
-	HealthCheckMap map[types.NamespacedName]*libsveltosset.Set   // key: HealthCheck name; value: set of referenced resources
 }
 
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=healthchecks,verbs=get;list;watch;create;update;patch;delete
@@ -191,31 +185,11 @@ func (r *HealthCheckReconciler) reconcileNormal(ctx context.Context,
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *HealthCheckReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	c, err := ctrl.NewControllerManagedBy(mgr).
+	_, err := ctrl.NewControllerManagedBy(mgr).
 		For(&libsveltosv1alpha1.HealthCheck{}).
 		Build(r)
 	if err != nil {
 		return errors.Wrap(err, "error creating controller")
-	}
-
-	// When ConfigMap changes, according to ConfigMapPredicates,
-	// one or more HealthChecks need to be reconciled.
-	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}},
-		handler.EnqueueRequestsFromMapFunc(r.requeueHealthCheckForReference),
-		ConfigMapPredicates(mgr.GetLogger().WithValues("predicate", "configmappredicate")),
-	)
-	if err != nil {
-		return err
-	}
-
-	// When Secret changes, according to SecretPredicates,
-	// one or more HEalthChecks need to be reconciled.
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}},
-		handler.EnqueueRequestsFromMapFunc(r.requeueHealthCheckForReference),
-		SecretPredicates(mgr.GetLogger().WithValues("predicate", "secretpredicate")),
-	)
-	if err != nil {
-		return err
 	}
 
 	evaluation.GetManager().RegisterHealthCheckMethod(r.react)
@@ -229,16 +203,8 @@ func (r *HealthCheckReconciler) cleanMaps(healthCheck *libsveltosv1alpha1.Health
 
 	policyRef := getKeyFromObject(r.Scheme, healthCheck)
 
-	delete(r.HealthCheckMap, types.NamespacedName{Name: healthCheck.Name})
-
 	for i := range r.GVKHealthChecks {
 		r.GVKHealthChecks[i].Erase(policyRef)
-	}
-
-	healthCheckInfo := getKeyFromObject(r.Scheme, healthCheck)
-	for i := range r.ReferenceMap {
-		healthCheckSet := r.ReferenceMap[i]
-		healthCheckSet.Erase(healthCheckInfo)
 	}
 }
 
@@ -259,59 +225,6 @@ func (r *HealthCheckReconciler) updateMaps(healthCheck *libsveltosv1alpha1.Healt
 		r.GVKHealthChecks[gvk] = &libsveltosset.Set{}
 	}
 	r.GVKHealthChecks[gvk].Insert(policyRef)
-
-	currentReferences := &libsveltosset.Set{}
-	if healthCheck.Spec.PolicyRef != nil {
-		currentReferences.Insert(&corev1.ObjectReference{
-			APIVersion: corev1.SchemeGroupVersion.String(), // the only resources that can be referenced are Secret and ConfigMap
-			Kind:       healthCheck.Spec.PolicyRef.Kind,
-			Namespace:  healthCheck.Spec.PolicyRef.Namespace,
-			Name:       healthCheck.Spec.PolicyRef.Name,
-		})
-	}
-
-	// Get list of References not referenced anymore by ClusterSummary
-	var toBeRemoved []corev1.ObjectReference
-	healthCheckName := types.NamespacedName{Name: healthCheck.Name}
-	if v, ok := r.HealthCheckMap[healthCheckName]; ok {
-		toBeRemoved = v.Difference(currentReferences)
-	}
-
-	// For each currently referenced instance, add HealthCheck as consumer
-	for _, referencedResource := range currentReferences.Items() {
-		tmpResource := referencedResource
-		r.getReferenceMapForEntry(&tmpResource).Insert(
-			&corev1.ObjectReference{
-				APIVersion: libsveltosv1alpha1.GroupVersion.String(),
-				Kind:       libsveltosv1alpha1.HealthCheckKind,
-				Name:       healthCheck.Name,
-			},
-		)
-	}
-
-	// For each resource not reference anymore, remove ClusterSummary as consumer
-	for i := range toBeRemoved {
-		referencedResource := toBeRemoved[i]
-		r.getReferenceMapForEntry(&referencedResource).Erase(
-			&corev1.ObjectReference{
-				APIVersion: libsveltosv1alpha1.GroupVersion.String(),
-				Kind:       libsveltosv1alpha1.HealthCheckKind,
-				Name:       healthCheck.Name,
-			},
-		)
-	}
-
-	// Update list of WorklaodRoles currently referenced by ClusterSummary
-	r.HealthCheckMap[healthCheckName] = currentReferences
-}
-
-func (r *HealthCheckReconciler) getReferenceMapForEntry(entry *corev1.ObjectReference) *libsveltosset.Set {
-	s := r.ReferenceMap[*entry]
-	if s == nil {
-		s = &libsveltosset.Set{}
-		r.ReferenceMap[*entry] = s
-	}
-	return s
 }
 
 // react gets called when an instance of passed in gvk has been modified.

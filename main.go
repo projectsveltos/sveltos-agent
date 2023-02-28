@@ -24,9 +24,7 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	"github.com/spf13/pflag"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
@@ -135,8 +133,6 @@ func main() {
 		ClusterNamespace: clusterNamespace,
 		ClusterName:      clusterName,
 		ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
-		ReferenceMap:     make(map[corev1.ObjectReference]*libsveltosset.Set),
-		HealthCheckMap:   make(map[types.NamespacedName]*libsveltosset.Set),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "HealthCheck")
 		os.Exit(1)

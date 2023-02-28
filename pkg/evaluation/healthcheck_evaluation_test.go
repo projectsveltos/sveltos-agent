@@ -334,21 +334,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), progressingDepl)).To(Succeed())
 		Expect(waitForObject(context.TODO(), testEnv.Client, progressingDepl)).To(Succeed())
 
-		By("Creating ConfigMap with lua script")
-		configMap := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				// namespace is supposed to be in projectsveltos, but for testing does not matter
-				Namespace: namespace,
-				Name:      randomString(),
-			},
-			Data: map[string]string{
-				"lua": deploymentReplicaCheck,
-			},
-		}
-		Expect(testEnv.Create(context.TODO(), configMap)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, configMap)).To(Succeed())
-
-		By("Creating an HealthCheck matching the Deployments and refercing ConfigMap")
+		By("Creating an HealthCheck matching the Deployments")
 		healthCheck = &libsveltosv1alpha1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
@@ -358,11 +344,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Version:   "v1",
 				Kind:      "Deployment",
 				Namespace: namespace,
-				PolicyRef: &libsveltosv1alpha1.PolicyRef{
-					Kind:      string(libsveltosv1alpha1.ConfigMapReferencedResourceKind),
-					Namespace: configMap.Namespace,
-					Name:      configMap.Name,
-				},
+				Script:    deploymentReplicaCheck,
 			},
 		}
 

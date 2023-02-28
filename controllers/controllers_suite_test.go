@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"testing"
 	"time"
-	"unicode/utf8"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -57,25 +56,6 @@ var (
 		Steps:    8,
 		Jitter:   0.4,
 	}
-)
-
-var (
-	luaScript = `
-	function evaluate()
-		hs = {}
-        hs.status = "Progressing"
-        hs.message = ""
-        if obj.status ~= nil then
-          if obj.status.health ~= nil then
-            hs.status = obj.status.health.status
-            if obj.status.health.message ~= nil then
-              hs.message = obj.status.health.message
-            end
-          end
-        end
-        return hs
-	end
-	`
 )
 
 const (
@@ -258,46 +238,4 @@ func getControlPlaneNode() *corev1.Node {
 			},
 		},
 	}
-}
-
-// createConfigMapWithLuaScript creates a configMap with Data containing lua scrip
-func createConfigMapWithLuaScript(namespace, configMapName, script string) *corev1.ConfigMap {
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      configMapName,
-		},
-		Data: map[string]string{},
-	}
-
-	key := luaKey
-	if utf8.Valid([]byte(script)) {
-		cm.Data[key] = script
-	} else {
-		cm.BinaryData[key] = []byte(script)
-	}
-
-	Expect(addTypeInformationToObject(scheme, cm)).To(Succeed())
-
-	return cm
-}
-
-func addTypeInformationToObject(scheme *runtime.Scheme, obj client.Object) error {
-	gvks, _, err := scheme.ObjectKinds(obj)
-	if err != nil {
-		return fmt.Errorf("missing apiVersion or kind and cannot assign it; %w", err)
-	}
-
-	for _, gvk := range gvks {
-		if gvk.Kind == "" {
-			continue
-		}
-		if gvk.Version == "" || gvk.Version == runtime.APIVersionInternal {
-			continue
-		}
-		obj.GetObjectKind().SetGroupVersionKind(gvk)
-		break
-	}
-
-	return nil
 }
