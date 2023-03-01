@@ -8,5 +8,5 @@ roleRef:
   name: leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: sveltos-agent
+  name: sveltos-agent-manager
   namespace: projectsveltos
