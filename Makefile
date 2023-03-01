@@ -39,7 +39,7 @@ GOBUILD=go build
 
 # Define Docker related variables.
 REGISTRY ?= projectsveltos
-IMAGE_NAME ?= sveltos-agent-manager
+IMAGE_NAME ?= sveltos-agent
 ARCH ?= amd64
 OS ?= $(shell uname -s | tr A-Z a-z)
 K8S_LATEST_VER ?= $(shell curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
