@@ -25,6 +25,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -154,7 +155,10 @@ var _ = Describe("Classification", func() {
 			healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
 			err := k8sClient.Get(context.TODO(),
 				types.NamespacedName{Namespace: utils.ReportNamespace, Name: healthCheck.Name}, healthCheckReport)
-			return err == nil && !healthCheckReport.DeletionTimestamp.IsZero()
+			if err != nil {
+				return apierrors.IsNotFound(err)
+			}
+			return !healthCheckReport.DeletionTimestamp.IsZero()
 		}, timeout, pollingInterval).Should(BeTrue())
 
 		By("Deleting nginx deployment")

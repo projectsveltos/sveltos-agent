@@ -80,9 +80,20 @@ func addTypeInformationToObject(scheme *runtime.Scheme, obj client.Object) {
 func addFinalizer(ctx context.Context, c client.Client, object client.Object, finalizer string,
 	logger logr.Logger) error {
 
-	// If the SveltosCluster doesn't have our finalizer, add it.
 	controllerutil.AddFinalizer(object, finalizer)
 
+	return patchObject(ctx, c, object, logger)
+}
+
+func removeFinalizer(ctx context.Context, c client.Client, object client.Object, finalizer string,
+	logger logr.Logger) error {
+
+	controllerutil.RemoveFinalizer(object, finalizer)
+
+	return patchObject(ctx, c, object, logger)
+}
+
+func patchObject(ctx context.Context, c client.Client, object client.Object, logger logr.Logger) error {
 	helper, err := patch.NewHelper(object, c)
 	if err != nil {
 		logger.Error(err, "failed to create patch Helper")

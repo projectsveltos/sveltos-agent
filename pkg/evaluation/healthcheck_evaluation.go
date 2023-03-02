@@ -401,9 +401,6 @@ func (m *manager) getHealthCheckReportReport(healthCheckName string,
 			Labels: map[string]string{
 				libsveltosv1alpha1.HealthCheckLabelName: healthCheckName,
 			},
-			Finalizers: []string{
-				libsveltosv1alpha1.HealthCheckReportFinalizer,
-			},
 		},
 		Spec: libsveltosv1alpha1.HealthCheckReportSpec{
 			HealthCheckName:  healthCheckName,
@@ -412,7 +409,8 @@ func (m *manager) getHealthCheckReportReport(healthCheckName string,
 	}
 }
 
-// sendHealthCheckReport sends HealthCheckReport to management cluster
+// sendHealthCheckReport sends HealthCheckReport to management cluster. It also updates HealthCheckReport Status
+// to processed in the managed cluster.
 func (m *manager) sendHealthCheckReport(ctx context.Context, healthCheck *libsveltosv1alpha1.HealthCheck) error {
 	logger := m.log.WithValues("healthCheck", healthCheck.Name)
 
@@ -465,5 +463,12 @@ func (m *manager) sendHealthCheckReport(ctx context.Context, healthCheck *libsve
 		healthCheck.Name, m.clusterName, &m.clusterType,
 	)
 
-	return agentClient.Update(ctx, currentHealthCheckReport)
+	err = agentClient.Update(ctx, currentHealthCheckReport)
+	if err != nil {
+		return err
+	}
+
+	phase := libsveltosv1alpha1.ReportProcessed
+	healthCheckReport.Status.Phase = &phase
+	return m.Status().Update(ctx, healthCheckReport)
 }

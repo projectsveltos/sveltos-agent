@@ -141,11 +141,6 @@ func (r *HealthCheckReconciler) reconcileDelete(ctx context.Context,
 	}
 
 	if canRemove {
-		err = r.removeHealthCheckReportFinalizer(ctx, healthCheckScope)
-		if err != nil {
-			return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}, nil
-		}
-
 		if controllerutil.ContainsFinalizer(healthCheckScope.HealthCheck, libsveltosv1alpha1.HealthCheckFinalizer) {
 			controllerutil.RemoveFinalizer(healthCheckScope.HealthCheck, libsveltosv1alpha1.HealthCheckFinalizer)
 		}
@@ -272,25 +267,4 @@ func (r *HealthCheckReconciler) canRemoveFinalizer(ctx context.Context,
 	}
 
 	return true, nil
-}
-
-// removeHealthCheckReportFinalizer removes finalizer from HealthCheckReport for
-// given HealthCheck instance
-func (r *HealthCheckReconciler) removeHealthCheckReportFinalizer(ctx context.Context,
-	healthCheckScope *scope.HealthCheckScope) error {
-
-	healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
-	err := r.Get(ctx,
-		types.NamespacedName{Namespace: utils.ReportNamespace, Name: healthCheckScope.Name()}, healthCheckReport)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-
-	if controllerutil.ContainsFinalizer(healthCheckReport, libsveltosv1alpha1.HealthCheckReportFinalizer) {
-		controllerutil.RemoveFinalizer(healthCheckReport, libsveltosv1alpha1.HealthCheckReportFinalizer)
-	}
-	return nil
 }
