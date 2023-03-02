@@ -135,6 +135,13 @@ rules:
   - list
   - patch
   - update
+  - watch
+- apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - healthcheckreports/finalizers
+  verbs:
+  - update
 - apiGroups:
   - lib.projectsveltos.io
   resources:
