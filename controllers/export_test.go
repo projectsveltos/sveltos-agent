@@ -34,6 +34,9 @@ var (
 
 	HealthCheckUpdateMaps      = (*HealthCheckReconciler).updateMaps
 	HealthCheckReconcileDelete = (*HealthCheckReconciler).reconcileDelete
+
+	EventSourceUpdateMaps      = (*EventSourceReconciler).updateMaps
+	EventSourceReconcileDelete = (*EventSourceReconciler).reconcileDelete
 )
 
 var (

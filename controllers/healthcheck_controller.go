@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -38,11 +37,6 @@ import (
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	"github.com/projectsveltos/sveltos-agent/pkg/scope"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
-)
-
-const (
-	// deleteRequeueAfter is how long to wait before checking again during healthCheck delete reconciliation
-	deleteRequeueAfter = 20 * time.Second
 )
 
 // HealthCheckReconciler reconciles a HealthCheck object
@@ -65,7 +59,6 @@ type HealthCheckReconciler struct {
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=healthchecks/finalizers,verbs=update
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=healthcheckreports,verbs=get;list;create;update;delete;patch
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=healthcheckreports/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=*,resources=*,verbs=get;list;watch
 
 func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
 	logger := ctrl.LoggerFrom(ctx)
@@ -114,7 +107,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// Handle deleted healthCheck
 	if !healthCheck.DeletionTimestamp.IsZero() {
-		return r.reconcileDelete(ctx, healthCheckScope, logger)
+		return r.reconcileDelete(ctx, healthCheckScope, logger), nil
 	}
 
 	// Handle non-deleted healthCheck
@@ -124,7 +117,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 func (r *HealthCheckReconciler) reconcileDelete(ctx context.Context,
 	healthCheckScope *scope.HealthCheckScope,
 	logger logr.Logger,
-) (reconcile.Result, error) {
+) reconcile.Result {
 
 	logger.V(logs.LogDebug).Info("reconcile delete")
 
@@ -137,7 +130,7 @@ func (r *HealthCheckReconciler) reconcileDelete(ctx context.Context,
 
 	canRemove, err := r.canRemoveFinalizer(ctx, healthCheckScope)
 	if err != nil {
-		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}, nil
+		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}
 	}
 
 	if canRemove {
@@ -145,11 +138,11 @@ func (r *HealthCheckReconciler) reconcileDelete(ctx context.Context,
 			controllerutil.RemoveFinalizer(healthCheckScope.HealthCheck, libsveltosv1alpha1.HealthCheckFinalizer)
 		}
 	} else {
-		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}, nil
+		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}
 	}
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
-	return reconcile.Result{}, nil
+	return reconcile.Result{}
 }
 
 func (r *HealthCheckReconciler) reconcileNormal(ctx context.Context,

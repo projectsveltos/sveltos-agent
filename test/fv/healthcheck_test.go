@@ -51,7 +51,7 @@ end
 	nginxDeployment = `apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-deployment
+  name: %s
   namespace: default
   labels:
     app: nginx
@@ -65,6 +65,7 @@ spec:
       labels:
         app: nginx
     spec:
+      serviceAccountName: %s
       containers:
       - name: nginx
         image: nginx:1.14.2
@@ -102,16 +103,17 @@ var _ = Describe("Classification", func() {
 
 	It("Evaluate healthCheck", Label("FV"), func() {
 		By("Creating a nginx deployment")
-		u, err := libsveltosutils.GetUnstructured([]byte(nginxDeployment))
+		deploymentName := "nginx-deployment-" + randomString()
+		u, err := libsveltosutils.GetUnstructured([]byte(fmt.Sprintf(nginxDeployment, deploymentName, "default")))
 		Expect(err).To(BeNil())
-		Expect(k8sClient.Create(context.TODO(), u)).To(Succeed())
+		err = k8sClient.Create(context.TODO(), u)
+		if err != nil {
+			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+		}
 
 		healthCheck := libsveltosv1alpha1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namePrefix + randomString(),
-				Finalizers: []string{
-					libsveltosv1alpha1.HealthCheckFinalizer,
-				},
 			},
 			Spec: libsveltosv1alpha1.HealthCheckSpec{
 				Group:   "apps",

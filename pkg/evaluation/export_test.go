@@ -59,6 +59,16 @@ var (
 	CleanHealthCheckReport    = (*manager).cleanHealthCheckReport
 )
 
+// eventSource
+var (
+	GetEventMatchingResources = (*manager).getEventMatchingResources
+	FetchEventSourceResources = (*manager).fetchEventSourceResources
+	IsMatchForEventSource     = (*manager).isMatchForEventSource
+	CreateEventReport         = (*manager).createEventReport
+	SendEventReport           = (*manager).sendEventReport
+	CleanEventReport          = (*manager).cleanEventReport
+)
+
 func Reset() {
 	managerInstance = nil
 }

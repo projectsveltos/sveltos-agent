@@ -132,6 +132,16 @@ var _ = BeforeSuite(func() {
 	Expect(testEnv.Create(ctx, healthCheckCReportRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, healthCheckCReportRD)).To(Succeed())
 
+	eventSourceCRD, err := utils.GetUnstructured(crd.GetEventSourceCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, eventSourceCRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, eventSourceCRD)).To(Succeed())
+
+	eventReportRD, err := utils.GetUnstructured(crd.GetEventReportCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, eventReportRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, eventReportRD)).To(Succeed())
+
 	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
 		time.Sleep(time.Second)
 	}

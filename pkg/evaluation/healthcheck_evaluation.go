@@ -239,7 +239,7 @@ func (m *manager) getHealthStatus(ctx context.Context, healthCheck *libsveltosv1
 		return nil, nil
 	}
 
-	resourceStatuses := make([]libsveltosv1alpha1.ResourceStatus, len(resources.Items))
+	resourceStatuses := make([]libsveltosv1alpha1.ResourceStatus, 0)
 
 	for i := range resources.Items {
 		resource := &resources.Items[i]
@@ -250,7 +250,7 @@ func (m *manager) getHealthStatus(ctx context.Context, healthCheck *libsveltosv1
 		if err != nil {
 			return nil, err
 		}
-		resourceStatuses[i] = *s
+		resourceStatuses = append(resourceStatuses, *s)
 	}
 
 	return resourceStatuses, nil
@@ -295,9 +295,8 @@ func (m *manager) getResourceHealthStatus(resource *unstructured.Unstructured, s
 	lv := l.Get(-1)
 	tbl, ok := lv.(*lua.LTable)
 	if !ok {
-		msg := "lua script output is not a lua table"
-		m.log.V(logs.LogInfo).Info(msg)
-		return nil, fmt.Errorf("%s", msg)
+		m.log.V(logs.LogInfo).Info(luaTableError)
+		return nil, fmt.Errorf("%s", luaTableError)
 	}
 
 	goResult := toGoValue(tbl)

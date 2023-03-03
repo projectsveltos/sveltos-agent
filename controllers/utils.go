@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,8 +34,14 @@ import (
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 )
 
+const (
+	// deleteRequeueAfter is how long to wait before checking again during healthCheck delete reconciliation
+	deleteRequeueAfter = 20 * time.Second
+)
+
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=debuggingconfigurations,verbs=get;list;watch
 //+kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch
+//+kubebuilder:rbac:groups=*,resources=*,verbs=get;list;watch
 
 func InitScheme() (*runtime.Scheme, error) {
 	s := runtime.NewScheme()
