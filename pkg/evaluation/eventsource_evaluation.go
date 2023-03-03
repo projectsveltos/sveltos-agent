@@ -106,12 +106,18 @@ func (m *manager) evaluateEventSourceInstance(ctx context.Context, eventName str
 	}
 
 	var matchinResources []corev1.ObjectReference
-	matchinResources, err = m.getEventMatchingResources(ctx, event, logger)
+	var collectedResources []unstructured.Unstructured
+	matchinResources, collectedResources, err = m.getEventMatchingResources(ctx, event, logger)
 	if err != nil {
 		return err
 	}
 
-	err = m.createEventReport(ctx, event, matchinResources)
+	jsonResources, err := m.marshalSliceOfUnstructured(collectedResources)
+	if err != nil {
+		return err
+	}
+
+	err = m.createEventReport(ctx, event, matchinResources, jsonResources)
 	if err != nil {
 		logger.Error(err, "failed to create/update EventReport")
 		return err
@@ -130,7 +136,7 @@ func (m *manager) evaluateEventSourceInstance(ctx context.Context, eventName str
 
 // createEventReport creates EventReport or updates it if already exists.
 func (m *manager) createEventReport(ctx context.Context, event *libsveltosv1alpha1.EventSource,
-	matchinResources []corev1.ObjectReference) error {
+	matchinResources []corev1.ObjectReference, jsonResources []byte) error {
 
 	logger := m.log.WithValues("event", event.Name)
 
@@ -138,7 +144,7 @@ func (m *manager) createEventReport(ctx context.Context, event *libsveltosv1alph
 	err := m.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: event.Name}, eventReport)
 	if err == nil {
-		return m.updateEventReport(ctx, event, matchinResources, eventReport)
+		return m.updateEventReport(ctx, event, matchinResources, jsonResources, eventReport)
 	}
 
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -147,7 +153,7 @@ func (m *manager) createEventReport(ctx context.Context, event *libsveltosv1alph
 	}
 
 	m.log.V(logs.LogInfo).Info("creating EventReport")
-	eventReport = m.getEventReport(event.Name, matchinResources)
+	eventReport = m.getEventReport(event.Name, matchinResources, jsonResources)
 	err = m.Create(ctx, eventReport)
 	if err != nil {
 		logger.Error(err, "failed to create eventReport")
@@ -159,7 +165,8 @@ func (m *manager) createEventReport(ctx context.Context, event *libsveltosv1alph
 
 // updateEventReport updates EventReport
 func (m *manager) updateEventReport(ctx context.Context, event *libsveltosv1alpha1.EventSource,
-	matchinResources []corev1.ObjectReference, eventReport *libsveltosv1alpha1.EventReport) error {
+	matchinResources []corev1.ObjectReference, jsonResources []byte,
+	eventReport *libsveltosv1alpha1.EventReport) error {
 
 	logger := m.log.WithValues("event", event.Name)
 	logger.V(logs.LogDebug).Info("updating eventReport")
@@ -168,6 +175,7 @@ func (m *manager) updateEventReport(ctx context.Context, event *libsveltosv1alph
 	}
 	eventReport.Labels[libsveltosv1alpha1.EventSourceLabelName] = event.Name
 	eventReport.Spec.MatchingResources = matchinResources
+	eventReport.Spec.Resources = jsonResources
 
 	err := m.Update(ctx, eventReport)
 	if err != nil {
@@ -225,19 +233,20 @@ func (m *manager) cleanEventReport(ctx context.Context, eventName string) error 
 
 // getEventMatchingResources returns resources matching EventSource.
 func (m *manager) getEventMatchingResources(ctx context.Context, event *libsveltosv1alpha1.EventSource,
-	logger logr.Logger) ([]corev1.ObjectReference, error) {
+	logger logr.Logger) ([]corev1.ObjectReference, []unstructured.Unstructured, error) {
 
 	resources, err := m.fetchEventSourceResources(ctx, event)
 	if err != nil {
 		m.log.V(logs.LogInfo).Info(fmt.Sprintf("failed to fetch resources: %v", err))
-		return nil, err
+		return nil, nil, err
 	}
 
 	if resources == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	matchingResources := make([]corev1.ObjectReference, 0)
+	collectedResources := make([]unstructured.Unstructured, 0)
 
 	for i := range resources.Items {
 		resource := &resources.Items[i]
@@ -247,7 +256,7 @@ func (m *manager) getEventMatchingResources(ctx context.Context, event *libsvelt
 		l := logger.WithValues("resource", fmt.Sprintf("%s/%s", resource.GetNamespace(), resource.GetName()))
 		isMatch, err := m.isMatchForEventSource(resource, event.Spec.Script, l)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if isMatch {
 			matchingResources = append(matchingResources,
@@ -257,10 +266,13 @@ func (m *manager) getEventMatchingResources(ctx context.Context, event *libsvelt
 					Kind:       resource.GetKind(),
 					APIVersion: resource.GetAPIVersion(),
 				})
+			if event.Spec.CollectResources {
+				collectedResources = append(collectedResources, *resource)
+			}
 		}
 	}
 
-	return matchingResources, nil
+	return matchingResources, collectedResources, nil
 }
 
 func (m *manager) isMatchForEventSource(resource *unstructured.Unstructured, script string,
@@ -387,7 +399,7 @@ func (m *manager) fetchEventSourceResources(ctx context.Context, event *libsvelt
 
 // getEventReport returns EventReport instance that needs to be created
 func (m *manager) getEventReport(eventName string, matchingResources []corev1.ObjectReference,
-) *libsveltosv1alpha1.EventReport {
+	jsonResources []byte) *libsveltosv1alpha1.EventReport {
 
 	return &libsveltosv1alpha1.EventReport{
 		ObjectMeta: metav1.ObjectMeta{
@@ -400,8 +412,25 @@ func (m *manager) getEventReport(eventName string, matchingResources []corev1.Ob
 		Spec: libsveltosv1alpha1.EventReportSpec{
 			EventSourceName:   eventName,
 			MatchingResources: matchingResources,
+			Resources:         jsonResources,
 		},
 	}
+}
+
+func (m *manager) marshalSliceOfUnstructured(collectedResources []unstructured.Unstructured) ([]byte, error) {
+	result := ""
+	for i := range collectedResources {
+		r := &collectedResources[i]
+		tmpJson, err := r.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+
+		result += string(tmpJson)
+		result += "---"
+	}
+
+	return []byte(result), nil
 }
 
 // sendEventReport sends EventReport to management cluster. It also updates EventReport Status
