@@ -28,6 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2/klogr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -260,11 +261,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.EventSourceSpec{
-				Group:     "apps",
-				Version:   "v1",
-				Kind:      "Deployment",
-				Namespace: namespace,
-				Script:    degradedDeploymentLuaScript,
+				Group:            "apps",
+				Version:          "v1",
+				Kind:             "Deployment",
+				Namespace:        namespace,
+				Script:           degradedDeploymentLuaScript,
+				CollectResources: true,
 			},
 		}
 
@@ -273,10 +275,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
 
-		matchingResources, err := evaluation.GetEventMatchingResources(manager, context.TODO(), eventSource, klogr.New())
+		matchingResources, collectedResources, err := evaluation.GetEventMatchingResources(manager, context.TODO(), eventSource, klogr.New())
 		Expect(err).To(BeNil())
 		Expect(len(matchingResources)).To(Equal(1))
 		Expect(matchingResources[0].Name).To(Equal(progressingDepl.Name))
+		Expect(collectedResources).ToNot(BeNil())
+		Expect(len(collectedResources)).To(Equal(1))
 	})
 
 	It("createEventReport creates eventReport", func() {
@@ -306,7 +310,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			Kind:       "Deployment",
 		}
 		matchingResources := []corev1.ObjectReference{*deplRef}
-		Expect(evaluation.CreateEventReport(manager, context.TODO(), eventSource, matchingResources)).To(Succeed())
+
+		Expect(evaluation.CreateEventReport(manager, context.TODO(), eventSource, matchingResources, nil)).To(Succeed())
 
 		Eventually(func() bool {
 			eventReport := &libsveltosv1alpha1.EventReport{}
@@ -356,7 +361,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			Kind:       "Deployment",
 		}
 		matchingResources := []corev1.ObjectReference{*deplRef}
-		Expect(evaluation.CreateEventReport(manager, context.TODO(), eventSource, matchingResources)).To(Succeed())
+		Expect(evaluation.CreateEventReport(manager, context.TODO(), eventSource, matchingResources, nil)).To(Succeed())
 
 		Eventually(func() bool {
 			eventReport := &libsveltosv1alpha1.EventReport{}
@@ -481,5 +486,85 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		phase = libsveltosv1alpha1.ReportWaitingForDelivery
 		Expect(eventReport.Status.Phase).ToNot(BeNil())
 		Expect(*eventReport.Status.Phase).To(Equal(phase))
+	})
+
+	It("MarshalSliceOfUnstructured", func() {
+		key := randomString()
+		value := randomString()
+
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: randomString(),
+			},
+		}
+		Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
+		Expect(waitForObject(context.TODO(), testEnv.Client, ns)).To(Succeed())
+
+		depl1 := getDeployment(3, 3)
+		depl1.Namespace = ns.Name
+		depl1.Labels = map[string]string{key: value}
+		Expect(testEnv.Create(context.TODO(), depl1)).To(Succeed())
+		Expect(waitForObject(context.TODO(), testEnv.Client, depl1)).To(Succeed())
+
+		depl2 := getDeployment(3, 3)
+		depl2.Namespace = ns.Name
+		depl2.Labels = map[string]string{key: value}
+		Expect(testEnv.Create(context.TODO(), depl2)).To(Succeed())
+		Expect(waitForObject(context.TODO(), testEnv.Client, depl2)).To(Succeed())
+
+		eventSource = &libsveltosv1alpha1.EventSource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: randomString(),
+			},
+			Spec: libsveltosv1alpha1.EventSourceSpec{
+				Group:   "apps",
+				Version: "v1",
+				Kind:    "Deployment",
+				LabelFilters: []libsveltosv1alpha1.LabelFilter{
+					{Key: key, Operation: libsveltosv1alpha1.OperationEqual, Value: value},
+				},
+				Namespace:        ns.Name,
+				CollectResources: true,
+			},
+		}
+
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+
+		manager := evaluation.GetManager()
+		Expect(manager).ToNot(BeNil())
+
+		_, collectedRespurce, err := evaluation.GetEventMatchingResources(manager, context.TODO(), eventSource, klogr.New())
+		Expect(err).To(BeNil())
+		Expect(collectedRespurce).ToNot(BeNil())
+		Expect(len(collectedRespurce)).To(Equal(2))
+		var result []byte
+		result, err = evaluation.MarshalSliceOfUnstructured(manager, collectedRespurce)
+		Expect(err).To(BeNil())
+		Expect(result).ToNot(BeNil())
+
+		elements := strings.Split(string(result), "---")
+		Expect(len(elements)).ToNot(BeZero())
+
+		foundDepl1 := false
+		foundDepl2 := false
+		for i := range elements {
+			if elements[i] == "" {
+				continue
+			}
+
+			var policy *unstructured.Unstructured
+			policy, err = libsveltosutils.GetUnstructured([]byte(elements[i]))
+			Expect(err).To(BeNil())
+
+			if policy.GetNamespace() == depl1.Namespace && policy.GetName() == depl1.Name {
+				foundDepl1 = true
+			}
+
+			if policy.GetNamespace() == depl2.Namespace && policy.GetName() == depl2.Name {
+				foundDepl2 = true
+			}
+		}
+		Expect(foundDepl1).To(BeTrue())
+		Expect(foundDepl2).To(BeTrue())
 	})
 })
