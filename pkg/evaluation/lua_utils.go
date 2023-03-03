@@ -23,6 +23,11 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+const (
+	luaTableError = "lua script output is not a lua table"
+	luaBoolError  = "lua script output is not a lua bool"
+)
+
 // mapToTable converts a Go map to a lua table
 // credit to: https://github.com/yuin/gopher-lua/issues/160#issuecomment-447608033
 func mapToTable(m map[string]interface{}) *lua.LTable {

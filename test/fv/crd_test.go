@@ -78,7 +78,10 @@ var _ = Describe("Classification: crd", Serial, func() {
 		var serviceMonitor *unstructured.Unstructured
 		serviceMonitor, err = libsveltosutils.GetUnstructured([]byte(serviceMonitorCRD))
 		Expect(err).To(BeNil())
-		Expect(k8sClient.Create(context.TODO(), serviceMonitor)).To(Succeed())
+		err = k8sClient.Create(context.TODO(), serviceMonitor)
+		if err != nil {
+			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+		}
 
 		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: "servicemonitors.monitoring.coreos.com"},
 			currentServiceMonitorCRD)).To(Succeed())

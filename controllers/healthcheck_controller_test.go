@@ -109,8 +109,7 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 		})
 		Expect(err).To(BeNil())
 
-		_, err = controllers.HealthCheckReconcileDelete(reconciler, context.TODO(), healthCheckScope, klogr.New())
-		Expect(err).To(BeNil())
+		controllers.HealthCheckReconcileDelete(reconciler, context.TODO(), healthCheckScope, klogr.New())
 		Expect(reconciler.GVKHealthChecks[gvk].Len()).To(Equal(0))
 	})
 })

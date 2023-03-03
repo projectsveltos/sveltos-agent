@@ -107,10 +107,20 @@ var _ = BeforeSuite(func() {
 	Expect(testEnv.Create(ctx, healthCheckCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, healthCheckCRD)).To(Succeed())
 
-	healthCheckCReportRD, err := utils.GetUnstructured(crd.GetHealthCheckReportCRDYAML())
+	healthCheckReportRD, err := utils.GetUnstructured(crd.GetHealthCheckReportCRDYAML())
 	Expect(err).To(BeNil())
-	Expect(testEnv.Create(ctx, healthCheckCReportRD)).To(Succeed())
-	Expect(waitForObject(ctx, testEnv.Client, healthCheckCReportRD)).To(Succeed())
+	Expect(testEnv.Create(ctx, healthCheckReportRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, healthCheckReportRD)).To(Succeed())
+
+	eventSourceCRD, err := utils.GetUnstructured(crd.GetEventSourceCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, eventSourceCRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, eventSourceCRD)).To(Succeed())
+
+	eventReportRD, err := utils.GetUnstructured(crd.GetEventReportCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, eventReportRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, eventReportRD)).To(Succeed())
 
 	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
 		time.Sleep(time.Second)
@@ -217,6 +227,19 @@ func getHealthCheck() *libsveltosv1alpha1.HealthCheck {
 			Name: randomString(),
 		},
 		Spec: libsveltosv1alpha1.HealthCheckSpec{
+			Group:   randomString(),
+			Version: randomString(),
+			Kind:    randomString(),
+		},
+	}
+}
+
+func getEventSource() *libsveltosv1alpha1.EventSource {
+	return &libsveltosv1alpha1.EventSource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: randomString(),
+		},
+		Spec: libsveltosv1alpha1.EventSourceSpec{
 			Group:   randomString(),
 			Version: randomString(),
 			Kind:    randomString(),

@@ -71,6 +71,9 @@ type manager struct {
 	// healthCheckJobQueue contains name of all HealthCheck instances that need to be evaluated
 	healthCheckJobQueue map[string]bool
 
+	// eventSourceJobQueue contains name of all EventSource instances that need to be evaluated
+	eventSourceJobQueue map[string]bool
+
 	// interval is the interval at which queued Classifiers are evaluated
 	interval time.Duration
 
@@ -86,6 +89,7 @@ type manager struct {
 	// being watched changes
 	reactClassifier  ReactToNotification
 	reactHealthCheck ReactToNotification
+	reactEventSource ReactToNotification
 }
 
 // InitializeManager initializes a manager implementing the ClassifierInterface
@@ -101,6 +105,7 @@ func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, 
 			managerInstance = &manager{log: l, Client: c, config: config}
 			managerInstance.classifierJobQueue = make(map[string]bool)
 			managerInstance.healthCheckJobQueue = make(map[string]bool)
+			managerInstance.eventSourceJobQueue = make(map[string]bool)
 			managerInstance.interval = time.Duration(intervalInSecond) * time.Second
 			managerInstance.mu = &sync.Mutex{}
 
@@ -119,6 +124,7 @@ func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, 
 
 			go managerInstance.evaluateClassifiers(ctx)
 			go managerInstance.evaluateHealthChecks(ctx)
+			go managerInstance.evaluateEventSources(ctx)
 			go managerInstance.buildResourceToWatch(ctx)
 			// Start a watcher for CustomResourceDefinition
 			go crd.WatchCustomResourceDefinition(ctx, managerInstance.config,
@@ -144,6 +150,10 @@ func (m *manager) RegisterHealthCheckMethod(react ReactToNotification) {
 	m.reactHealthCheck = react
 }
 
+func (m *manager) RegisterEventSourceMethod(react ReactToNotification) {
+	m.reactEventSource = react
+}
+
 func (m *manager) ReEvaluateResourceToWatch() {
 	atomic.StoreUint32(&m.rebuildResourceToWatch, 1)
 }
@@ -164,6 +174,14 @@ func (m *manager) EvaluateHealthCheck(healthCheckName string) {
 	m.healthCheckJobQueue[healthCheckName] = true
 }
 
+// EvaluateHEventSource queues a EventSource instance for evaluation
+func (m *manager) EvaluateEventSource(healthCheckName string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.eventSourceJobQueue[healthCheckName] = true
+}
+
 // If there is any classifier/healthCheck using this GVK, restart agent
 // On restart, agent will be able to start a watcher (a watcher
 // cannot be started on api-resources not present in the cluster)
@@ -172,35 +190,6 @@ func restartIfNeeded(gvk *schema.GroupVersionKind) {
 	if manager == nil {
 		return
 	}
-
-	restartIfClassifiersNeed(gvk)
-
-	restartIfHealthChecksNeed(gvk)
-}
-
-func restartIfClassifiersNeed(gvk *schema.GroupVersionKind) {
-	manager := GetManager()
-	manager.mu.Lock()
-	defer manager.mu.Unlock()
-
-	logger := klogr.New()
-	logger.V(logs.LogDebug).Info(fmt.Sprintf("react to CustomResourceDefinition %s change",
-		gvk.String()))
-
-	for i := range manager.unknownResourcesToWatch {
-		tmpGVK := manager.unknownResourcesToWatch[i]
-		if reflect.DeepEqual(*gvk, tmpGVK) {
-			if killErr := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); killErr != nil {
-				panic("kill -TERM failed")
-			}
-		}
-	}
-}
-
-func restartIfHealthChecksNeed(gvk *schema.GroupVersionKind) {
-	manager := GetManager()
-	manager.mu.Lock()
-	defer manager.mu.Unlock()
 
 	logger := klogr.New()
 	logger.V(logs.LogDebug).Info(fmt.Sprintf("react to CustomResourceDefinition %s change",

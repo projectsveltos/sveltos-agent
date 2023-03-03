@@ -25,7 +25,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,7 +56,7 @@ function evaluate()
         	if obj.status.availableReplicas ~= obj.spec.replicas then
 				hs.status = "Progressing"
             	hs.message = "expected replicas: " .. obj.spec.replicas .. " available: " .. obj.status.availableReplicas
-          end
+            end
         end
 	end
     return hs
@@ -566,65 +565,3 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(*healthCheckReport.Status.Phase).To(Equal(phase))
 	})
 })
-
-func getDeployment(replicas, availableReplicas int32) *appsv1.Deployment {
-	labels := map[string]string{randomString(): randomString()}
-	labelSelector := metav1.LabelSelector{
-		MatchLabels: labels,
-	}
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: randomString(),
-			Name:      randomString(),
-			Labels:    labels,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
-			Selector: &labelSelector,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  randomString(),
-							Image: randomString(),
-						},
-					},
-				},
-			},
-		},
-		Status: appsv1.DeploymentStatus{
-			AvailableReplicas: availableReplicas,
-		},
-	}
-}
-
-func getService() *corev1.Service {
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: randomString(),
-			Name:      randomString(),
-		},
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Name: randomString(),
-					Port: 443,
-				},
-			},
-		},
-	}
-}
-
-func createNamespace(name string) {
-	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-
-	Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
-	Expect(waitForObject(context.TODO(), testEnv.Client, ns)).To(Succeed())
-}
