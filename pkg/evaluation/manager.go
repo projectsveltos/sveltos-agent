@@ -163,6 +163,8 @@ func (m *manager) EvaluateClassifier(classifierName string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	m.log.V(logs.LogDebug).Info(fmt.Sprintf("queue classifier %s for evaluation", classifierName))
+
 	m.classifierJobQueue[classifierName] = true
 }
 
@@ -171,15 +173,19 @@ func (m *manager) EvaluateHealthCheck(healthCheckName string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	m.log.V(logs.LogDebug).Info(fmt.Sprintf("queue healthCheck %s for evaluation", healthCheckName))
+
 	m.healthCheckJobQueue[healthCheckName] = true
 }
 
 // EvaluateHEventSource queues a EventSource instance for evaluation
-func (m *manager) EvaluateEventSource(healthCheckName string) {
+func (m *manager) EvaluateEventSource(eventSourceName string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.eventSourceJobQueue[healthCheckName] = true
+	m.log.V(logs.LogDebug).Info(fmt.Sprintf("queue eventSource %s for evaluation", eventSourceName))
+
+	m.eventSourceJobQueue[eventSourceName] = true
 }
 
 // If there is any classifier/healthCheck using this GVK, restart agent
