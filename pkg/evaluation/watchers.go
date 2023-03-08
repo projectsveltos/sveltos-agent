@@ -91,6 +91,15 @@ func (m *manager) buildList(ctx context.Context) (map[schema.GroupVersionKind]bo
 		resources[k] = true
 	}
 
+	tmpResources, err = m.buildListForEventSources(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for k := range tmpResources {
+		resources[k] = true
+	}
+
 	return resources, nil
 }
 
@@ -134,6 +143,26 @@ func (m *manager) buildListForHealthChecks(ctx context.Context) (map[schema.Grou
 	return resources, nil
 }
 
+func (m *manager) buildListForEventSources(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
+	eventSources := &libsveltosv1alpha1.EventSourceList{}
+	err := m.List(ctx, eventSources)
+	if err != nil {
+		return nil, err
+	}
+
+	resources := make(map[schema.GroupVersionKind]bool)
+
+	for i := range eventSources.Items {
+		eventSource := &eventSources.Items[i]
+		if !eventSource.DeletionTimestamp.IsZero() {
+			continue
+		}
+		resources = m.addGVKsForEventSource(eventSource, resources)
+	}
+
+	return resources, nil
+}
+
 func (m *manager) addGVKsForClassifier(classifier *libsveltosv1alpha1.Classifier,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
@@ -157,6 +186,19 @@ func (m *manager) addGVKsForHealthCheck(healthCheck *libsveltosv1alpha1.HealthCh
 		Group:   healthCheck.Spec.Group,
 		Kind:    healthCheck.Spec.Kind,
 		Version: healthCheck.Spec.Version,
+	}
+	resources[gvk] = true
+
+	return resources
+}
+
+func (m *manager) addGVKsForEventSource(eventSource *libsveltosv1alpha1.EventSource,
+	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
+
+	gvk := schema.GroupVersionKind{
+		Group:   eventSource.Spec.Group,
+		Kind:    eventSource.Spec.Kind,
+		Version: eventSource.Spec.Version,
 	}
 	resources[gvk] = true
 
