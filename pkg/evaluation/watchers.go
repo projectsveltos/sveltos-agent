@@ -329,6 +329,8 @@ func (m *manager) react(gvk *schema.GroupVersionKind) {
 	m.reactClassifier(gvk)
 
 	m.reactHealthCheck(gvk)
+
+	m.reactEventSource(gvk)
 }
 
 func (m *manager) startWatcher(ctx context.Context, gvk *schema.GroupVersionKind) error {
