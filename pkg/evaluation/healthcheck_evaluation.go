@@ -251,7 +251,7 @@ func (m *manager) getHealthStatus(ctx context.Context, healthCheck *libsveltosv1
 		if err != nil {
 			return nil, err
 		}
-		if resource == nil {
+		if s == nil {
 			// Ignore
 			continue
 		}
