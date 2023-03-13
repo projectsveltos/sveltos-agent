@@ -42,6 +42,7 @@ import (
 type healthCheckStatus struct {
 	Status  libsveltosv1alpha1.HealthStatus `json:"status"`
 	Message string                          `json:"message"`
+	Ignore  bool                            `json:"ignore"`
 }
 
 // evaluateHealthChecks evaluates all healthchecks awaiting evaluation
@@ -250,6 +251,10 @@ func (m *manager) getHealthStatus(ctx context.Context, healthCheck *libsveltosv1
 		if err != nil {
 			return nil, err
 		}
+		if resource == nil {
+			// Ignore
+			continue
+		}
 		resourceStatuses = append(resourceStatuses, *s)
 	}
 
@@ -311,6 +316,10 @@ func (m *manager) getResourceHealthStatus(resource *unstructured.Unstructured, s
 	if err != nil {
 		m.log.V(logs.LogInfo).Info(fmt.Sprintf("failed to marshal result: %v", err))
 		return nil, err
+	}
+
+	if result.Ignore {
+		return nil, nil
 	}
 
 	return &libsveltosv1alpha1.ResourceStatus{
