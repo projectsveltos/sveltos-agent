@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,9 +28,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/projectsveltos/classifier-agent/controllers"
-	"github.com/projectsveltos/classifier-agent/pkg/classification"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	"github.com/projectsveltos/sveltos-agent/controllers"
+	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 )
 
 var _ = Describe("Controllers: node controller", func() {
@@ -84,8 +84,8 @@ var _ = Describe("Controllers: node controller", func() {
 		currentNode.Status = node.Status
 		Expect(testEnv.Status().Update(watcherCtx, &currentNode)).To(Succeed())
 
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, nil, 10, false)
+		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
 
 		reconciler := &controllers.NodeReconciler{
 			Client: testEnv.Client,

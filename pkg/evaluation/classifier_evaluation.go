@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package classification
+package evaluation
 
 import (
 	"context"
@@ -22,10 +22,8 @@ import (
 	"os"
 	"time"
 
-	"emperror.dev/errors"
 	"github.com/Masterminds/semver"
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,9 +36,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/projectsveltos/classifier-agent/pkg/utils"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
+	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
 // evaluateClassifiers evaluates all classifiers awaiting evaluation
@@ -50,10 +48,14 @@ func (m *manager) evaluateClassifiers(ctx context.Context) {
 		m.mu.Lock()
 		// Copy queue content. That is only operation that
 		// needs to be done in a mutex protect section
-		jobQueueCopy := make([]string, len(m.jobQueue))
-		copy(jobQueueCopy, m.jobQueue)
+		jobQueueCopy := make([]string, len(m.classifierJobQueue))
+		i := 0
+		for k := range m.classifierJobQueue {
+			jobQueueCopy[i] = k
+			i++
+		}
 		// Reset current queue
-		m.jobQueue = make([]string, 0)
+		m.classifierJobQueue = make(map[string]bool)
 		m.mu.Unlock()
 
 		failedEvaluations := make([]string, 0)
@@ -86,6 +88,8 @@ func (m *manager) evaluateClassifierInstance(ctx context.Context, classifierName
 	classifier := &libsveltosv1alpha1.Classifier{}
 
 	logger := m.log.WithValues("classifier", classifierName)
+	logger.V(logs.LogDebug).Info("evaluating")
+
 	err := m.Client.Get(ctx, types.NamespacedName{Name: classifierName}, classifier)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -111,6 +115,8 @@ func (m *manager) evaluateClassifierInstance(ctx context.Context, classifierName
 			return err
 		}
 	}
+
+	logger.V(logs.LogDebug).Info(fmt.Sprintf("isMatch %t", match))
 
 	err = m.createClassifierReport(ctx, classifier, match)
 	if err != nil {
@@ -258,7 +264,6 @@ func (m *manager) isResourceAMatch(ctx context.Context,
 				fieldFilter += fmt.Sprintf("%s!=%s", f.Field, f.Value)
 			}
 		}
-
 		options.FieldSelector = fieldFilter
 	}
 
@@ -407,25 +412,6 @@ func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsvelt
 	return agentClient.Update(ctx, currentClassifierReport)
 }
 
-func (m *manager) getKubeconfig(ctx context.Context) ([]byte, error) {
-	secret := &corev1.Secret{}
-	key := client.ObjectKey{
-		Namespace: libsveltosv1alpha1.ClassifierSecretNamespace,
-		Name:      libsveltosv1alpha1.ClassifierSecretName,
-	}
-
-	if err := m.Get(ctx, key, secret); err != nil {
-		return nil, errors.Wrap(err,
-			fmt.Sprintf("Failed to get secret %s", key))
-	}
-
-	for _, contents := range secret.Data {
-		return contents, nil
-	}
-
-	return nil, nil
-}
-
 // createClassifierReport creates ClassifierReport or updates it if already exists.
 func (m *manager) createClassifierReport(ctx context.Context, classifier *libsveltosv1alpha1.Classifier,
 	isMatch bool) error {
@@ -452,7 +438,7 @@ func (m *manager) createClassifierReport(ctx context.Context, classifier *libsve
 		return err
 	}
 
-	return m.updateClassifierReportStatus(ctx, classifier)
+	return m.updateClassifierReportStatus(ctx, classifierReport)
 }
 
 // updateClassifierReport updates ClassifierReport
@@ -473,22 +459,15 @@ func (m *manager) updateClassifierReport(ctx context.Context, classifier *libsve
 		return err
 	}
 
-	return m.updateClassifierReportStatus(ctx, classifier)
+	return m.updateClassifierReportStatus(ctx, classifierReport)
 }
 
 // updateClassifierReportStatus updates ClassifierReport Status by marking Phase as ReportWaitingForDelivery
-func (m *manager) updateClassifierReportStatus(ctx context.Context, classifier *libsveltosv1alpha1.Classifier) error {
-	m.log.V(logs.LogDebug).Info("updating ClassifierReport status")
+func (m *manager) updateClassifierReportStatus(ctx context.Context,
+	classifierReport *libsveltosv1alpha1.ClassifierReport) error {
 
-	logger := m.log.WithValues("classifier", classifier.Name)
-
-	classifierReport := &libsveltosv1alpha1.ClassifierReport{}
-	err := m.Get(ctx,
-		types.NamespacedName{Namespace: utils.ReportNamespace, Name: classifier.Name}, classifierReport)
-	if err != nil {
-		logger.Error(err, "failed to get ClassifierReport")
-		return err
-	}
+	logger := m.log.WithValues("classifierReport", classifierReport.Name)
+	logger.V(logs.LogDebug).Info("updating ClassifierReport status")
 
 	phase := libsveltosv1alpha1.ReportWaitingForDelivery
 	classifierReport.Status.Phase = &phase

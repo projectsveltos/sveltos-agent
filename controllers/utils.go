@@ -17,16 +17,31 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
+)
+
+const (
+	// deleteRequeueAfter is how long to wait before checking again during healthCheck delete reconciliation
+	deleteRequeueAfter = 20 * time.Second
 )
 
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=debuggingconfigurations,verbs=get;list;watch
 //+kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch
+//+kubebuilder:rbac:groups=*,resources=*,verbs=get;list;watch
 
 func InitScheme() (*runtime.Scheme, error) {
 	s := runtime.NewScheme()
@@ -67,4 +82,39 @@ func addTypeInformationToObject(scheme *runtime.Scheme, obj client.Object) {
 		obj.GetObjectKind().SetGroupVersionKind(gvk)
 		break
 	}
+}
+
+func addFinalizer(ctx context.Context, c client.Client, object client.Object, finalizer string,
+	logger logr.Logger) error {
+
+	controllerutil.AddFinalizer(object, finalizer)
+
+	return patchObject(ctx, c, object, logger)
+}
+
+func removeFinalizer(ctx context.Context, c client.Client, object client.Object, finalizer string,
+	logger logr.Logger) error {
+
+	controllerutil.RemoveFinalizer(object, finalizer)
+
+	return patchObject(ctx, c, object, logger)
+}
+
+func patchObject(ctx context.Context, c client.Client, object client.Object, logger logr.Logger) error {
+	helper, err := patch.NewHelper(object, c)
+	if err != nil {
+		logger.Error(err, "failed to create patch Helper")
+		return err
+	}
+
+	if err := helper.Patch(ctx, object); err != nil {
+		return errors.Wrapf(
+			err,
+			"Failed to add finalizer for %s",
+			object.GetName(),
+		)
+	}
+
+	logger.V(logs.LogDebug).Info("added finalizer")
+	return nil
 }

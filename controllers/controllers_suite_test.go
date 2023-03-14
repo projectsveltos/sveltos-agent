@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,10 +36,10 @@ import (
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/projectsveltos/classifier-agent/internal/test/helpers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	"github.com/projectsveltos/libsveltos/lib/crd"
 	"github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/sveltos-agent/internal/test/helpers"
 )
 
 var (
@@ -61,6 +61,7 @@ var (
 const (
 	timeout         = 60 * time.Second
 	pollingInterval = 2 * time.Second
+	luaKey          = "lua"
 )
 
 func TestControllers(t *testing.T) {
@@ -100,6 +101,26 @@ var _ = BeforeSuite(func() {
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, classifierReportCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, classifierReportCRD)).To(Succeed())
+
+	healthCheckCRD, err := utils.GetUnstructured(crd.GetHealthCheckCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, healthCheckCRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, healthCheckCRD)).To(Succeed())
+
+	healthCheckReportRD, err := utils.GetUnstructured(crd.GetHealthCheckReportCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, healthCheckReportRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, healthCheckReportRD)).To(Succeed())
+
+	eventSourceCRD, err := utils.GetUnstructured(crd.GetEventSourceCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, eventSourceCRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, eventSourceCRD)).To(Succeed())
+
+	eventReportRD, err := utils.GetUnstructured(crd.GetEventReportCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, eventReportRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, eventReportRD)).To(Succeed())
 
 	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
 		time.Sleep(time.Second)
@@ -196,6 +217,32 @@ func getClassifierWithResourceConstraints() *libsveltosv1alpha1.Classifier {
 					},
 				},
 			},
+		},
+	}
+}
+
+func getHealthCheck() *libsveltosv1alpha1.HealthCheck {
+	return &libsveltosv1alpha1.HealthCheck{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: randomString(),
+		},
+		Spec: libsveltosv1alpha1.HealthCheckSpec{
+			Group:   randomString(),
+			Version: randomString(),
+			Kind:    randomString(),
+		},
+	}
+}
+
+func getEventSource() *libsveltosv1alpha1.EventSource {
+	return &libsveltosv1alpha1.EventSource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: randomString(),
+		},
+		Spec: libsveltosv1alpha1.EventSourceSpec{
+			Group:   randomString(),
+			Version: randomString(),
+			Kind:    randomString(),
 		},
 	}
 }

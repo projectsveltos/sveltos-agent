@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/projectsveltos/classifier-agent/internal/test/helpers/external"
+	"github.com/projectsveltos/sveltos-agent/internal/test/helpers/external"
 )
 
 var (

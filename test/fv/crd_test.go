@@ -31,9 +31,9 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/projectsveltos/classifier-agent/pkg/utils"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
 // marking test serial as it requires pod to be restarted
@@ -78,7 +78,10 @@ var _ = Describe("Classification: crd", Serial, func() {
 		var serviceMonitor *unstructured.Unstructured
 		serviceMonitor, err = libsveltosutils.GetUnstructured([]byte(serviceMonitorCRD))
 		Expect(err).To(BeNil())
-		Expect(k8sClient.Create(context.TODO(), serviceMonitor)).To(Succeed())
+		err = k8sClient.Create(context.TODO(), serviceMonitor)
+		if err != nil {
+			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
+		}
 
 		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: "servicemonitors.monitoring.coreos.com"},
 			currentServiceMonitorCRD)).To(Succeed())

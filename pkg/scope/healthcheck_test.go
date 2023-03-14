@@ -1,5 +1,5 @@
 /*
-Copyright 2022. projectsveltos.io. All rights reserved.
+Copyright 2023. projectsveltos.io. All rights reserved. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,58 +29,58 @@ import (
 )
 
 const (
-	classifierNamePrefix = "scope-"
+	healthCheckNamePrefix = "scope-"
 )
 
-var _ = Describe("ClassifierScope", func() {
-	var classifier *libsveltosv1alpha1.Classifier
+var _ = Describe("HealthCheckScope", func() {
+	var healthCheck *libsveltosv1alpha1.HealthCheck
 	var c client.Client
 
 	BeforeEach(func() {
-		classifier = &libsveltosv1alpha1.Classifier{
+		healthCheck = &libsveltosv1alpha1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: classifierNamePrefix + randomString(),
+				Name: healthCheckNamePrefix + randomString(),
 			},
 		}
 
 		scheme := setupScheme()
-		initObjects := []client.Object{classifier}
+		initObjects := []client.Object{healthCheck}
 		c = fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
 	})
 
-	It("Return nil,error if Classifier is not specified", func() {
-		params := scope.ClassifierScopeParams{
+	It("Return nil,error if client is not specified", func() {
+		params := scope.HealthCheckScopeParams{
+			HealthCheck: healthCheck,
+			Logger:      klogr.New(),
+		}
+
+		scope, err := scope.NewHealthCheckScope(params)
+		Expect(err).To(HaveOccurred())
+		Expect(scope).To(BeNil())
+	})
+
+	It("Return nil,error if HealthCheck is not specified", func() {
+		params := scope.HealthCheckScopeParams{
 			Client: c,
 			Logger: klogr.New(),
 		}
 
-		scope, err := scope.NewClassifierScope(params)
+		scope, err := scope.NewHealthCheckScope(params)
 		Expect(err).To(HaveOccurred())
 		Expect(scope).To(BeNil())
 	})
 
-	It("Return nil,error if client is not specified", func() {
-		params := scope.ClassifierScopeParams{
-			Classifier: classifier,
-			Logger:     klogr.New(),
+	It("Name returns HealthCheck Name", func() {
+		params := scope.HealthCheckScopeParams{
+			Client:      c,
+			HealthCheck: healthCheck,
+			Logger:      klogr.New(),
 		}
 
-		scope, err := scope.NewClassifierScope(params)
-		Expect(err).To(HaveOccurred())
-		Expect(scope).To(BeNil())
-	})
-
-	It("Name returns Classifier Name", func() {
-		params := scope.ClassifierScopeParams{
-			Client:     c,
-			Classifier: classifier,
-			Logger:     klogr.New(),
-		}
-
-		scope, err := scope.NewClassifierScope(params)
+		scope, err := scope.NewHealthCheckScope(params)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(scope).ToNot(BeNil())
 
-		Expect(scope.Name()).To(Equal(classifier.Name))
+		Expect(scope.Name()).To(Equal(healthCheck.Name))
 	})
 })

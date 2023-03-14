@@ -1,5 +1,5 @@
 /*
-Copyright 2022. projectsveltos.io. All rights reserved.
+Copyright 2023. projectsveltos.io. All rights reserved. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,58 +29,58 @@ import (
 )
 
 const (
-	classifierNamePrefix = "scope-"
+	eventSourceNamePrefix = "scope-"
 )
 
-var _ = Describe("ClassifierScope", func() {
-	var classifier *libsveltosv1alpha1.Classifier
+var _ = Describe("EventSourceScope", func() {
+	var eventSource *libsveltosv1alpha1.EventSource
 	var c client.Client
 
 	BeforeEach(func() {
-		classifier = &libsveltosv1alpha1.Classifier{
+		eventSource = &libsveltosv1alpha1.EventSource{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: classifierNamePrefix + randomString(),
+				Name: eventSourceNamePrefix + randomString(),
 			},
 		}
 
 		scheme := setupScheme()
-		initObjects := []client.Object{classifier}
+		initObjects := []client.Object{eventSource}
 		c = fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
 	})
 
-	It("Return nil,error if Classifier is not specified", func() {
-		params := scope.ClassifierScopeParams{
+	It("Return nil,error if client is not specified", func() {
+		params := scope.EventSourceScopeParams{
+			EventSource: eventSource,
+			Logger:      klogr.New(),
+		}
+
+		scope, err := scope.NewEventSourceScope(params)
+		Expect(err).To(HaveOccurred())
+		Expect(scope).To(BeNil())
+	})
+
+	It("Return nil,error if EventSource is not specified", func() {
+		params := scope.EventSourceScopeParams{
 			Client: c,
 			Logger: klogr.New(),
 		}
 
-		scope, err := scope.NewClassifierScope(params)
+		scope, err := scope.NewEventSourceScope(params)
 		Expect(err).To(HaveOccurred())
 		Expect(scope).To(BeNil())
 	})
 
-	It("Return nil,error if client is not specified", func() {
-		params := scope.ClassifierScopeParams{
-			Classifier: classifier,
-			Logger:     klogr.New(),
+	It("Name returns EventSource Name", func() {
+		params := scope.EventSourceScopeParams{
+			Client:      c,
+			EventSource: eventSource,
+			Logger:      klogr.New(),
 		}
 
-		scope, err := scope.NewClassifierScope(params)
-		Expect(err).To(HaveOccurred())
-		Expect(scope).To(BeNil())
-	})
-
-	It("Name returns Classifier Name", func() {
-		params := scope.ClassifierScopeParams{
-			Client:     c,
-			Classifier: classifier,
-			Logger:     klogr.New(),
-		}
-
-		scope, err := scope.NewClassifierScope(params)
+		scope, err := scope.NewEventSourceScope(params)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(scope).ToNot(BeNil())
 
-		Expect(scope.Name()).To(Equal(classifier.Name))
+		Expect(scope.Name()).To(Equal(eventSource.Name))
 	})
 })

@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package classification_test
+package evaluation_test
 
 import (
 	"context"
@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,10 +36,10 @@ import (
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/projectsveltos/classifier-agent/internal/test/helpers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	"github.com/projectsveltos/libsveltos/lib/crd"
 	"github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/sveltos-agent/internal/test/helpers"
 )
 
 var (
@@ -90,6 +91,27 @@ var _ = BeforeSuite(func() {
 		}
 	}()
 
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "projectsveltos",
+		},
+	}
+	Expect(testEnv.Create(ctx, ns)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, ns)).To(Succeed())
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: libsveltosv1alpha1.ClassifierSecretNamespace,
+			Name:      libsveltosv1alpha1.ClassifierSecretName,
+		},
+		Data: map[string][]byte{
+			"data": testEnv.Kubeconfig,
+		},
+	}
+
+	Expect(testEnv.Create(context.TODO(), secret)).To(Succeed())
+	Expect(waitForObject(context.TODO(), testEnv.Client, secret)).To(Succeed())
+
 	classifierCRD, err := utils.GetUnstructured(crd.GetClassifierCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, classifierCRD)).To(Succeed())
@@ -99,6 +121,26 @@ var _ = BeforeSuite(func() {
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, classifierReportCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, classifierReportCRD)).To(Succeed())
+
+	healthCheckCRD, err := utils.GetUnstructured(crd.GetHealthCheckCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, healthCheckCRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, healthCheckCRD)).To(Succeed())
+
+	healthCheckCReportRD, err := utils.GetUnstructured(crd.GetHealthCheckReportCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, healthCheckCReportRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, healthCheckCReportRD)).To(Succeed())
+
+	eventSourceCRD, err := utils.GetUnstructured(crd.GetEventSourceCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, eventSourceCRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, eventSourceCRD)).To(Succeed())
+
+	eventReportRD, err := utils.GetUnstructured(crd.GetEventReportCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, eventReportRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, eventReportRD)).To(Succeed())
 
 	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
 		time.Sleep(time.Second)
@@ -114,7 +156,7 @@ var _ = AfterSuite(func() {
 
 func randomString() string {
 	const length = 10
-	return util.RandomString(length)
+	return "a-" + util.RandomString(length)
 }
 
 func setupScheme() (*runtime.Scheme, error) {

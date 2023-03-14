@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package classification_test
+package evaluation_test
 
 import (
 	"context"
@@ -27,8 +27,8 @@ import (
 	"k8s.io/klog/v2/klogr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/projectsveltos/classifier-agent/pkg/classification"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 )
 
 var (
@@ -62,7 +62,7 @@ var _ = Describe("Manager: watchers", func() {
 	var cancel context.CancelFunc
 
 	BeforeEach(func() {
-		classification.Reset()
+		evaluation.Reset()
 		watcherCtx, cancel = context.WithCancel(context.Background())
 	})
 
@@ -103,10 +103,10 @@ var _ = Describe("Manager: watchers", func() {
 				client.ObjectKey{Name: classifier.Name}, currentClassifier)
 		}, timeout, pollingInterval).Should(BeNil())
 
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, nil, 10, false)
-		manager := classification.GetManager()
-		gvks, err := classification.BuildList(manager, context.TODO())
+		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
+		manager := evaluation.GetManager()
+		gvks, err := evaluation.BuildList(manager, context.TODO())
 		Expect(err).To(BeNil())
 		Expect(len(gvks)).To(Equal(2))
 		for i := range classifier.Spec.DeployedResourceConstraints {
@@ -121,25 +121,25 @@ var _ = Describe("Manager: watchers", func() {
 	})
 
 	It("buildSortedList creates a sorted list", func() {
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, nil, 10, false)
-		manager := classification.GetManager()
+		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10, false)
+		manager := evaluation.GetManager()
 
 		gvk1 := schema.GroupVersionKind{Group: pods.Group, Version: pods.Version, Kind: pods.Kind}
 		gvk2 := schema.GroupVersionKind{Group: kubeadmconfigs.Group, Version: kubeadmconfigs.Version, Kind: kubeadmconfigs.Kind}
 		gvksMap := map[schema.GroupVersionKind]bool{
 			gvk2: true, gvk1: true,
 		}
-		sortedList := classification.BuildSortedList(manager, gvksMap)
+		sortedList := evaluation.BuildSortedList(manager, gvksMap)
 		Expect(len(sortedList)).To(Equal(2))
 		Expect(sortedList[0].Kind).To(Equal(pods.Kind))
 		Expect(sortedList[1].Kind).To(Equal(kubeadmconfigs.Kind))
 	})
 
 	It("gvkInstalled returns true if resource is installed, false otherwise", func() {
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, nil, 10, false)
-		manager := classification.GetManager()
+		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10, false)
+		manager := evaluation.GetManager()
 
 		gvk1 := schema.GroupVersionKind{Group: pods.Group, Version: pods.Version, Kind: pods.Kind}
 		gvk2 := schema.GroupVersionKind{Group: kubeadmconfigs.Group, Version: kubeadmconfigs.Version, Kind: kubeadmconfigs.Kind}
@@ -147,23 +147,23 @@ var _ = Describe("Manager: watchers", func() {
 			gvk2: true, gvk1: true,
 		}
 
-		Expect(classification.GvkInstalled(manager, &gvk1, gvksMap)).To(BeTrue())
-		Expect(classification.GvkInstalled(manager, &gvk2, gvksMap)).To(BeTrue())
+		Expect(evaluation.GvkInstalled(manager, &gvk1, gvksMap)).To(BeTrue())
+		Expect(evaluation.GvkInstalled(manager, &gvk2, gvksMap)).To(BeTrue())
 
 		gvk3 := schema.GroupVersionKind{
 			Group:   "lib.projectsveltos.io",
 			Version: "v1alpha1",
 			Kind:    "debuggingconfigurations",
 		}
-		Expect(classification.GvkInstalled(manager, &gvk3, gvksMap)).To(BeFalse())
+		Expect(evaluation.GvkInstalled(manager, &gvk3, gvksMap)).To(BeFalse())
 	})
 
 	It("getInstalledResources returns list of installed api-resources", func() {
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, nil, 10, false)
-		manager := classification.GetManager()
+		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10, false)
+		manager := evaluation.GetManager()
 
-		resources, err := classification.GetInstalledResources(manager)
+		resources, err := evaluation.GetInstalledResources(manager)
 		Expect(err).To(BeNil())
 		Expect(resources).ToNot(BeEmpty())
 
@@ -175,14 +175,14 @@ var _ = Describe("Manager: watchers", func() {
 	})
 
 	It("startWatcher starts a watcher when resource is installed", func() {
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, nil, 10, false)
-		manager := classification.GetManager()
+		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10, false)
+		manager := evaluation.GetManager()
 
 		gvk := &schema.GroupVersionKind{Group: classifiers.Group, Version: classifiers.Version, Kind: classifiers.Kind}
-		Expect(classification.StartWatcher(manager, context.TODO(), gvk, nil)).To(BeNil())
+		Expect(evaluation.StartWatcher(manager, context.TODO(), gvk)).To(BeNil())
 
-		watchers := classification.GetWatchers()
+		watchers := evaluation.GetWatchers()
 		Expect(watchers).ToNot(BeNil())
 		Expect(len(watchers)).To(Equal(1))
 		cancel, ok := watchers[*gvk]
@@ -191,15 +191,15 @@ var _ = Describe("Manager: watchers", func() {
 	})
 
 	It("updateWatchers starts new watchers", func() {
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, nil, 10, false)
-		manager := classification.GetManager()
+		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
+		manager := evaluation.GetManager()
 
 		gvk := schema.GroupVersionKind{Group: pods.Group, Version: pods.Version, Kind: pods.Kind}
 		resourceToWatch := []schema.GroupVersionKind{gvk}
 
-		Expect(classification.UpdateWatchers(manager, context.TODO(), resourceToWatch)).To(Succeed())
-		watchers := classification.GetWatchers()
+		Expect(evaluation.UpdateWatchers(manager, context.TODO(), resourceToWatch)).To(Succeed())
+		watchers := evaluation.GetWatchers()
 		Expect(watchers).ToNot(BeNil())
 		Expect(len(watchers)).To(Equal(1))
 		cancel, ok := watchers[gvk]
@@ -208,24 +208,24 @@ var _ = Describe("Manager: watchers", func() {
 	})
 
 	It("updateWatchers stores resources to watch which are not installed yet", func() {
-		classification.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, nil, 10, false)
-		manager := classification.GetManager()
+		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
+		manager := evaluation.GetManager()
 
 		gvk1 := schema.GroupVersionKind{Group: pods.Group, Version: pods.Version, Kind: pods.Kind}
 		gvk2 := schema.GroupVersionKind{Group: debuggingConfigurations.Group,
 			Version: debuggingConfigurations.Version, Kind: debuggingConfigurations.Kind}
 		resourceToWatch := []schema.GroupVersionKind{gvk1, gvk2}
 
-		Expect(classification.UpdateWatchers(manager, context.TODO(), resourceToWatch)).To(Succeed())
-		watchers := classification.GetWatchers()
+		Expect(evaluation.UpdateWatchers(manager, context.TODO(), resourceToWatch)).To(Succeed())
+		watchers := evaluation.GetWatchers()
 		Expect(watchers).ToNot(BeNil())
 		Expect(len(watchers)).To(Equal(1))
 		cancel, ok := watchers[gvk1]
 		Expect(ok).To(BeTrue())
 		cancel()
 
-		unknown := classification.GetUnknownResourcesToWatch()
+		unknown := evaluation.GetUnknownResourcesToWatch()
 		Expect(len(unknown)).To(Equal(1))
 		Expect(unknown[0].Kind).To(Equal(debuggingConfigurations.Kind))
 	})

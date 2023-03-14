@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,11 +30,14 @@ import (
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/projectsveltos/classifier-agent/controllers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	"github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
+
+	"github.com/projectsveltos/sveltos-agent/controllers"
+	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -81,52 +84,25 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "e8afc439.projectsveltos.io",
-		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
-		// when the Manager ends. This requires the binary to immediately end when the
-		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
-		// speeds up voluntary leader transitions as the new leader don't have to wait
-		// LeaseDuration time first.
-		//
-		// In the default scaffold provided, the program ends immediately after
-		// the manager stops, so would be fine to enable this option. However,
-		// if you are doing or is intended to do any operation such as perform cleanups
-		// after the manager stops then its usage might be unsafe.
-		// LeaderElectionReleaseOnCancel: true,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
+	doSendReports := true
 	sendReports := controllers.SendReports // do not send reports
 	if runMode == noReports {
 		sendReports = controllers.DoNotSendReports
+		doSendReports = false
 	}
 
-	// Do not change order. ClassifierReconciler initializes classification manager.
-	// NodeReconciler uses classification manager.
-	if err = (&controllers.ClassifierReconciler{
-		Client:             mgr.GetClient(),
-		Scheme:             mgr.GetScheme(),
-		RunMode:            sendReports,
-		Mux:                sync.RWMutex{},
-		GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
-		VersionClassifiers: libsveltosset.Set{},
-		ClusterNamespace:   clusterNamespace,
-		ClusterName:        clusterName,
-		ClusterType:        libsveltosv1alpha1.ClusterType(clusterType),
-	}).SetupWithManager(ctx, mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Classifier")
-		os.Exit(1)
-	}
-	if err = (&controllers.NodeReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Config: mgr.GetConfig(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Node")
-		os.Exit(1)
-	}
+	const intervalInSecond = 10
+	evaluation.InitializeManager(ctx, mgr.GetLogger(),
+		mgr.GetConfig(), mgr.GetClient(), clusterNamespace, clusterName, libsveltosv1alpha1.ClusterType(clusterType),
+		intervalInSecond, doSendReports)
+
+	startControllers(mgr, sendReports)
 	//+kubebuilder:scaffold:builder
 
 	setupChecks(mgr)
@@ -189,6 +165,79 @@ func setupChecks(mgr ctrl.Manager) {
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+}
+
+func startControllers(mgr manager.Manager, sendReports controllers.Mode) {
+	var err error
+	// Do not change order. ClassifierReconciler initializes classification manager.
+	// NodeReconciler uses classification manager.
+	if err = (&controllers.ClassifierReconciler{
+		Client:             mgr.GetClient(),
+		Scheme:             mgr.GetScheme(),
+		RunMode:            sendReports,
+		Mux:                sync.RWMutex{},
+		GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
+		VersionClassifiers: libsveltosset.Set{},
+		ClusterNamespace:   clusterNamespace,
+		ClusterName:        clusterName,
+		ClusterType:        libsveltosv1alpha1.ClusterType(clusterType),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Classifier")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.NodeReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		Config: mgr.GetConfig(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Node")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.HealthCheckReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		RunMode:          sendReports,
+		Mux:              sync.RWMutex{},
+		GVKHealthChecks:  make(map[schema.GroupVersionKind]*libsveltosset.Set),
+		ClusterNamespace: clusterNamespace,
+		ClusterName:      clusterName,
+		ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "HealthCheck")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.HealthCheckReportReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "HealthCheckReport")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.EventSourceReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		RunMode:          sendReports,
+		Mux:              sync.RWMutex{},
+		GVKEventSources:  make(map[schema.GroupVersionKind]*libsveltosset.Set),
+		ClusterNamespace: clusterNamespace,
+		ClusterName:      clusterName,
+		ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "EventSource")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.EventReportReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "EventReport")
 		os.Exit(1)
 	}
 }

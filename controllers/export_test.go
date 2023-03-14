@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,8 +29,14 @@ func SetKubernetesVersion(r *NodeReconciler, version string) {
 }
 
 var (
-	UpdateMaps      = (*ClassifierReconciler).updateMaps
-	ReconcileDelete = (*ClassifierReconciler).reconcileDelete
+	ClassifierUpdateMaps      = (*ClassifierReconciler).updateMaps
+	ClassifierReconcileDelete = (*ClassifierReconciler).reconcileDelete
+
+	HealthCheckUpdateMaps      = (*HealthCheckReconciler).updateMaps
+	HealthCheckReconcileDelete = (*HealthCheckReconciler).reconcileDelete
+
+	EventSourceUpdateMaps      = (*EventSourceReconciler).updateMaps
+	EventSourceReconcileDelete = (*EventSourceReconciler).reconcileDelete
 )
 
 var (

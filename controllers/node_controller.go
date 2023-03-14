@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,10 +30,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/projectsveltos/classifier-agent/pkg/classification"
-	"github.com/projectsveltos/classifier-agent/pkg/utils"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
+	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
+	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
 // NodeReconciler reconciles a Node object
@@ -83,7 +83,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return reconcile.Result{}, err
 		}
 
-		manager := classification.GetManager()
+		manager := evaluation.GetManager()
 		for i := range list {
 			logger.V(logs.LogDebug).Info(fmt.Sprintf("classifier %s needs re-evaluation",
 				list[i]))

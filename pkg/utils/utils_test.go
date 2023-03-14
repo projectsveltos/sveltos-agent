@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import (
 
 	"k8s.io/klog/v2/klogr"
 
-	"github.com/projectsveltos/classifier-agent/pkg/utils"
+	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
 var _ = Describe("Manager", func() {

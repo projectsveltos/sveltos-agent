@@ -1,8 +1,8 @@
 domain: projectsveltos.io
 layout:
 - go.kubebuilder.io/v3
-projectName: manager
-repo: github.com/projectsveltos/manager
+projectName: sveltos-agent
+repo: github.com/projectsveltos/sveltos-agent
 resources:
 - controller: true
   domain: projectsveltos.io
@@ -13,4 +13,19 @@ resources:
   domain: projectsveltos.io
   kind: Node
   version: v1
+- controller: true
+  domain: projectsveltos.io
+  group: lib.projectsveltos.io
+  kind: HealthCheck
+  version: v1alpha1
+- controller: true
+  domain: projectsveltos.io
+  group: lib
+  kind: HealthCheckReport
+  version: v1alpha1
+- controller: true
+  domain: projectsveltos.io
+  group: lib
+  kind: EventSource
+  version: v1alpha1
 version: "3"

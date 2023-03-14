@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022. projectsveltos.io. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,17 +25,16 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/projectsveltos/classifier-agent/pkg/classification"
-	"github.com/projectsveltos/classifier-agent/pkg/scope"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
+	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
+	"github.com/projectsveltos/sveltos-agent/pkg/scope"
 )
 
 type Mode int64
@@ -66,7 +65,6 @@ type ClassifierReconciler struct {
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=classifiers/finalizers,verbs=update
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=classifierreports,verbs=get;list;create;update;delete;patch
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=classifierreports/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=*,resources=*,verbs=get;list;watch
 
 func (r *ClassifierReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
 	logger := ctrl.LoggerFrom(ctx)
@@ -82,20 +80,19 @@ func (r *ClassifierReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		logger.Error(err, "Failed to fetch Classifier")
 		return reconcile.Result{}, errors.Wrapf(
 			err,
-			"Failed to fetch ClusterProfile %s",
+			"Failed to fetch Classifier %s",
 			req.NamespacedName,
 		)
 	}
 
 	logger.V(logs.LogDebug).Info("request to re-evaluate resource to watch")
-	manager := classification.GetManager()
+	manager := evaluation.GetManager()
 	manager.ReEvaluateResourceToWatch()
 
 	classifierScope, err := scope.NewClassifierScope(scope.ClassifierScopeParams{
-		Client:         r.Client,
-		Logger:         logger,
-		Classifier:     classifier,
-		ControllerName: "classifier",
+		Client:     r.Client,
+		Logger:     logger,
+		Classifier: classifier,
 	})
 	if err != nil {
 		logger.Error(err, "Failed to create classifierScope")
@@ -116,7 +113,8 @@ func (r *ClassifierReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// Handle deleted classifier
 	if !classifier.DeletionTimestamp.IsZero() {
-		return r.reconcileDelete(classifierScope, logger)
+		r.reconcileDelete(classifierScope, logger)
+		return ctrl.Result{}, nil
 	}
 
 	// Handle non-deleted classifier
@@ -126,7 +124,7 @@ func (r *ClassifierReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 func (r *ClassifierReconciler) reconcileDelete(
 	classifierScope *scope.ClassifierScope,
 	logger logr.Logger,
-) (reconcile.Result, error) {
+) {
 
 	logger.V(logs.LogDebug).Info("reconcile delete")
 
@@ -143,7 +141,7 @@ func (r *ClassifierReconciler) reconcileDelete(
 	}
 
 	// Queue Classifier for evaluation
-	manager := classification.GetManager()
+	manager := evaluation.GetManager()
 	manager.EvaluateClassifier(classifierScope.Name())
 
 	if controllerutil.ContainsFinalizer(classifierScope.Classifier, libsveltosv1alpha1.ClassifierFinalizer) {
@@ -151,7 +149,6 @@ func (r *ClassifierReconciler) reconcileDelete(
 	}
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
-	return ctrl.Result{}, nil
 }
 
 func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
@@ -162,7 +159,8 @@ func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
 	logger.V(logs.LogDebug).Info("reconcile")
 
 	if !controllerutil.ContainsFinalizer(classifierScope.Classifier, libsveltosv1alpha1.ClassifierFinalizer) {
-		if err := r.addFinalizer(ctx, classifierScope.Classifier, logger); err != nil {
+		if err := addFinalizer(ctx, r.Client, classifierScope.Classifier, libsveltosv1alpha1.ClassifierFinalizer,
+			logger); err != nil {
 			logger.V(logs.LogDebug).Info("failed to update finalizer")
 			return reconcile.Result{}, err
 		}
@@ -172,7 +170,7 @@ func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
 	r.updateMaps(classifierScope.Classifier)
 
 	// Queue Classifier for evaluation
-	manager := classification.GetManager()
+	manager := evaluation.GetManager()
 	manager.EvaluateClassifier(classifierScope.Name())
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
@@ -180,7 +178,7 @@ func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ClassifierReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+func (r *ClassifierReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	_, err := ctrl.NewControllerManagedBy(mgr).
 		For(&libsveltosv1alpha1.Classifier{}).
 		Build(r)
@@ -188,14 +186,7 @@ func (r *ClassifierReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 		return errors.Wrap(err, "error creating controller")
 	}
 
-	sendReport := false
-	if r.RunMode == SendReports {
-		sendReport = true
-	}
-	const intervalInSecond = 10
-	classification.InitializeManager(ctx, mgr.GetLogger(),
-		mgr.GetConfig(), mgr.GetClient(), r.ClusterNamespace, r.ClusterName, r.ClusterType,
-		r.react, intervalInSecond, sendReport)
+	evaluation.GetManager().RegisterClassifierMethod(r.react)
 
 	return nil
 }
@@ -239,7 +230,7 @@ func (r *ClassifierReconciler) react(gvk *schema.GroupVersionKind) {
 		return
 	}
 
-	manager := classification.GetManager()
+	manager := evaluation.GetManager()
 
 	if v, ok := r.GVKClassifiers[*gvk]; ok {
 		classifiers := v.Items()
@@ -248,29 +239,4 @@ func (r *ClassifierReconciler) react(gvk *schema.GroupVersionKind) {
 			manager.EvaluateClassifier(classifier.Name)
 		}
 	}
-}
-
-func (r *ClassifierReconciler) addFinalizer(ctx context.Context, classifier *libsveltosv1alpha1.Classifier,
-	logger logr.Logger) error {
-
-	// If the SveltosCluster doesn't have our finalizer, add it.
-	controllerutil.AddFinalizer(classifier, libsveltosv1alpha1.ClassifierFinalizer)
-
-	helper, err := patch.NewHelper(classifier, r.Client)
-	if err != nil {
-		logger.Error(err, "failed to create patch Helper")
-		return err
-	}
-
-	// Register the finalizer immediately to avoid orphaning clusterprofile resources on delete
-	if err := helper.Patch(ctx, classifier); err != nil {
-		return errors.Wrapf(
-			err,
-			"Failed to add finalizer for %s",
-			classifier.Name,
-		)
-	}
-
-	logger.V(logs.LogDebug).Info("added finalizer")
-	return nil
 }
