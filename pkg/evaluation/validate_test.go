@@ -48,7 +48,7 @@ var _ = Describe("Event", Label("VERIFY_LUA"), func() {
 	})
 
 	It("Verify all healthChecks", func() {
-		const healthCheckDir = "./healthcheck"
+		const healthCheckDir = "./healthchecks"
 
 		dirs, err := os.ReadDir(healthCheckDir)
 		Expect(err).To(BeNil())
