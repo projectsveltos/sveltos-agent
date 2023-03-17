@@ -18,15 +18,18 @@ package evaluation
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/Masterminds/semver"
 	"github.com/go-logr/logr"
+	lua "github.com/yuin/gopher-lua"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -200,8 +203,8 @@ func (m *manager) areResourcesAMatch(ctx context.Context,
 	return true, nil
 }
 
-func (m *manager) isResourceAMatch(ctx context.Context,
-	deployedResource *libsveltosv1alpha1.DeployedResourceConstraint) (bool, error) {
+func (m *manager) fetchClassifierDeployedResources(ctx context.Context,
+	deployedResource *libsveltosv1alpha1.DeployedResourceConstraint) (*unstructured.UnstructuredList, error) {
 
 	gvk := schema.GroupVersionKind{
 		Group:   deployedResource.Group,
@@ -212,7 +215,7 @@ func (m *manager) isResourceAMatch(ctx context.Context,
 	dc := discovery.NewDiscoveryClientForConfigOrDie(m.config)
 	groupResources, err := restmapper.GetAPIGroupResources(dc)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	mapper := restmapper.NewDiscoveryRESTMapper(groupResources)
 
@@ -221,9 +224,9 @@ func (m *manager) isResourceAMatch(ctx context.Context,
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		if meta.IsNoMatchError(err) {
-			return false, nil
+			return nil, nil
 		}
-		return false, err
+		return nil, err
 	}
 
 	resourceId := schema.GroupVersionResource{
@@ -276,22 +279,104 @@ func (m *manager) isResourceAMatch(ctx context.Context,
 
 	list, err := d.Resource(resourceId).List(ctx, options)
 	if err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
+
+func (m *manager) isResourceAMatch(ctx context.Context,
+	deployedResource *libsveltosv1alpha1.DeployedResourceConstraint) (bool, error) {
+
+	list, err := m.fetchClassifierDeployedResources(ctx, deployedResource)
+	if err != nil {
 		return false, err
 	}
 
+	result := make([]*unstructured.Unstructured, 0)
+	for i := range list.Items {
+		logger := m.log.WithValues("resource", fmt.Sprintf("%s/%s", list.Items[i].GetNamespace(), list.Items[i].GetName()))
+		var match bool
+		match, err = m.isMatchForClassifierScript(&list.Items[i], deployedResource.Script, logger)
+		if err != nil {
+			return false, err
+		}
+		if match {
+			result = append(result, &list.Items[i])
+		}
+	}
+
 	if deployedResource.MinCount != nil {
-		if len(list.Items) < *deployedResource.MinCount {
+		if len(result) < *deployedResource.MinCount {
 			return false, nil
 		}
 	}
 
 	if deployedResource.MaxCount != nil {
-		if len(list.Items) > *deployedResource.MaxCount {
+		if len(result) > *deployedResource.MaxCount {
 			return false, nil
 		}
 	}
 
 	return true, nil
+}
+
+func (m *manager) isMatchForClassifierScript(resource *unstructured.Unstructured, script string,
+	logger logr.Logger) (bool, error) {
+
+	if script == "" {
+		return true, nil
+	}
+
+	l := lua.NewState()
+	defer l.Close()
+
+	obj := mapToTable(resource.UnstructuredContent())
+
+	if err := l.DoString(script); err != nil {
+		m.log.V(logs.LogInfo).Info(fmt.Sprintf("doString failed: %v", err))
+		return false, err
+	}
+
+	l.SetGlobal("obj", obj)
+
+	if err := l.CallByParam(lua.P{
+		Fn:      l.GetGlobal("evaluate"), // name of Lua function
+		NRet:    1,                       // number of returned values
+		Protect: true,                    // return err or panic
+	}, obj); err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to evaluate health for resource: %v", err))
+		return false, err
+	}
+
+	lv := l.Get(-1)
+	tbl, ok := lv.(*lua.LTable)
+	if !ok {
+		logger.V(logs.LogInfo).Info(luaTableError)
+		return false, fmt.Errorf("%s", luaTableError)
+	}
+
+	goResult := toGoValue(tbl)
+	resultJson, err := json.Marshal(goResult)
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to marshal result: %v", err))
+		return false, err
+	}
+
+	var result eventMatchStatus
+	err = json.Unmarshal(resultJson, &result)
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to marshal result: %v", err))
+		return false, err
+	}
+
+	if result.Message != "" {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("message: %s", result.Message))
+	}
+
+	logger.V(logs.LogDebug).Info(fmt.Sprintf("is a match: %t", result.Matching))
+
+	return result.Matching, nil
 }
 
 // getClassifierReport returns ClassifierReport instance that needs to be created
