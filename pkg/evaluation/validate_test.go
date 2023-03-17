@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	eventFileName = "eventsource.yaml"
+	eventFileName      = "eventsource.yaml"
+	classifierFileName = "classifier.yaml"
 
 	matchingFileName    = "matching.yaml"
 	nonMatchingFileName = "non-matching.yaml"
@@ -56,6 +57,19 @@ var _ = Describe("Event", Label("VERIFY_LUA"), func() {
 		for i := range dirs {
 			if dirs[i].IsDir() {
 				verifyHealthChecks(filepath.Join(healthCheckDir, dirs[i].Name()))
+			}
+		}
+	})
+
+	It("Verify all classifiers", func() {
+		const classifierDir = "./classifiers"
+
+		dirs, err := os.ReadDir(classifierDir)
+		Expect(err).To(BeNil())
+
+		for i := range dirs {
+			if dirs[i].IsDir() {
+				verifyClassifiers(filepath.Join(classifierDir, dirs[i].Name()))
 			}
 		}
 	})
@@ -100,6 +114,27 @@ func verifyHealthChecks(dirName string) {
 
 	if fileCount > 0 {
 		verifyHealthCheck(dirName)
+	}
+}
+
+func verifyClassifiers(dirName string) {
+	By(fmt.Sprintf("Verifying classifier %s", dirName))
+
+	dirs, err := os.ReadDir(dirName)
+	Expect(err).To(BeNil())
+
+	fileCount := 0
+
+	for i := range dirs {
+		if dirs[i].IsDir() {
+			verifyClassifiers(fmt.Sprintf("%s/%s", dirName, dirs[i].Name()))
+		} else {
+			fileCount++
+		}
+	}
+
+	if fileCount > 0 {
+		verifyClassifier(dirName)
 	}
 }
 
@@ -205,6 +240,53 @@ func verifyHealthCheck(dirName string) {
 	}
 }
 
+func verifyClassifier(dirName string) {
+	files, err := os.ReadDir(dirName)
+	Expect(err).To(BeNil())
+
+	for i := range files {
+		if files[i].IsDir() {
+			verifyClassifiers(filepath.Join(dirName, files[i].Name()))
+			continue
+		}
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).Build()
+	evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c, 10)
+	manager := evaluation.GetManager()
+	Expect(manager).ToNot(BeNil())
+
+	By(fmt.Sprintf("Validating classifier in dir: %s", dirName))
+	classifier := getClassifier(dirName)
+	Expect(classifier).ToNot(BeNil())
+
+	matchingResource := getResource(dirName, matchingFileName)
+	if matchingResource == nil {
+		By(fmt.Sprintf("%s file not present", matchingFileName))
+	} else {
+		By("Verifying matching content")
+		for i := range classifier.Spec.DeployedResourceConstraints {
+			isMatch, err := evaluation.IsMatchForClassifierScript(manager, matchingResource,
+				classifier.Spec.DeployedResourceConstraints[i].Script, klogr.New())
+			Expect(err).To(BeNil())
+			Expect(isMatch).To(BeTrue())
+		}
+	}
+
+	nonMatchingResource := getResource(dirName, nonMatchingFileName)
+	if nonMatchingResource == nil {
+		By(fmt.Sprintf("%s file not present", nonMatchingFileName))
+	} else {
+		By("Verifying non-matching content")
+		for i := range classifier.Spec.DeployedResourceConstraints {
+			isMatch, err := evaluation.IsMatchForClassifierScript(manager, nonMatchingResource,
+				classifier.Spec.DeployedResourceConstraints[i].Script, klogr.New())
+			Expect(err).To(BeNil())
+			Expect(isMatch).To(BeFalse())
+		}
+	}
+}
+
 func getEventSource(dirName string) *libsveltosv1alpha1.EventSource {
 	eventSourceFileName := filepath.Join(dirName, eventFileName)
 	content, err := os.ReadFile(eventSourceFileName)
@@ -233,6 +315,21 @@ func getHealthCheck(dirName string) *libsveltosv1alpha1.HealthCheck {
 		FromUnstructured(u.UnstructuredContent(), &healthCheck)
 	Expect(err).To(BeNil())
 	return &healthCheck
+}
+
+func getClassifier(dirName string) *libsveltosv1alpha1.Classifier {
+	classifierFileName := filepath.Join(dirName, classifierFileName)
+	content, err := os.ReadFile(classifierFileName)
+	Expect(err).To(BeNil())
+
+	u, err := libsveltosutils.GetUnstructured(content)
+	Expect(err).To(BeNil())
+
+	var classifier libsveltosv1alpha1.Classifier
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(u.UnstructuredContent(), &classifier)
+	Expect(err).To(BeNil())
+	return &classifier
 }
 
 func getResource(dirName, fileName string) *unstructured.Unstructured {
