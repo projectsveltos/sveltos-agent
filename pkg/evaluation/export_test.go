@@ -64,6 +64,7 @@ var (
 	GetEventMatchingResources  = (*manager).getEventMatchingResources
 	FetchEventSourceResources  = (*manager).fetchEventSourceResources
 	IsMatchForEventSource      = (*manager).isMatchForEventSource
+	IsMatchForClassifierScript = (*manager).isMatchForClassifierScript
 	CreateEventReport          = (*manager).createEventReport
 	SendEventReport            = (*manager).sendEventReport
 	CleanEventReport           = (*manager).cleanEventReport
