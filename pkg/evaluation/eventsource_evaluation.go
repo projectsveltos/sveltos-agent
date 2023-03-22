@@ -112,6 +112,10 @@ func (m *manager) evaluateEventSourceInstance(ctx context.Context, eventName str
 		return err
 	}
 
+	if collectedResources == nil || matchinResources == nil {
+		return nil
+	}
+
 	jsonResources, err := m.marshalSliceOfUnstructured(collectedResources)
 	if err != nil {
 		return err
