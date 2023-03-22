@@ -410,7 +410,10 @@ func (m *manager) runInformer(stopCh <-chan struct{}, s cache.SharedIndexInforme
 			react(gvk)
 		},
 	}
-	s.AddEventHandler(handlers)
+	_, err := s.AddEventHandler(handlers)
+	if err != nil {
+		panic(1)
+	}
 	s.Run(stopCh)
 }
 
