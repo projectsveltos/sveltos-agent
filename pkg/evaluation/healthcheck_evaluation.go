@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
@@ -351,8 +352,6 @@ func (m *manager) fetchHealthCheckResources(ctx context.Context, healthCheck *li
 	}
 	mapper := restmapper.NewDiscoveryRESTMapper(groupResources)
 
-	d := dynamic.NewForConfigOrDie(m.config)
-
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		if meta.IsNoMatchError(err) {
@@ -390,7 +389,18 @@ func (m *manager) fetchHealthCheckResources(ctx context.Context, healthCheck *li
 		options.FieldSelector += fmt.Sprintf("metadata.namespace=%s", healthCheck.Spec.Namespace)
 	}
 
-	list, err := d.Resource(resourceId).List(ctx, options)
+	admin := m.getAdmin(healthCheck)
+	currentConfig := rest.CopyConfig(m.config)
+	if admin != "" {
+		m.log.V(logs.LogInfo).Info(fmt.Sprintf("Impersonating serviceAccount projectsveltos:%s", admin))
+		// ServiceAccount for a tenant admin is created in the projectsveltos namespace
+		currentConfig.Impersonate = rest.ImpersonationConfig{
+			UserName: fmt.Sprintf("system:serviceaccount:projectsveltos:%s", admin),
+		}
+	}
+	d := dynamic.NewForConfigOrDie(currentConfig)
+	var list *unstructured.UnstructuredList
+	list, err = d.Resource(resourceId).List(ctx, options)
 	if err != nil {
 		return nil, err
 	}

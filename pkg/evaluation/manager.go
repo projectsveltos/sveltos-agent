@@ -229,3 +229,13 @@ func (m *manager) getKubeconfig(ctx context.Context) ([]byte, error) {
 
 	return nil, nil
 }
+
+// getAdmin returns the name of the admin that created this object
+func (m *manager) getAdmin(obj client.Object) string {
+	labels := obj.GetLabels()
+	if labels == nil {
+		return ""
+	}
+
+	return labels[libsveltosv1alpha1.AdminLabel]
+}
