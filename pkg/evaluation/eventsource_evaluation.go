@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
@@ -112,15 +113,24 @@ func (m *manager) evaluateEventSourceInstance(ctx context.Context, eventName str
 		return err
 	}
 
-	jsonResources, err := m.marshalSliceOfUnstructured(collectedResources)
-	if err != nil {
-		return err
-	}
+	if collectedResources == nil || matchinResources == nil {
+		err = m.createEventReport(ctx, event, matchinResources, nil)
+		if err != nil {
+			logger.Error(err, "failed to create/update EventReport")
+			return err
+		}
+	} else {
+		var jsonResources []byte
+		jsonResources, err = m.marshalSliceOfUnstructured(collectedResources)
+		if err != nil {
+			return err
+		}
 
-	err = m.createEventReport(ctx, event, matchinResources, jsonResources)
-	if err != nil {
-		logger.Error(err, "failed to create/update EventReport")
-		return err
+		err = m.createEventReport(ctx, event, matchinResources, jsonResources)
+		if err != nil {
+			logger.Error(err, "failed to create/update EventReport")
+			return err
+		}
 	}
 
 	if m.sendReport {
@@ -350,8 +360,6 @@ func (m *manager) fetchEventSourceResources(ctx context.Context, event *libsvelt
 	}
 	mapper := restmapper.NewDiscoveryRESTMapper(groupResources)
 
-	d := dynamic.NewForConfigOrDie(m.config)
-
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		if meta.IsNoMatchError(err) {
@@ -389,11 +397,23 @@ func (m *manager) fetchEventSourceResources(ctx context.Context, event *libsvelt
 		options.FieldSelector += fmt.Sprintf("metadata.namespace=%s", event.Spec.Namespace)
 	}
 
-	list, err := d.Resource(resourceId).List(ctx, options)
+	admin := m.getAdmin(event)
+	currentConfig := rest.CopyConfig(m.config)
+	if admin != "" {
+		m.log.V(logs.LogInfo).Info(fmt.Sprintf("Impersonating serviceAccount projectsveltos:%s", admin))
+		// ServiceAccount for a tenant admin is created in the projectsveltos namespace
+		currentConfig.Impersonate = rest.ImpersonationConfig{
+			UserName: fmt.Sprintf("system:serviceaccount:projectsveltos:%s", admin),
+		}
+	}
+	d := dynamic.NewForConfigOrDie(currentConfig)
+	var list *unstructured.UnstructuredList
+	list, err = d.Resource(resourceId).List(ctx, options)
 	if err != nil {
 		return nil, err
 	}
 
+	m.log.V(logs.LogDebug).Info(fmt.Sprintf("found %d resources", len(list.Items)))
 	return list, nil
 }
 

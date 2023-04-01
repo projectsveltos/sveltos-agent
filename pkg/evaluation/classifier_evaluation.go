@@ -293,6 +293,10 @@ func (m *manager) isResourceAMatch(ctx context.Context,
 		return false, err
 	}
 
+	if list == nil {
+		return false, nil
+	}
+
 	result := make([]*unstructured.Unstructured, 0)
 	for i := range list.Items {
 		logger := m.log.WithValues("resource", fmt.Sprintf("%s/%s", list.Items[i].GetNamespace(), list.Items[i].GetName()))
