@@ -92,6 +92,9 @@ var _ = Describe("Classification", func() {
 		eventSource := libsveltosv1alpha1.EventSource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namePrefix + randomString(),
+				Annotations: map[string]string{
+					"projectsveltos.io/deployed-by-sveltos": "ok",
+				},
 			},
 			Spec: libsveltosv1alpha1.EventSourceSpec{
 				Group:   "apps",

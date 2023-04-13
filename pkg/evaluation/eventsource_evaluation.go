@@ -38,6 +38,7 @@ import (
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
+	"github.com/projectsveltos/libsveltos/lib/roles"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
@@ -397,13 +398,15 @@ func (m *manager) fetchEventSourceResources(ctx context.Context, event *libsvelt
 		options.FieldSelector += fmt.Sprintf("metadata.namespace=%s", event.Spec.Namespace)
 	}
 
-	admin := m.getAdmin(event)
+	saNamespace, saName := m.getServiceAccountInfo(event)
 	currentConfig := rest.CopyConfig(m.config)
-	if admin != "" {
-		m.log.V(logs.LogInfo).Info(fmt.Sprintf("Impersonating serviceAccount projectsveltos:%s", admin))
+	if saName != "" {
+		saNameInManagedCluster := roles.GetServiceAccountNameInManagedCluster(saNamespace, saName)
+		m.log.V(logs.LogInfo).Info(fmt.Sprintf("Impersonating serviceAccount (%s/%s) projectsveltos:%s",
+			saNamespace, saName, saNameInManagedCluster))
 		// ServiceAccount for a tenant admin is created in the projectsveltos namespace
 		currentConfig.Impersonate = rest.ImpersonationConfig{
-			UserName: fmt.Sprintf("system:serviceaccount:projectsveltos:%s", admin),
+			UserName: fmt.Sprintf("system:serviceaccount:projectsveltos:%s", saNameInManagedCluster),
 		}
 	}
 	d := dynamic.NewForConfigOrDie(currentConfig)
