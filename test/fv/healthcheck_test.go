@@ -114,6 +114,9 @@ var _ = Describe("Classification", func() {
 		healthCheck := libsveltosv1alpha1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namePrefix + randomString(),
+				Annotations: map[string]string{
+					"projectsveltos.io/deployed-by-sveltos": "ok",
+				},
 			},
 			Spec: libsveltosv1alpha1.HealthCheckSpec{
 				Group:   "apps",

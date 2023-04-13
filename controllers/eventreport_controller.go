@@ -61,6 +61,10 @@ func (r *EventReportReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		)
 	}
 
+	if shouldIgnore(eventReport) {
+		return reconcile.Result{}, nil
+	}
+
 	logger.V(logs.LogDebug).Info("request to re-evaluate resource to watch")
 
 	// Handle deleted healthCheck
