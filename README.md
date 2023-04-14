@@ -10,8 +10,9 @@
 
 Please refere to sveltos [documentation](https://projectsveltos.github.io/sveltos/).
 
-1. Classify cluster and report back to management cluster.
-1. Reports health statuses for Kubernetes resources.
+1. Classify cluster and report back to management cluster (processing Classifier instances);
+2. Evaluates health statuses for Kubernetes resources in the cluster (procecessings HealthCheck instances);
+3. Evaluates events for Kubernetes resources in the cluster (processing EventSource instances). 
 
 It gets automatically deployed in each managed cluster.
 It watches for Kubernetes resources and Classifier instances and classifiy a cluster.
