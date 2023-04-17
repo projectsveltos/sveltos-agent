@@ -85,6 +85,10 @@ func (r *ClassifierReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		)
 	}
 
+	if shouldIgnore(classifier) {
+		return reconcile.Result{}, nil
+	}
+
 	logger.V(logs.LogDebug).Info("request to re-evaluate resource to watch")
 	manager := evaluation.GetManager()
 	manager.ReEvaluateResourceToWatch()

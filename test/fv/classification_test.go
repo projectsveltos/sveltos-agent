@@ -67,6 +67,9 @@ var _ = Describe("Classification", func() {
 		classifier := libsveltosv1alpha1.Classifier{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namePrefix + randomString(),
+				Annotations: map[string]string{
+					"projectsveltos.io/deployed-by-sveltos": "ok",
+				},
 			},
 			Spec: libsveltosv1alpha1.ClassifierSpec{
 				ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{

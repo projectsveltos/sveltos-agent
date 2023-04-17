@@ -79,6 +79,10 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		)
 	}
 
+	if shouldIgnore(healthCheck) {
+		return reconcile.Result{}, nil
+	}
+
 	logger.V(logs.LogDebug).Info("request to re-evaluate resource to watch")
 	manager := evaluation.GetManager()
 	manager.ReEvaluateResourceToWatch()

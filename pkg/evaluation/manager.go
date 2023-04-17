@@ -230,12 +230,14 @@ func (m *manager) getKubeconfig(ctx context.Context) ([]byte, error) {
 	return nil, nil
 }
 
-// getAdmin returns the name of the admin that created this object
-func (m *manager) getAdmin(obj client.Object) string {
+// getServiceAccountInfo returns the namespace/name of the ServiceAccount
+// representing the admin that created this object
+func (m *manager) getServiceAccountInfo(obj client.Object) (namespace, name string) {
 	labels := obj.GetLabels()
 	if labels == nil {
-		return ""
+		return "", ""
 	}
 
-	return labels[libsveltosv1alpha1.AdminLabel]
+	return labels[libsveltosv1alpha1.ServiceAccountNamespaceLabel],
+		labels[libsveltosv1alpha1.ServiceAccountNameLabel]
 }
