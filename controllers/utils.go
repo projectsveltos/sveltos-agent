@@ -118,3 +118,39 @@ func patchObject(ctx context.Context, c client.Client, object client.Object, log
 	logger.V(logs.LogDebug).Info("added finalizer")
 	return nil
 }
+
+// Sveltos deploys EventSources,HealtchChecks,Classifiers in managed clusters.
+// Sveltos-agent running in those managed clusters needs to process those.
+//
+// Sometimes the management cluster is in turn a managed cluster. In this case,
+// there is another cluster with Sveltos. Management cluster is registered to
+// be managed by this other cluster.
+//
+// |----------------|   |-------------------|   |--------------|
+// | Managed cluster|<--| Management cluster|<--| Other cluster|
+// |----------------|   |-------------------|   |--------------|
+//
+// In such a case, in the management cluster we will have two different types of
+// EventSources,HealtchChecks,Classifiers:
+// 1. Instances defined by platform/tenant admins in the management cluster that
+// needs to be pushed and evaluated in the managed clusters;
+// 2. Instances defined in the other cluster acting that are pushed to be evaluated
+// in the management cluster.
+// This means not all EventSources,HealtchChecks,Classifiers need to be evaluated
+// by sveltos-agent. Sveltos-agent should evaluate *only* the instances pushed in the
+// cluster by Sveltos.
+// When Sveltos deploys EventSources,HealtchChecks,Classifiers a special annotation
+// is added. If this annotation is present, then sveltos-agent need to process those
+// instances. It can ignore those otherwise
+func shouldIgnore(o client.Object) bool {
+	annotation := o.GetAnnotations()
+	if annotation == nil {
+		return true
+	}
+
+	if _, ok := annotation[libsveltosv1alpha1.DeployedBySveltosAnnotation]; !ok {
+		return true
+	}
+
+	return false
+}
