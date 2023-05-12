@@ -6,7 +6,7 @@ on:
     - 'main'
     - 'dev'
   pull_request:
-    types: opened
+    types: [opened, edited, reopened]
 
 
 jobs:
@@ -60,4 +60,4 @@ jobs:
     - name: fv
       run: make create-cluster fv
       env:
-        FV: true        
+        FV: true
