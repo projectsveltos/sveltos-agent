@@ -44,7 +44,7 @@ ARCH ?= amd64
 OS ?= $(shell uname -s | tr A-Z a-z)
 K8S_LATEST_VER ?= $(shell curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
 export CONTROLLER_IMG ?= $(REGISTRY)/$(IMAGE_NAME)
-TAG ?= v0.11.0
+TAG ?= main
 
 GOLANGCI_LINT_VERSION := "v1.52.2"
 
@@ -152,7 +152,7 @@ endif
 # K8S_VERSION for the Kind cluster can be set as environment variable. If not defined,
 # this default value is used
 ifndef K8S_VERSION
-K8S_VERSION := v1.25.2
+K8S_VERSION := v1.27.0
 endif
 
 KIND_CONFIG ?= kind-cluster.yaml
