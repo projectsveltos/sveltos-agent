@@ -315,13 +315,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("createClassifierReport creates ClassifierReport", func() {
 		classifier = getClassifierWithKubernetesConstraints(version26, libsveltosv1alpha1.ComparisonGreaterThan)
 
-		initObjects := []client.Object{
-			classifier,
-		}
+		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
+		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
 
-		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
-
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, testEnv, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -329,7 +326,18 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		isMatch := true
 		Expect(evaluation.CreateClassifierReport(manager, context.TODO(), classifier, isMatch)).To(Succeed())
 
-		verifyClassifierReport(c, classifier, isMatch)
+		// Use Eventually so cache is in sync.
+		Eventually(func() bool {
+			classifierReport := &libsveltosv1alpha1.ClassifierReport{}
+			err := testEnv.Get(context.TODO(), types.NamespacedName{Namespace: utils.ReportNamespace, Name: classifier.Name},
+				classifierReport)
+			if err != nil {
+				return false
+			}
+			return classifierReport.Status.Phase != nil
+		}, timeout, pollingInterval).Should(BeTrue())
+
+		verifyClassifierReport(testEnv, classifier, isMatch)
 	})
 
 	It("createClassifierReport updates ClassifierReport", func() {
@@ -354,7 +362,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			classifier,
 		}
 
-		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
+		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).WithObjects(initObjects...).Build()
 
 		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c, 10)
 
@@ -651,7 +659,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			classifierReport,
 		}
 
-		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
+		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).WithObjects(initObjects...).Build()
 
 		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c, 10)
 

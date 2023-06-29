@@ -45,7 +45,7 @@ var _ = Describe("EventSourceScope", func() {
 
 		scheme := setupScheme()
 		initObjects := []client.Object{eventSource}
-		c = fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
+		c = fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).WithObjects(initObjects...).Build()
 	})
 
 	It("Return nil,error if client is not specified", func() {
