@@ -33,7 +33,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/cluster-api/util"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
@@ -66,11 +68,13 @@ const (
 
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Classification Suite")
+	RunSpecs(t, "Controllers Suite")
 }
 
 var _ = BeforeSuite(func() {
 	By("bootstrapping test environment")
+
+	ctrl.SetLogger(klog.Background())
 
 	ctx, cancel = context.WithCancel(context.TODO())
 
@@ -117,10 +121,14 @@ var _ = BeforeSuite(func() {
 	Expect(testEnv.Create(ctx, eventSourceCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, eventSourceCRD)).To(Succeed())
 
-	eventReportRD, err := utils.GetUnstructured(crd.GetEventReportCRDYAML())
+	eventReportCRD, err := utils.GetUnstructured(crd.GetEventReportCRDYAML())
 	Expect(err).To(BeNil())
-	Expect(testEnv.Create(ctx, eventReportRD)).To(Succeed())
-	Expect(waitForObject(ctx, testEnv.Client, eventReportRD)).To(Succeed())
+	Expect(testEnv.Create(ctx, eventReportCRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, eventReportCRD)).To(Succeed())
+
+	// add an extra second sleep. Otherwise randomly ut fails with
+	// no matches for kind "EventSource" in version "lib.projectsveltos.io/v1alpha1"
+	time.Sleep(time.Second)
 
 	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
 		time.Sleep(time.Second)

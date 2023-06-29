@@ -469,7 +469,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			eventReport,
 		}
 
-		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
+		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).WithObjects(initObjects...).Build()
 
 		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c, 10)
 
