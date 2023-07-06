@@ -257,6 +257,14 @@ func (m *manager) getHealthStatus(ctx context.Context, healthCheck *libsveltosv1
 			// Ignore
 			continue
 		}
+		if healthCheck.Spec.CollectResources {
+			tmpJson, err := resource.MarshalJSON()
+			if err != nil {
+				return nil, err
+			}
+			s.Resource = tmpJson
+		}
+
 		resourceStatuses = append(resourceStatuses, *s)
 	}
 
