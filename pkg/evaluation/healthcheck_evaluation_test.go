@@ -357,6 +357,55 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(len(statuses)).To(Equal(2))
 	})
 
+	It("getHealthStatus: returns health status containing resources", func() {
+		namespace := randomString()
+		createNamespace(namespace)
+
+		By("Creating a deployment in healthy state")
+		healthyDepl := getDeployment(1, 1)
+		healthyDepl.Namespace = namespace
+		Expect(testEnv.Create(context.TODO(), healthyDepl)).To(Succeed())
+		Expect(waitForObject(context.TODO(), testEnv.Client, healthyDepl)).To(Succeed())
+
+		healthyDepl.Status.AvailableReplicas = 1
+		healthyDepl.Status.ReadyReplicas = 1
+		healthyDepl.Status.Replicas = 1
+		Expect(testEnv.Status().Update(context.TODO(), healthyDepl)).To(Succeed())
+
+		By("Creating a deployment in progressing state")
+		progressingDepl := getDeployment(2, 0)
+		progressingDepl.Namespace = namespace
+		Expect(testEnv.Create(context.TODO(), progressingDepl)).To(Succeed())
+		Expect(waitForObject(context.TODO(), testEnv.Client, progressingDepl)).To(Succeed())
+
+		By("Creating an HealthCheck matching the Deployments")
+		healthCheck = &libsveltosv1alpha1.HealthCheck{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: randomString(),
+			},
+			Spec: libsveltosv1alpha1.HealthCheckSpec{
+				Group:            "apps",
+				Version:          "v1",
+				Kind:             "Deployment",
+				Namespace:        namespace,
+				Script:           deploymentReplicaCheck,
+				CollectResources: true,
+			},
+		}
+
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+
+		manager := evaluation.GetManager()
+		Expect(manager).ToNot(BeNil())
+
+		statuses, err := evaluation.GetHealthStatus(manager, context.TODO(), healthCheck)
+		Expect(err).To(BeNil())
+		Expect(len(statuses)).To(Equal(2))
+		for i := range statuses {
+			Expect(statuses[i].Resource).ToNot(BeNil())
+		}
+	})
+
 	It("createHealthCheckReport creates healthCheckReport", func() {
 		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
 
