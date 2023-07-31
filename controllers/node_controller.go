@@ -46,10 +46,7 @@ type NodeReconciler struct {
 	kubernetesVersion string
 }
 
-//+kubebuilder:rbac:groups=projectsveltos.io,resources=nodes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=projectsveltos.io,resources=nodes/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=projectsveltos.io,resources=nodes/finalizers,verbs=update
-
+// +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := ctrl.LoggerFrom(ctx)
 	logger.V(logs.LogInfo).Info("Reconciling")

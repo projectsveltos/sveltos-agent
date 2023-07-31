@@ -154,9 +154,15 @@ status:
 
 var _ = Describe("Manager: healthcheck evaluation", func() {
 	var healthCheck *libsveltosv1alpha1.HealthCheck
+	var clusterNamespace string
+	var clusterName string
+	var clusterType libsveltosv1alpha1.ClusterType
 
 	BeforeEach(func() {
 		evaluation.Reset()
+		clusterNamespace = utils.ReportNamespace
+		clusterName = randomString()
+		clusterType = libsveltosv1alpha1.ClusterTypeCapi
 	})
 
 	AfterEach(func() {
@@ -169,7 +175,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("GetResourceHealthStatus: evaluates Cluster as degraded", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -189,7 +196,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		var availableReplicas = 3
 		depl := getDeployment(replicas, int32(availableReplicas))
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -214,7 +222,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		var availableReplicas = 1
 		depl := getDeployment(replicas, int32(availableReplicas))
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -280,10 +289,11 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			service.Namespace = namespace
 			service.Labels = map[string]string{randomString(): randomString()}
 			Expect(testEnv.Create(context.TODO(), service)).To(Succeed())
-			Expect(waitForObject(context.TODO(), testEnv.Client, service)).To(Succeed())
+			waitForObject(context.TODO(), testEnv.Client, service)
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		healthCheck = &libsveltosv1alpha1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
@@ -320,7 +330,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		healthyDepl := getDeployment(1, 1)
 		healthyDepl.Namespace = namespace
 		Expect(testEnv.Create(context.TODO(), healthyDepl)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, healthyDepl)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, healthyDepl)
 
 		healthyDepl.Status.AvailableReplicas = 1
 		healthyDepl.Status.ReadyReplicas = 1
@@ -331,7 +341,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		progressingDepl := getDeployment(2, 0)
 		progressingDepl.Namespace = namespace
 		Expect(testEnv.Create(context.TODO(), progressingDepl)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, progressingDepl)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, progressingDepl)
 
 		By("Creating an HealthCheck matching the Deployments")
 		healthCheck = &libsveltosv1alpha1.HealthCheck{
@@ -347,7 +357,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			},
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -365,7 +376,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		healthyDepl := getDeployment(1, 1)
 		healthyDepl.Namespace = namespace
 		Expect(testEnv.Create(context.TODO(), healthyDepl)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, healthyDepl)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, healthyDepl)
 
 		healthyDepl.Status.AvailableReplicas = 1
 		healthyDepl.Status.ReadyReplicas = 1
@@ -376,7 +387,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		progressingDepl := getDeployment(2, 0)
 		progressingDepl.Namespace = namespace
 		Expect(testEnv.Create(context.TODO(), progressingDepl)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, progressingDepl)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, progressingDepl)
 
 		By("Creating an HealthCheck matching the Deployments")
 		healthCheck = &libsveltosv1alpha1.HealthCheck{
@@ -393,7 +404,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			},
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -407,7 +419,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("createHealthCheckReport creates healthCheckReport", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -449,7 +462,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("createHealthCheckReport updates healthCheckReport", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -476,7 +490,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		}
 
 		Expect(testEnv.Client.Create(context.TODO(), healthCheckReport)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, healthCheckReport)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, healthCheckReport)
 
 		deplRef := &corev1.ObjectReference{
 			Namespace:  namespace,
@@ -513,7 +527,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			},
 		}
 		Expect(testEnv.Create(context.TODO(), healthCheck)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, healthCheck)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, healthCheck)
 
 		phase := libsveltosv1alpha1.ReportDelivering
 		healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{
@@ -530,15 +544,10 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		}
 
 		Expect(testEnv.Create(context.TODO(), healthCheckReport)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, healthCheckReport)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, healthCheckReport)
 
-		clusterNamespace := utils.ReportNamespace
-		clusterName := randomString()
-		clusterType := libsveltosv1alpha1.ClusterTypeCapi
-		watcherCtx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10, false)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 		manager := evaluation.GetManager()
 
 		Expect(evaluation.SendHealthCheckReport(manager, context.TODO(), healthCheck)).To(Succeed())
@@ -597,7 +606,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).WithObjects(initObjects...).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())

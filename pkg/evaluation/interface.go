@@ -35,6 +35,15 @@ type ClassifierInterface interface {
 	// from queue containing all HealthChecks which requires evaluation.
 	EvaluateHealthCheck(healthCheckName string)
 
+	// EvaluateEventSource requests a eventSource to be
+	// evaluated.
+	// This method is idempotent. Invoking multiple times
+	// on same instance, will queue EventSource to be evaluated
+	// only once.
+	// After an evaluation, an EventSource is automatically removed
+	// from queue containing all EventSources which requires evaluation.
+	EvaluateEventSource(eventSourceName string)
+
 	// ReEvaluateResourceToWatch requests to rebuild the GVKs to watch.
 	// This evaluation is done asynchronously when at least one request
 	// to re-evaluate has been received

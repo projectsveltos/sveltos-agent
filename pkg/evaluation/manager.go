@@ -74,6 +74,12 @@ type manager struct {
 	// eventSourceJobQueue contains name of all EventSource instances that need to be evaluated
 	eventSourceJobQueue map[string]bool
 
+	// reloaderJobQueue contains:
+	// - kind:name of all Reloader instances that need to be evaluated
+	// - kind:namespace/name of all ConfigMap instances that have changed
+	// - kind:namespace/name of all Secrets instances that have changed
+	reloaderJobQueue map[string]bool
+
 	// interval is the interval at which queued Classifiers are evaluated
 	interval time.Duration
 
@@ -106,6 +112,7 @@ func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, 
 			managerInstance.classifierJobQueue = make(map[string]bool)
 			managerInstance.healthCheckJobQueue = make(map[string]bool)
 			managerInstance.eventSourceJobQueue = make(map[string]bool)
+			managerInstance.reloaderJobQueue = make(map[string]bool)
 			managerInstance.interval = time.Duration(intervalInSecond) * time.Second
 			managerInstance.mu = &sync.Mutex{}
 
@@ -122,9 +129,12 @@ func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, 
 			managerInstance.clusterName = clusterName
 			managerInstance.clusterType = cluserType
 
+			initializeReloaderMaps()
+
 			go managerInstance.evaluateClassifiers(ctx)
 			go managerInstance.evaluateHealthChecks(ctx)
 			go managerInstance.evaluateEventSources(ctx)
+			go managerInstance.evaluateReloaders(ctx)
 			go managerInstance.buildResourceToWatch(ctx)
 			// Start a watcher for CustomResourceDefinition
 			go crd.WatchCustomResourceDefinition(ctx, managerInstance.config,
@@ -163,7 +173,10 @@ func (m *manager) EvaluateClassifier(classifierName string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.log.V(logs.LogDebug).Info(fmt.Sprintf("queue classifier %s for evaluation", classifierName))
+	logger := m.log
+	logger = logger.WithValues("classifier", classifierName)
+
+	logger.V(logs.LogDebug).Info("queue classifier for evaluation")
 
 	m.classifierJobQueue[classifierName] = true
 }
@@ -173,19 +186,64 @@ func (m *manager) EvaluateHealthCheck(healthCheckName string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.log.V(logs.LogDebug).Info(fmt.Sprintf("queue healthCheck %s for evaluation", healthCheckName))
+	logger := m.log
+	logger = logger.WithValues("healthCheck", healthCheckName)
+
+	logger.V(logs.LogDebug).Info("queue healthCheck for evaluation")
 
 	m.healthCheckJobQueue[healthCheckName] = true
 }
 
-// EvaluateHEventSource queues a EventSource instance for evaluation
+// EvaluateEventSource queues a EventSource instance for evaluation
 func (m *manager) EvaluateEventSource(eventSourceName string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.log.V(logs.LogDebug).Info(fmt.Sprintf("queue eventSource %s for evaluation", eventSourceName))
+	logger := m.log
+	logger = logger.WithValues("eventSource", eventSourceName)
+
+	logger.V(logs.LogDebug).Info("queue eventSource for evaluation")
 
 	m.eventSourceJobQueue[eventSourceName] = true
+}
+
+// EvaluateReloader queues a Reloader instance for evaluation
+func (m *manager) EvaluateReloader(reloaderName string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	logger := m.log
+	logger = logger.WithValues("reloader", reloaderName)
+
+	logger.V(logs.LogDebug).Info("queue reloader for evaluation")
+
+	m.reloaderJobQueue[fmt.Sprintf("%s:%s", libsveltosv1alpha1.ReloaderKind, reloaderName)] = true
+}
+
+// EvaluateConfigMap queues a ConfigMap instance for evaluation
+func (m *manager) EvaluateConfigMap(configMapNamespace, configMapName string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	logger := m.log
+	logger = logger.WithValues("configMap", fmt.Sprintf("%s/%s", configMapNamespace, configMapName))
+
+	logger.V(logs.LogDebug).Info("queue configMap for evaluation")
+
+	m.reloaderJobQueue[fmt.Sprintf("ConfigMap:%s/%s", configMapNamespace, configMapName)] = true
+}
+
+// EvaluateSecret queues a Secret instance for evaluation
+func (m *manager) EvaluateSecret(secretNamespace, secretName string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	logger := m.log
+	logger = logger.WithValues("secret", fmt.Sprintf("%s/%s", secretNamespace, secretName))
+
+	logger.V(logs.LogDebug).Info("queue secret for evaluation")
+
+	m.reloaderJobQueue[fmt.Sprintf("Secret:%s/%s", secretNamespace, secretName)] = true
 }
 
 // If there is any classifier/healthCheck using this GVK, restart agent
