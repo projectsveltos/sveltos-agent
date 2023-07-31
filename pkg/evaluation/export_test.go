@@ -23,11 +23,14 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
+	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 )
 
 // Those are used only for uts
@@ -71,6 +74,28 @@ var (
 	MarshalSliceOfUnstructured = (*manager).marshalSliceOfUnstructured
 )
 
+// reloader
+var (
+	EvaluateReloaderInstance        = (*manager).evaluateReloaderInstance
+	GetResourceVolumeMounts         = (*manager).getResourceVolumeMounts
+	UpdateReloaderReport            = (*manager).updateReloaderReport
+	EvaluateMountedResource         = (*manager).evaluateMountedResource
+	CreateReloaderReport            = (*manager).createReloaderReport
+	SendReloaderReportToMgtmCluster = (*manager).sendReloaderReportToMgtmCluster
+)
+
+func GetReloaderMap() map[corev1.ObjectReference]*libsveltosset.Set {
+	return reloaderMap
+}
+
+func GetResourceMap() map[corev1.ObjectReference]*libsveltosset.Set {
+	return resourceMap
+}
+
+func GetVolumeMap() map[corev1.ObjectReference]*libsveltosset.Set {
+	return volumeMap
+}
+
 func Reset() {
 	managerInstance = nil
 }
@@ -84,6 +109,7 @@ func GetUnknownResourcesToWatch() []schema.GroupVersionKind {
 }
 
 func InitializeManagerWithSkip(ctx context.Context, l logr.Logger, config *rest.Config, c client.Client,
+	clusterNamespace, clusterName string, cluserType libsveltosv1alpha1.ClusterType,
 	intervalInSecond uint) {
 
 	// Used only for testing purposes (so to avoid using testEnv when not required by test)
@@ -102,12 +128,16 @@ func InitializeManagerWithSkip(ctx context.Context, l logr.Logger, config *rest.
 			managerInstance.rebuildResourceToWatch = 0
 			managerInstance.watchMu = &sync.Mutex{}
 
+			managerInstance.clusterNamespace = clusterNamespace
+			managerInstance.clusterName = clusterName
+			managerInstance.clusterType = cluserType
+
 			managerInstance.unknownResourcesToWatch = make([]schema.GroupVersionKind, 0)
 
 			managerInstance.watchers = make(map[schema.GroupVersionKind]context.CancelFunc)
 
-			go managerInstance.evaluateClassifiers(ctx)
-			go managerInstance.evaluateHealthChecks(ctx)
+			initializeReloaderMaps()
+
 			go managerInstance.buildResourceToWatch(ctx)
 			// Do not start a watcher for CustomResourceDefinition. Meant to be used by ut only
 			// go managerInstance.watchCustomResourceDefinition(ctx)

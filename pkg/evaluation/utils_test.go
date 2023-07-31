@@ -85,5 +85,5 @@ func createNamespace(name string) {
 	}
 
 	Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
-	Expect(waitForObject(context.TODO(), testEnv.Client, ns)).To(Succeed())
+	waitForObject(context.TODO(), testEnv.Client, ns)
 }

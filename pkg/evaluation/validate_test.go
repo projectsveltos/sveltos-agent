@@ -13,6 +13,7 @@ import (
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
+	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -149,8 +150,13 @@ func verifyEvent(dirName string) {
 		}
 	}
 
+	clusterNamespace := utils.ReportNamespace
+	clusterName := randomString()
+	clusterType := libsveltosv1alpha1.ClusterTypeCapi
+
 	c := fake.NewClientBuilder().WithScheme(scheme).Build()
-	evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c, 10)
+	evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
+		clusterNamespace, clusterName, clusterType, 10)
 	manager := evaluation.GetManager()
 	Expect(manager).ToNot(BeNil())
 
@@ -190,8 +196,13 @@ func verifyHealthCheck(dirName string) {
 		}
 	}
 
+	clusterNamespace := utils.ReportNamespace
+	clusterName := randomString()
+	clusterType := libsveltosv1alpha1.ClusterTypeCapi
+
 	c := fake.NewClientBuilder().WithScheme(scheme).Build()
-	evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c, 10)
+	evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
+		clusterNamespace, clusterName, clusterType, 10)
 	manager := evaluation.GetManager()
 	Expect(manager).ToNot(BeNil())
 
@@ -251,8 +262,13 @@ func verifyClassifier(dirName string) {
 		}
 	}
 
+	clusterNamespace := utils.ReportNamespace
+	clusterName := randomString()
+	clusterType := libsveltosv1alpha1.ClusterTypeCapi
+
 	c := fake.NewClientBuilder().WithScheme(scheme).Build()
-	evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c, 10)
+	evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
+		clusterNamespace, clusterName, clusterType, 10)
 	manager := evaluation.GetManager()
 	Expect(manager).ToNot(BeNil())
 
