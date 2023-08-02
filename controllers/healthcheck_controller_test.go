@@ -54,7 +54,7 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 		cancel()
 	})
 
-	It("updateMaps updates map of HealthCheck using DeployedResourceConstraints verion as criteria", func() {
+	It("updateMaps updates map of HealthCheck using a gvk", func() {
 		healthCheck := getHealthCheck()
 		Expect(testEnv.Create(watcherCtx, healthCheck)).To(Succeed())
 		Expect(waitForObject(watcherCtx, testEnv.Client, healthCheck)).To(Succeed())

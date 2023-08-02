@@ -144,6 +144,10 @@ var _ = BeforeSuite(func() {
 	Expect(testEnv.Create(ctx, reloaderReportRD)).To(Succeed())
 	waitForObject(ctx, testEnv.Client, reloaderReportRD)
 
+	// add an extra second sleep. Otherwise randomly ut fails with
+	// no matches for kind "EventSource" in version "lib.projectsveltos.io/v1alpha1"
+	time.Sleep(time.Second)
+
 	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
 		time.Sleep(time.Second)
 	}

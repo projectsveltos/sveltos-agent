@@ -96,6 +96,7 @@ type manager struct {
 	reactClassifier  ReactToNotification
 	reactHealthCheck ReactToNotification
 	reactEventSource ReactToNotification
+	reactReloader    ReactToNotification
 }
 
 // InitializeManager initializes a manager implementing the ClassifierInterface
@@ -162,6 +163,10 @@ func (m *manager) RegisterHealthCheckMethod(react ReactToNotification) {
 
 func (m *manager) RegisterEventSourceMethod(react ReactToNotification) {
 	m.reactEventSource = react
+}
+
+func (m *manager) RegisterReloaderMethod(react ReactToNotification) {
+	m.reactReloader = react
 }
 
 func (m *manager) ReEvaluateResourceToWatch() {
