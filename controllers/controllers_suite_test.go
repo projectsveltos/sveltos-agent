@@ -126,6 +126,11 @@ var _ = BeforeSuite(func() {
 	Expect(testEnv.Create(ctx, eventReportCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, eventReportCRD)).To(Succeed())
 
+	reloaderCRD, err := utils.GetUnstructured(crd.GetReloaderCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, reloaderCRD)).To(Succeed())
+	Expect(waitForObject(ctx, testEnv.Client, reloaderCRD)).To(Succeed())
+
 	// add an extra second sleep. Otherwise randomly ut fails with
 	// no matches for kind "EventSource" in version "lib.projectsveltos.io/v1alpha1"
 	time.Sleep(time.Second)
@@ -251,6 +256,14 @@ func getEventSource() *libsveltosv1alpha1.EventSource {
 			Group:   randomString(),
 			Version: randomString(),
 			Kind:    randomString(),
+		},
+	}
+}
+
+func getReloader() *libsveltosv1alpha1.Reloader {
+	return &libsveltosv1alpha1.Reloader{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: randomString(),
 		},
 	}
 }

@@ -215,7 +215,7 @@ func (r *EventSourceReconciler) updateMaps(eventSource *libsveltosv1alpha1.Event
 }
 
 // react gets called when an instance of passed in gvk has been modified.
-// This method queues all Classifier currently using that gvk to be evaluated.
+// This method queues all EventSource currently using that gvk to be evaluated.
 func (r *EventSourceReconciler) react(gvk *schema.GroupVersionKind) {
 	r.Mux.RLock()
 	defer r.Mux.RUnlock()

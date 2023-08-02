@@ -245,6 +245,8 @@ func startControllers(mgr manager.Manager, sendReports controllers.Mode) {
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
 		RunMode:          sendReports,
+		Mux:              sync.RWMutex{},
+		GVKReloaders:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 		ClusterNamespace: clusterNamespace,
 		ClusterName:      clusterName,
 		ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),

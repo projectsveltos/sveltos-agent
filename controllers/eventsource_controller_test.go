@@ -54,7 +54,7 @@ var _ = Describe("Controllers: eventSource controller", func() {
 		cancel()
 	})
 
-	It("updateMaps updates map of EventSource using DeployedResourceConstraints verion as criteria", func() {
+	It("updateMaps updates map of EventSource using a gvk", func() {
 		eventSource := getEventSource()
 		Expect(testEnv.Create(watcherCtx, eventSource)).To(Succeed())
 		Expect(waitForObject(watcherCtx, testEnv.Client, eventSource)).To(Succeed())

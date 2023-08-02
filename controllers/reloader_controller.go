@@ -18,12 +18,15 @@ package controllers
 
 import (
 	"context"
+	"sync"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -31,6 +34,7 @@ import (
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
+	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	"github.com/projectsveltos/sveltos-agent/pkg/scope"
 )
@@ -39,6 +43,13 @@ import (
 type ReloaderReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	// Used to update internal maps and sets
+	Mux sync.RWMutex
+	// key: GVK, Value: list of Reloaders based on that GVK
+	// For instance, for a Deployment, this will contain list of Reloaders
+	// listing at least one Deployment
+	GVKReloaders map[schema.GroupVersionKind]*libsveltosset.Set
 
 	RunMode          Mode
 	ClusterNamespace string
@@ -109,6 +120,9 @@ func (r *ReloaderReconciler) reconcileDelete(reloaderScope *scope.ReloaderScope,
 
 	logger.V(logs.LogDebug).Info("reconcile delete")
 
+	logger.V(logs.LogDebug).Info("remove reloader from maps")
+	r.cleanMaps(reloaderScope.Reloader)
+
 	// Queue Reloader for evaluation
 	manager := evaluation.GetManager()
 	manager.EvaluateReloader(reloaderScope.Name())
@@ -126,6 +140,9 @@ func (r *ReloaderReconciler) reconcileNormal(reloaderScope *scope.ReloaderScope,
 ) reconcile.Result {
 
 	logger.V(logs.LogDebug).Info("reconcile")
+
+	logger.V(logs.LogDebug).Info("update maps")
+	r.updateMaps(reloaderScope.Reloader)
 
 	// Queue EventSource for evaluation
 	manager := evaluation.GetManager()
@@ -169,5 +186,73 @@ func (r *ReloaderReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		SecretPredicates(mgr.GetLogger().WithValues("predicate", "secretpredicate")),
 	)
 
+	evaluation.GetManager().RegisterEventSourceMethod(r.react)
+
 	return err
+}
+
+func (r *ReloaderReconciler) cleanMaps(reloader *libsveltosv1alpha1.Reloader) {
+	r.Mux.Lock()
+	defer r.Mux.Unlock()
+
+	policyRef := getKeyFromObject(r.Scheme, reloader)
+
+	for gvk := range r.GVKReloaders {
+		r.GVKReloaders[gvk].Erase(policyRef)
+	}
+}
+
+func (r *ReloaderReconciler) updateMaps(reloader *libsveltosv1alpha1.Reloader) {
+	currentGVKs := make(map[schema.GroupVersionKind]bool)
+
+	for i := range reloader.Spec.ReloaderInfo {
+		gvk := schema.GroupVersionKind{
+			// Deployment/StatefulSet/DaemonSet are all appsv1
+			Group:   appsv1.SchemeGroupVersion.Group,
+			Version: appsv1.SchemeGroupVersion.Version,
+			Kind:    reloader.Spec.ReloaderInfo[i].Kind,
+		}
+
+		currentGVKs[gvk] = true
+	}
+
+	policyRef := getKeyFromObject(r.Scheme, reloader)
+
+	r.Mux.Lock()
+	defer r.Mux.Unlock()
+
+	for gvk := range r.GVKReloaders {
+		if _, ok := currentGVKs[gvk]; !ok {
+			r.GVKReloaders[gvk].Erase(policyRef)
+		}
+	}
+
+	for gvk := range currentGVKs {
+		_, ok := r.GVKReloaders[gvk]
+		if !ok {
+			r.GVKReloaders[gvk] = &libsveltosset.Set{}
+		}
+		r.GVKReloaders[gvk].Insert(policyRef)
+	}
+}
+
+// react gets called when an instance of passed in gvk has been modified.
+// This method queues all Reloader currently using that gvk to be evaluated.
+func (r *ReloaderReconciler) react(gvk *schema.GroupVersionKind) {
+	r.Mux.RLock()
+	defer r.Mux.RUnlock()
+
+	if gvk == nil {
+		return
+	}
+
+	manager := evaluation.GetManager()
+
+	if v, ok := r.GVKReloaders[*gvk]; ok {
+		reloaders := v.Items()
+		for i := range reloaders {
+			eventSource := reloaders[i]
+			manager.EvaluateReloader(eventSource.Name)
+		}
+	}
 }
