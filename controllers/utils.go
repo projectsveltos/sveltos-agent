@@ -119,7 +119,7 @@ func patchObject(ctx context.Context, c client.Client, object client.Object, log
 	return nil
 }
 
-// Sveltos deploys EventSources,HealtchChecks,Classifiers/Reloaders in managed clusters.
+// Sveltos deploys EventSources,HealtchChecks,Classifiers,Reloaders in managed clusters.
 // Sveltos-agent running in those managed clusters needs to process those.
 //
 // Sometimes the management cluster is in turn a managed cluster. In this case,

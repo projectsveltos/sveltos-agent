@@ -59,6 +59,7 @@ type ReloaderReconciler struct {
 
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=reloaders,verbs=get;list;watch
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=reloaderreports,verbs=get;list;watch;create;delete;patch;update
+//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=reloaderreports/status,verbs=get;update;patch
 
 func (r *ReloaderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
 	logger := ctrl.LoggerFrom(ctx)
