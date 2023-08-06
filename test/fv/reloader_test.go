@@ -112,7 +112,7 @@ var _ = Describe("Reloader", func() {
 		}
 	})
 
-	It("Evaluate eventSource", Label("FV"), func() {
+	It("Evaluate reloaderReport", Label("FV"), func() {
 		ns := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),

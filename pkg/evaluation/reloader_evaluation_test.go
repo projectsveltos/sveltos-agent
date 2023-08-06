@@ -436,6 +436,18 @@ var _ = Describe("Manager: reloader evaluation", func() {
 	})
 
 	It("sendReloaderReport sends reloaderReport to management cluster", func() {
+		// Create namespace. This represents the cluster namespace in the management cluster
+		// ReloaderReport will be created by sendReloaderReportToMgtmCluster in the cluster
+		// namespace in the management cluster.
+		// ReloaderReport is instead in the projectsveltos namespace in the managed cluster.
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: randomString(),
+			},
+		}
+		Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, ns)
+
 		configMapRef := &corev1.ObjectReference{
 			Namespace:  randomString(),
 			Name:       randomString(),
@@ -443,8 +455,8 @@ var _ = Describe("Manager: reloader evaluation", func() {
 			APIVersion: corev1.SchemeGroupVersion.String(),
 		}
 
-		name := libsveltosv1alpha1.GetReloaderReportName(configMapRef.Kind, configMapRef.Namespace,
-			configMapRef.Name, clusterName, &clusterType)
+		name := libsveltosv1alpha1.GetReloaderReportName(configMapRef.Kind,
+			configMapRef.Namespace, configMapRef.Name, clusterName, &clusterType)
 
 		phase := libsveltosv1alpha1.ReportDelivering
 		reloaderReport := &libsveltosv1alpha1.ReloaderReport{
@@ -470,17 +482,6 @@ var _ = Describe("Manager: reloader evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), reloaderReport)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, reloaderReport)
 
-		// Create namespace. This represents the cluster namespace in the management cluster
-		// ReloaderReport will be created by sendReloaderReportToMgtmCluster in the cluster namespace in
-		// the management cluster
-		ns := &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: randomString(),
-			},
-		}
-		Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
-		waitForObject(context.TODO(), testEnv.Client, ns)
-
 		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
 			ns.Name, clusterName, clusterType, 10)
 		manager := evaluation.GetManager()
@@ -496,13 +497,13 @@ var _ = Describe("Manager: reloader evaluation", func() {
 		Eventually(func() error {
 			mgmtReloaderReport := &libsveltosv1alpha1.ReloaderReport{}
 			return testEnv.Get(context.TODO(),
-				types.NamespacedName{Namespace: clusterNamespace, Name: name},
+				types.NamespacedName{Namespace: ns.Name, Name: name},
 				mgmtReloaderReport)
 		}, timeout, pollingInterval).Should(BeNil())
 
 		mgmtReloaderReport := &libsveltosv1alpha1.ReloaderReport{}
 		Expect(testEnv.Get(context.TODO(),
-			types.NamespacedName{Namespace: clusterNamespace, Name: name},
+			types.NamespacedName{Namespace: ns.Name, Name: name},
 			mgmtReloaderReport)).To(Succeed())
 		By("Verifying labels and annotations are set")
 		Expect(mgmtReloaderReport.Labels).ToNot(BeNil())

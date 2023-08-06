@@ -23,7 +23,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/go-logr/logr"
 	lua "github.com/yuin/gopher-lua"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -157,6 +157,15 @@ func (m *manager) isVersionAMatch(ctx context.Context,
 		return false, err
 	}
 
+	// Build version that can be compared
+	var comparableSemVersion *semver.Version
+	comparableSemVersion, err = semver.NewVersion(fmt.Sprintf("%d.%d.%d",
+		currentSemVersion.Major(), currentSemVersion.Minor(), currentSemVersion.Patch()))
+	if err != nil {
+		m.log.Error(err, "failed to create comparable semver version")
+		return false, err
+	}
+
 	for i := range classifier.Spec.KubernetesVersionConstraints {
 		kubernetesVersionConstraint := &classifier.Spec.KubernetesVersionConstraints[i]
 
@@ -179,7 +188,7 @@ func (m *manager) isVersionAMatch(ctx context.Context,
 			m.log.Error(err, "failed to build constraints")
 		}
 
-		if !c.Check(currentSemVersion) {
+		if !c.Check(comparableSemVersion) {
 			return false, nil
 		}
 	}

@@ -4,13 +4,13 @@ go 1.20
 
 require (
 	emperror.dev/errors v0.8.1
-	github.com/Masterminds/semver v1.5.0
+	github.com/Masterminds/semver/v3 v3.2.0
 	github.com/TwinProduction/go-color v1.0.0
 	github.com/go-logr/logr v1.2.4
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.8
 	github.com/pkg/errors v0.9.1
-	github.com/projectsveltos/libsveltos v0.14.1-0.20230801071844-911755ff3e1d
+	github.com/projectsveltos/libsveltos v0.14.1-0.20230803112817-bbe727530530
 	github.com/spf13/pflag v1.0.5
 	github.com/yuin/gopher-lua v1.1.0
 	golang.org/x/text v0.11.0
