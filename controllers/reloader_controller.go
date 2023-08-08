@@ -187,7 +187,7 @@ func (r *ReloaderReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		SecretPredicates(mgr.GetLogger().WithValues("predicate", "secretpredicate")),
 	)
 
-	evaluation.GetManager().RegisterEventSourceMethod(r.react)
+	evaluation.GetManager().RegisterReloaderMethod(r.react)
 
 	return err
 }
