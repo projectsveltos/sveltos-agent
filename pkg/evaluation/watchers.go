@@ -65,9 +65,9 @@ func (m *manager) buildResourceToWatch(ctx context.Context) {
 				if err != nil {
 					m.log.Error(err, "failed to update watchers")
 					atomic.StoreUint32(&m.rebuildResourceToWatch, 1)
-					continue
+				} else {
+					copy(m.resourcesToWatch, tmpResourceToWatch)
 				}
-				copy(m.resourcesToWatch, tmpResourceToWatch)
 			}
 			m.mu.Unlock()
 		}
