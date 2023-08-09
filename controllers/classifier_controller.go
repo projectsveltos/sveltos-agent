@@ -60,8 +60,7 @@ type ClassifierReconciler struct {
 	VersionClassifiers libsveltosset.Set
 }
 
-//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=classifiers,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=classifiers/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=classifiers,verbs=get;list;watch;update;patch
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=classifiers/finalizers,verbs=update
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=classifierreports,verbs=get;list;create;update;delete;patch
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=classifierreports/status,verbs=get;update;patch

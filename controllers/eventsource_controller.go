@@ -54,8 +54,7 @@ type EventSourceReconciler struct {
 	GVKEventSources map[schema.GroupVersionKind]*libsveltosset.Set
 }
 
-// +kubebuilder:rbac:groups=lib.projectsveltos.io,resources=eventsources,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=lib.projectsveltos.io,resources=eventsources/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=lib.projectsveltos.io,resources=eventsources,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups=lib.projectsveltos.io,resources=eventsources/finalizers,verbs=update
 // +kubebuilder:rbac:groups=lib.projectsveltos.io,resources=eventreports,verbs=get;list;create;update;delete;patch
 // +kubebuilder:rbac:groups=lib.projectsveltos.io,resources=eventreports/status,verbs=get;update;patch
@@ -216,7 +215,7 @@ func (r *EventSourceReconciler) updateMaps(eventSource *libsveltosv1alpha1.Event
 }
 
 // react gets called when an instance of passed in gvk has been modified.
-// This method queues all Classifier currently using that gvk to be evaluated.
+// This method queues all EventSource currently using that gvk to be evaluated.
 func (r *EventSourceReconciler) react(gvk *schema.GroupVersionKind) {
 	r.Mux.RLock()
 	defer r.Mux.RUnlock()
@@ -228,10 +227,10 @@ func (r *EventSourceReconciler) react(gvk *schema.GroupVersionKind) {
 	manager := evaluation.GetManager()
 
 	if v, ok := r.GVKEventSources[*gvk]; ok {
-		classifiers := v.Items()
-		for i := range classifiers {
-			classifier := classifiers[i]
-			manager.EvaluateEventSource(classifier.Name)
+		eventSources := v.Items()
+		for i := range eventSources {
+			eventSource := eventSources[i]
+			manager.EvaluateEventSource(eventSource.Name)
 		}
 	}
 }

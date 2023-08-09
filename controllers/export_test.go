@@ -37,6 +37,9 @@ var (
 
 	EventSourceUpdateMaps      = (*EventSourceReconciler).updateMaps
 	EventSourceReconcileDelete = (*EventSourceReconciler).reconcileDelete
+
+	ReloaderUpdateMaps      = (*ReloaderReconciler).updateMaps
+	ReloaderReconcileDelete = (*ReloaderReconciler).reconcileDelete
 )
 
 var (

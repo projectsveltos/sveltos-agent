@@ -25,6 +25,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
@@ -64,9 +65,9 @@ func (m *manager) buildResourceToWatch(ctx context.Context) {
 				if err != nil {
 					m.log.Error(err, "failed to update watchers")
 					atomic.StoreUint32(&m.rebuildResourceToWatch, 1)
-					continue
+				} else {
+					copy(m.resourcesToWatch, tmpResourceToWatch)
 				}
-				copy(m.resourcesToWatch, tmpResourceToWatch)
 			}
 			m.mu.Unlock()
 		}
@@ -86,7 +87,6 @@ func (m *manager) buildList(ctx context.Context) (map[schema.GroupVersionKind]bo
 	if err != nil {
 		return nil, err
 	}
-
 	for k := range tmpResources {
 		resources[k] = true
 	}
@@ -95,7 +95,14 @@ func (m *manager) buildList(ctx context.Context) (map[schema.GroupVersionKind]bo
 	if err != nil {
 		return nil, err
 	}
+	for k := range tmpResources {
+		resources[k] = true
+	}
 
+	tmpResources, err = m.buildListForReloaders(ctx)
+	if err != nil {
+		return nil, err
+	}
 	for k := range tmpResources {
 		resources[k] = true
 	}
@@ -163,6 +170,26 @@ func (m *manager) buildListForEventSources(ctx context.Context) (map[schema.Grou
 	return resources, nil
 }
 
+func (m *manager) buildListForReloaders(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
+	reloaders := &libsveltosv1alpha1.ReloaderList{}
+	err := m.List(ctx, reloaders)
+	if err != nil {
+		return nil, err
+	}
+
+	resources := make(map[schema.GroupVersionKind]bool)
+
+	for i := range reloaders.Items {
+		reloader := &reloaders.Items[i]
+		if !reloader.DeletionTimestamp.IsZero() {
+			continue
+		}
+		resources = m.addGVKsForReloader(reloader, resources)
+	}
+
+	return resources, nil
+}
+
 func (m *manager) addGVKsForClassifier(classifier *libsveltosv1alpha1.Classifier,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
@@ -201,6 +228,23 @@ func (m *manager) addGVKsForEventSource(eventSource *libsveltosv1alpha1.EventSou
 		Version: eventSource.Spec.Version,
 	}
 	resources[gvk] = true
+
+	return resources
+}
+
+func (m *manager) addGVKsForReloader(reloader *libsveltosv1alpha1.Reloader,
+	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
+
+	for i := range reloader.Spec.ReloaderInfo {
+		resource := &reloader.Spec.ReloaderInfo[i]
+		gvk := schema.GroupVersionKind{
+			// Deployment/StatefulSet/DaemonSet are all appsv1
+			Group:   appsv1.SchemeGroupVersion.Group,
+			Version: appsv1.SchemeGroupVersion.Group,
+			Kind:    resource.Kind,
+		}
+		resources[gvk] = true
+	}
 
 	return resources
 }

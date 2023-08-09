@@ -66,17 +66,20 @@ var _ = Describe("Classification: crd", Serial, func() {
 
 	It("Classifier with CRD not present at time classifier is created", Label("FV"), func() {
 		currentServiceMonitorCRD := &apiextensionsv1.CustomResourceDefinition{}
-		err := k8sClient.Get(context.TODO(), types.NamespacedName{Name: "servicemonitors.monitoring.coreos.com"},
-			currentServiceMonitorCRD)
-		if err == nil {
-			Expect(k8sClient.Delete(context.TODO(), currentServiceMonitorCRD))
-		} else {
-			Expect(apierrors.IsNotFound(err)).To(BeTrue())
-		}
+		Eventually(func() bool {
+			err := k8sClient.Get(context.TODO(), types.NamespacedName{Name: "servicemonitors.monitoring.coreos.com"},
+				currentServiceMonitorCRD)
+			if err == nil {
+				_ = k8sClient.Delete(context.TODO(), currentServiceMonitorCRD)
+				return false
+			} else {
+				return apierrors.IsNotFound(err)
+			}
+		}, timeout, pollingInterval).Should(BeTrue())
 
 		By("Posting ServiceMonitor CRD")
 		var serviceMonitor *unstructured.Unstructured
-		serviceMonitor, err = libsveltosutils.GetUnstructured([]byte(serviceMonitorCRD))
+		serviceMonitor, err := libsveltosutils.GetUnstructured([]byte(serviceMonitorCRD))
 		Expect(err).To(BeNil())
 		err = k8sClient.Create(context.TODO(), serviceMonitor)
 		if err != nil {

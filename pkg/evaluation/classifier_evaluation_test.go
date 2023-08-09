@@ -59,9 +59,15 @@ spec:
 
 var _ = Describe("Manager: classifier evaluation", func() {
 	var classifier *libsveltosv1alpha1.Classifier
+	var clusterNamespace string
+	var clusterName string
+	var clusterType libsveltosv1alpha1.ClusterType
 
 	BeforeEach(func() {
 		evaluation.Reset()
+		clusterNamespace = utils.ReportNamespace
+		clusterName = randomString()
+		clusterType = libsveltosv1alpha1.ClusterTypeCapi
 	})
 
 	AfterEach(func() {
@@ -77,9 +83,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonEqual)
 
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -93,9 +100,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("IsVersionAMatch: comparisonEqual returns false when version does not match", func() {
 		classifier = getClassifierWithKubernetesConstraints("v1.25.2", libsveltosv1alpha1.ComparisonEqual)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -109,9 +117,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("IsVersionAMatch: ComparisonNotEqual returns true when version doesn't match", func() {
 		classifier = getClassifierWithKubernetesConstraints(version26, libsveltosv1alpha1.ComparisonNotEqual)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -125,9 +134,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("IsVersionAMatch: ComparisonNotEqual returns false when version matches", func() {
 		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonNotEqual)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -141,9 +151,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("IsVersionAMatch: ComparisonGreaterThan returns true when version is strictly greater than specified one", func() {
 		classifier = getClassifierWithKubernetesConstraints(version26, libsveltosv1alpha1.ComparisonGreaterThan)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -157,9 +168,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("IsVersionAMatch: ComparisonGreaterThan returns false when version is not strictly greater than specified one", func() {
 		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonGreaterThan)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -173,9 +185,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("IsVersionAMatch: ComparisonGreaterThanOrEqualTo returns true when version is equal to specified one", func() {
 		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonGreaterThanOrEqualTo)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -189,9 +202,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("IsVersionAMatch: ComparisonGreaterThanOrEqualTo returns false when version is not equal/greater than specified one", func() {
 		classifier = getClassifierWithKubernetesConstraints(version28, libsveltosv1alpha1.ComparisonGreaterThanOrEqualTo)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -205,9 +219,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("IsVersionAMatch: ComparisonLessThan returns true when version is strictly less than specified one", func() {
 		classifier = getClassifierWithKubernetesConstraints(version28, libsveltosv1alpha1.ComparisonLessThan)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -221,9 +236,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("IsVersionAMatch: ComparisonLessThan returns false when version is not strictly less than specified one", func() {
 		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonLessThan)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -237,9 +253,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("IsVersionAMatch: ComparisonLessThanOrEqualTo returns true when version is equal to specified one", func() {
 		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonLessThanOrEqualTo)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -253,9 +270,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("IsVersionAMatch: ComparisonLessThanOrEqualTo returns false when version is not equal/less than specified one", func() {
 		classifier = getClassifierWithKubernetesConstraints(version26, libsveltosv1alpha1.ComparisonLessThanOrEqualTo)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -276,9 +294,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		)
 
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -299,9 +318,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		)
 
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -316,9 +336,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		classifier = getClassifierWithKubernetesConstraints(version26, libsveltosv1alpha1.ComparisonGreaterThan)
 
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, testEnv, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, testEnv,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -362,9 +383,11 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			classifier,
 		}
 
-		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).WithObjects(initObjects...).Build()
+		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).
+			WithObjects(initObjects...).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -380,9 +403,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		classifier = getClassifierWithKubernetesConstraints(version26, libsveltosv1alpha1.ComparisonGreaterThan)
 
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -435,7 +459,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		}
 
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
 		ns := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -443,23 +467,22 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			},
 		}
 		Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, ns)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, ns)
 
 		for i := 0; i < countMin-1; i++ {
 			pod := fmt.Sprintf(podTemplate, namespace, randomString())
 			u, err := libsveltosutils.GetUnstructured([]byte(pod))
 			Expect(err).To(BeNil())
 			Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
-			Expect(waitForObject(context.TODO(), testEnv.Client, u)).To(Succeed())
+			waitForObject(context.TODO(), testEnv.Client, u)
 		}
 
-		watcherCtx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
 		manager := evaluation.GetManager()
 
-		isMatch, err := evaluation.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
+		isMatch, err := evaluation.IsResourceAMatch(manager, context.TODO(),
+			&classifier.Spec.DeployedResourceConstraints[0])
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeFalse())
 
@@ -468,9 +491,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		u, err := libsveltosutils.GetUnstructured([]byte(pod))
 		Expect(err).To(BeNil())
 		Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, u)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, u)
 
-		isMatch, err = evaluation.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
+		isMatch, err = evaluation.IsResourceAMatch(manager, context.TODO(),
+			&classifier.Spec.DeployedResourceConstraints[0])
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeTrue())
 
@@ -481,10 +505,11 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			u, err = libsveltosutils.GetUnstructured([]byte(pod))
 			Expect(err).To(BeNil())
 			Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
-			Expect(waitForObject(context.TODO(), testEnv.Client, u)).To(Succeed())
+			waitForObject(context.TODO(), testEnv.Client, u)
 		}
 
-		isMatch, err = evaluation.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
+		isMatch, err = evaluation.IsResourceAMatch(manager, context.TODO(),
+			&classifier.Spec.DeployedResourceConstraints[0])
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeFalse())
 	})
@@ -521,7 +546,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		}
 
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
 		ns := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -529,7 +554,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			},
 		}
 		Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, ns)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, ns)
 
 		// Create enough pod to match CountMin. But labels are currently not a match for classifier
 		for i := 0; i <= countMin; i++ {
@@ -538,16 +563,15 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			u.SetLabels(map[string]string{key1: value1})
 			Expect(err).To(BeNil())
 			Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
-			Expect(waitForObject(context.TODO(), testEnv.Client, u)).To(Succeed())
+			waitForObject(context.TODO(), testEnv.Client, u)
 		}
 
-		watcherCtx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10, false)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
 		manager := evaluation.GetManager()
 
-		isMatch, err := evaluation.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
+		isMatch, err := evaluation.IsResourceAMatch(manager, context.TODO(),
+			&classifier.Spec.DeployedResourceConstraints[0])
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeFalse())
 
@@ -566,7 +590,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 
 		// Use Eventually so cache is in sync
 		Eventually(func() bool {
-			isMatch, err = evaluation.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
+			isMatch, err = evaluation.IsResourceAMatch(manager, context.TODO(),
+				&classifier.Spec.DeployedResourceConstraints[0])
 			return err == nil && isMatch
 		}, timeout, pollingInterval).Should(BeTrue())
 	})
@@ -599,7 +624,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		}
 
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
 		ns := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -607,22 +632,21 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			},
 		}
 		Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, ns)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, ns)
 
 		// fields are not a match for classifier
 		pod := fmt.Sprintf(podTemplate, namespace, randomString())
 		u, err := libsveltosutils.GetUnstructured([]byte(pod))
 		Expect(err).To(BeNil())
 		Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, u)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, u)
 
-		watcherCtx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10, false)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
 		manager := evaluation.GetManager()
 
-		isMatch, err := evaluation.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
+		isMatch, err := evaluation.IsResourceAMatch(manager, context.TODO(),
+			&classifier.Spec.DeployedResourceConstraints[0])
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeFalse())
 
@@ -641,7 +665,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 
 		// Use Eventually so cache is in sync
 		Eventually(func() bool {
-			isMatch, err = evaluation.IsResourceAMatch(manager, watcherCtx, &classifier.Spec.DeployedResourceConstraints[0])
+			isMatch, err = evaluation.IsResourceAMatch(manager, context.TODO(),
+				&classifier.Spec.DeployedResourceConstraints[0])
 			return err == nil && isMatch
 		}, timeout, pollingInterval).Should(BeTrue())
 	})
@@ -659,9 +684,11 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			classifierReport,
 		}
 
-		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).WithObjects(initObjects...).Build()
+		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).
+			WithObjects(initObjects...).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
+			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -683,12 +710,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		if err != nil {
 			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
 		}
-		Expect(waitForObject(context.TODO(), testEnv.Client, ns)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, ns)
 
-		watcherCtx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
 		manager := evaluation.GetManager()
 
 		c, err := evaluation.GetManamegentClusterClient(manager, context.TODO(), klogr.New())
@@ -702,7 +727,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			{Key: randomString(), Value: randomString()},
 		}
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifier)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifier)
 
 		isMatch := true
 		phase := libsveltosv1alpha1.ReportDelivering
@@ -721,15 +746,14 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		}
 
 		Expect(testEnv.Create(context.TODO(), classifierReport)).To(Succeed())
-		Expect(waitForObject(context.TODO(), testEnv.Client, classifierReport)).To(Succeed())
+		waitForObject(context.TODO(), testEnv.Client, classifierReport)
 
 		clusterNamespace := utils.ReportNamespace
 		clusterName := randomString()
 		clusterType := libsveltosv1alpha1.ClusterTypeCapi
-		watcherCtx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10, false)
+
+		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+			clusterNamespace, clusterName, clusterType, 10)
 		manager := evaluation.GetManager()
 
 		Expect(evaluation.SendClassifierReport(manager, context.TODO(), classifier)).To(Succeed())

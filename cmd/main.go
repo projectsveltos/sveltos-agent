@@ -240,4 +240,18 @@ func startControllers(mgr manager.Manager, sendReports controllers.Mode) {
 		setupLog.Error(err, "unable to create controller", "controller", "EventReport")
 		os.Exit(1)
 	}
+
+	if err = (&controllers.ReloaderReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		RunMode:          sendReports,
+		Mux:              sync.RWMutex{},
+		GVKReloaders:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
+		ClusterNamespace: clusterNamespace,
+		ClusterName:      clusterName,
+		ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Reloader")
+		os.Exit(1)
+	}
 }

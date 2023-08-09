@@ -52,7 +52,7 @@ end
 `
 )
 
-var _ = Describe("Classification", func() {
+var _ = Describe("Events", func() {
 	var key string
 	var value string
 	const (

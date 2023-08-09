@@ -54,8 +54,7 @@ type HealthCheckReconciler struct {
 	GVKHealthChecks map[schema.GroupVersionKind]*libsveltosset.Set
 }
 
-//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=healthchecks,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=healthchecks/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=healthchecks,verbs=get;list;watch;update;patch
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=healthchecks/finalizers,verbs=update
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=healthcheckreports,verbs=get;list;create;update;delete;patch
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=healthcheckreports/status,verbs=get;update;patch
@@ -220,7 +219,7 @@ func (r *HealthCheckReconciler) updateMaps(healthCheck *libsveltosv1alpha1.Healt
 }
 
 // react gets called when an instance of passed in gvk has been modified.
-// This method queues all Classifier currently using that gvk to be evaluated.
+// This method queues all HealthCheck currently using that gvk to be evaluated.
 func (r *HealthCheckReconciler) react(gvk *schema.GroupVersionKind) {
 	r.Mux.RLock()
 	defer r.Mux.RUnlock()
@@ -232,10 +231,10 @@ func (r *HealthCheckReconciler) react(gvk *schema.GroupVersionKind) {
 	manager := evaluation.GetManager()
 
 	if v, ok := r.GVKHealthChecks[*gvk]; ok {
-		classifiers := v.Items()
-		for i := range classifiers {
-			classifier := classifiers[i]
-			manager.EvaluateHealthCheck(classifier.Name)
+		healtchChecks := v.Items()
+		for i := range healtchChecks {
+			healtchCheck := healtchChecks[i]
+			manager.EvaluateHealthCheck(healtchCheck.Name)
 		}
 	}
 }

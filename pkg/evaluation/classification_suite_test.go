@@ -25,13 +25,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/cluster-api/util"
@@ -51,17 +48,8 @@ var (
 	scheme  *runtime.Scheme
 )
 
-var (
-	cacheSyncBackoff = wait.Backoff{
-		Duration: 100 * time.Millisecond,
-		Factor:   1.5,
-		Steps:    8,
-		Jitter:   0.4,
-	}
-)
-
 const (
-	timeout         = 60 * time.Second
+	timeout         = 80 * time.Second
 	pollingInterval = 2 * time.Second
 )
 
@@ -101,7 +89,7 @@ var _ = BeforeSuite(func() {
 		},
 	}
 	Expect(testEnv.Create(ctx, ns)).To(Succeed())
-	Expect(waitForObject(ctx, testEnv.Client, ns)).To(Succeed())
+	waitForObject(ctx, testEnv.Client, ns)
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -114,37 +102,51 @@ var _ = BeforeSuite(func() {
 	}
 
 	Expect(testEnv.Create(context.TODO(), secret)).To(Succeed())
-	Expect(waitForObject(context.TODO(), testEnv.Client, secret)).To(Succeed())
+	waitForObject(context.TODO(), testEnv.Client, secret)
 
 	classifierCRD, err := utils.GetUnstructured(crd.GetClassifierCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, classifierCRD)).To(Succeed())
-	Expect(waitForObject(ctx, testEnv.Client, classifierCRD)).To(Succeed())
+	waitForObject(ctx, testEnv.Client, classifierCRD)
 
 	classifierReportCRD, err := utils.GetUnstructured(crd.GetClassifierReportCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, classifierReportCRD)).To(Succeed())
-	Expect(waitForObject(ctx, testEnv.Client, classifierReportCRD)).To(Succeed())
+	waitForObject(ctx, testEnv.Client, classifierReportCRD)
 
 	healthCheckCRD, err := utils.GetUnstructured(crd.GetHealthCheckCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, healthCheckCRD)).To(Succeed())
-	Expect(waitForObject(ctx, testEnv.Client, healthCheckCRD)).To(Succeed())
+	waitForObject(ctx, testEnv.Client, healthCheckCRD)
 
 	healthCheckCReportRD, err := utils.GetUnstructured(crd.GetHealthCheckReportCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, healthCheckCReportRD)).To(Succeed())
-	Expect(waitForObject(ctx, testEnv.Client, healthCheckCReportRD)).To(Succeed())
+	waitForObject(ctx, testEnv.Client, healthCheckCReportRD)
 
 	eventSourceCRD, err := utils.GetUnstructured(crd.GetEventSourceCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, eventSourceCRD)).To(Succeed())
-	Expect(waitForObject(ctx, testEnv.Client, eventSourceCRD)).To(Succeed())
+	waitForObject(ctx, testEnv.Client, eventSourceCRD)
 
 	eventReportRD, err := utils.GetUnstructured(crd.GetEventReportCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, eventReportRD)).To(Succeed())
-	Expect(waitForObject(ctx, testEnv.Client, eventReportRD)).To(Succeed())
+	waitForObject(ctx, testEnv.Client, eventReportRD)
+
+	reloaderCRD, err := utils.GetUnstructured(crd.GetReloaderCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, reloaderCRD)).To(Succeed())
+	waitForObject(ctx, testEnv.Client, reloaderCRD)
+
+	reloaderReportRD, err := utils.GetUnstructured(crd.GetReloaderReportCRDYAML())
+	Expect(err).To(BeNil())
+	Expect(testEnv.Create(ctx, reloaderReportRD)).To(Succeed())
+	waitForObject(ctx, testEnv.Client, reloaderReportRD)
+
+	// add an extra second sleep. Otherwise randomly ut fails with
+	// no matches for kind "EventSource" in version "lib.projectsveltos.io/v1alpha1"
+	time.Sleep(time.Second)
 
 	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
 		time.Sleep(time.Second)
@@ -199,23 +201,11 @@ func getClassifierWithKubernetesConstraints(k8sVersion string, comparison libsve
 }
 
 // waitForObject waits for the cache to be updated helps in preventing test flakes due to the cache sync delays.
-func waitForObject(ctx context.Context, c client.Client, obj client.Object) error {
+func waitForObject(ctx context.Context, c client.Client, obj client.Object) {
 	// Makes sure the cache is updated with the new object
 	objCopy := obj.DeepCopyObject().(client.Object)
 	key := client.ObjectKeyFromObject(obj)
-	if err := wait.ExponentialBackoff(
-		cacheSyncBackoff,
-		func() (done bool, err error) {
-			if err := c.Get(ctx, key, objCopy); err != nil {
-				if apierrors.IsNotFound(err) {
-					return false, nil
-				}
-				return false, err
-			}
-			return true, nil
-		}); err != nil {
-		return errors.Wrapf(err, "object %s, %s is not being added to the testenv client cache",
-			obj.GetObjectKind().GroupVersionKind().String(), key)
-	}
-	return nil
+	Eventually(func() error {
+		return c.Get(ctx, key, objCopy)
+	}, timeout, pollingInterval).Should(BeNil())
 }
