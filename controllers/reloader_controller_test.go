@@ -22,6 +22,10 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -139,4 +143,38 @@ var _ = Describe("Controllers: reloader controller", func() {
 		Expect(reconciler.GVKReloaders[gvk].Len()).To(Equal(0))
 	})
 
+	It("Adds finalizer", func() {
+		reloader := getReloader()
+
+		initObjects := []client.Object{
+			reloader,
+		}
+
+		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
+
+		reconciler := &controllers.ReloaderReconciler{
+			Client:       c,
+			Scheme:       scheme,
+			Mux:          sync.RWMutex{},
+			GVKReloaders: make(map[schema.GroupVersionKind]*libsveltosset.Set),
+		}
+
+		reloaderName := client.ObjectKey{
+			Name: reloader.Name,
+		}
+		_, err := reconciler.Reconcile(context.TODO(), ctrl.Request{
+			NamespacedName: reloaderName,
+		})
+		Expect(err).ToNot(HaveOccurred())
+
+		currentReloader := &libsveltosv1alpha1.Reloader{}
+		err = c.Get(context.TODO(), reloaderName, currentReloader)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(
+			controllerutil.ContainsFinalizer(
+				currentReloader,
+				libsveltosv1alpha1.ReloaderFinalizer,
+			),
+		).Should(BeTrue())
+	})
 })
