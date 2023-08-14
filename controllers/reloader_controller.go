@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -81,6 +82,7 @@ func (r *ReloaderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_
 	}
 
 	if shouldIgnore(reloader) {
+		logger.V(logs.LogDebug).Info("ignoring it")
 		return reconcile.Result{}, nil
 	}
 
@@ -112,7 +114,7 @@ func (r *ReloaderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_
 	}
 
 	// Handle non-deleted healthCheck
-	return r.reconcileNormal(reloaderScope, logger), nil
+	return r.reconcileNormal(ctx, reloaderScope, logger)
 }
 
 func (r *ReloaderReconciler) reconcileDelete(reloaderScope *scope.ReloaderScope,
@@ -132,15 +134,27 @@ func (r *ReloaderReconciler) reconcileDelete(reloaderScope *scope.ReloaderScope,
 	// are automatically deleted after being processed by management
 	// cluster.
 
+	if controllerutil.ContainsFinalizer(reloaderScope.Reloader, libsveltosv1alpha1.ReloaderFinalizer) {
+		controllerutil.RemoveFinalizer(reloaderScope.Reloader, libsveltosv1alpha1.ReloaderFinalizer)
+	}
+
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
 	return reconcile.Result{}
 }
 
-func (r *ReloaderReconciler) reconcileNormal(reloaderScope *scope.ReloaderScope,
-	logger logr.Logger,
-) reconcile.Result {
+func (r *ReloaderReconciler) reconcileNormal(ctx context.Context,
+	reloaderScope *scope.ReloaderScope, logger logr.Logger,
+) (reconcile.Result, error) {
 
 	logger.V(logs.LogDebug).Info("reconcile")
+
+	if !controllerutil.ContainsFinalizer(reloaderScope.Reloader, libsveltosv1alpha1.ReloaderFinalizer) {
+		if err := addFinalizer(ctx, r.Client, reloaderScope.Reloader, libsveltosv1alpha1.ReloaderFinalizer,
+			logger); err != nil {
+			logger.V(logs.LogDebug).Info("failed to update finalizer")
+			return reconcile.Result{}, err
+		}
+	}
 
 	logger.V(logs.LogDebug).Info("update maps")
 	r.updateMaps(reloaderScope.Reloader)
@@ -150,7 +164,7 @@ func (r *ReloaderReconciler) reconcileNormal(reloaderScope *scope.ReloaderScope,
 	manager.EvaluateReloader(reloaderScope.Name())
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
-	return ctrl.Result{}
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
