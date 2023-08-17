@@ -72,6 +72,13 @@ rules:
   - list
   - watch
 - apiGroups:
+  - config.projectsveltos.io
+  resources:
+  - reloaders/finalizers
+  verbs:
+  - patch
+  - update
+- apiGroups:
   - lib.projectsveltos.io
   resources:
   - classifierreports
@@ -371,7 +378,7 @@ spec:
         - --run-mode=do-not-send-reports
         command:
         - /manager
-        image: projectsveltos/sveltos-agent-amd64:main
+        image: projectsveltos/sveltos-agent-amd64:dev
         livenessProbe:
           httpGet:
             path: /healthz
