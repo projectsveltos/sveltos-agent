@@ -72,13 +72,6 @@ rules:
   - list
   - watch
 - apiGroups:
-  - config.projectsveltos.io
-  resources:
-  - reloaders/finalizers
-  verbs:
-  - patch
-  - update
-- apiGroups:
   - lib.projectsveltos.io
   resources:
   - classifierreports
@@ -232,7 +225,15 @@ rules:
   verbs:
   - get
   - list
+  - patch
   - watch
+- apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - reloaders/finalizers
+  verbs:
+  - patch
+  - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
