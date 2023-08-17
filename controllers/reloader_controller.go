@@ -58,8 +58,8 @@ type ReloaderReconciler struct {
 	ClusterType      libsveltosv1alpha1.ClusterType
 }
 
-//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=reloaders,verbs=get;list;watch
-//+kubebuilder:rbac:groups=config.projectsveltos.io,resources=reloaders/finalizers,verbs=update;patch
+//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=reloaders,verbs=get;list;watch;patch
+//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=reloaders/finalizers,verbs=update;patch
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=reloaderreports,verbs=get;list;watch;create;delete;patch;update
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=reloaderreports/status,verbs=get;update;patch
 
