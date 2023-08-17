@@ -264,6 +264,9 @@ func getReloader() *libsveltosv1alpha1.Reloader {
 	return &libsveltosv1alpha1.Reloader{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: randomString(),
+			Annotations: map[string]string{
+				libsveltosv1alpha1.DeployedBySveltosAnnotation: "ok",
+			},
 		},
 	}
 }
