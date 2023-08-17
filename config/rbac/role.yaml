@@ -175,4 +175,12 @@ rules:
   verbs:
   - get
   - list
+  - patch
   - watch
+- apiGroups:
+  - lib.projectsveltos.io
+  resources:
+  - reloaders/finalizers
+  verbs:
+  - patch
+  - update
