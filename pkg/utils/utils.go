@@ -16,37 +16,7 @@ limitations under the License.
 
 package utils
 
-import (
-	"context"
-	"fmt"
-
-	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/version"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/rest"
-
-	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
-)
-
 const (
 	// Namespace where reports will be generated
 	ReportNamespace = "projectsveltos"
 )
-
-func GetKubernetesVersion(ctx context.Context, cfg *rest.Config, logger logr.Logger) (string, error) {
-	discClient, err := discovery.NewDiscoveryClientForConfig(cfg)
-	if err != nil {
-		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to get discovery client: %v", err))
-		return "", err
-	}
-
-	var k8sVersion *version.Info
-	k8sVersion, err = discClient.ServerVersion()
-	if err != nil {
-		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to get version from discovery client: %v", err))
-		return "", err
-	}
-
-	logger.V(logs.LogDebug).Info(fmt.Sprintf("cluster version: %s", k8sVersion.String()))
-	return k8sVersion.String(), nil
-}
