@@ -281,7 +281,7 @@ func getControlPlaneNode() *corev1.Node {
 		},
 		Status: corev1.NodeStatus{
 			NodeInfo: corev1.NodeSystemInfo{
-				KubeletVersion: "v1.27.1",
+				KubeletVersion: "v1.28.0",
 			},
 		},
 	}
