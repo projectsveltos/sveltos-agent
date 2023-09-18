@@ -32,8 +32,8 @@ import (
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
+	"github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
-	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
 // NodeReconciler reconciles a Node object

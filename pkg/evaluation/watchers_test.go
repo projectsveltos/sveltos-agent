@@ -78,7 +78,7 @@ var _ = Describe("Manager: watchers", func() {
 	})
 
 	It("buildList: builds list of resources to watch", func() {
-		classifier := getClassifierWithKubernetesConstraints(version26, libsveltosv1alpha1.ComparisonEqual)
+		classifier := getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonEqual)
 		classifier.Spec.DeployedResourceConstraints = []libsveltosv1alpha1.DeployedResourceConstraint{
 			pods,
 			kubeadmconfigs,
