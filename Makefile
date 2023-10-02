@@ -244,6 +244,7 @@ undeploy: $(CONTROLLER_GEN) $(KUSTOMIZE) ## Undeploy controller from the K8s clu
 set-manifest-image:
 	$(info Updating kustomize image patch file for manager resource)
 	sed -i'' -e 's@image: .*@image: '"${MANIFEST_IMG}:$(MANIFEST_TAG)"'@' ./config/default/manager_image_patch.yaml
+	sed -i'' -e 's@image: projectsveltos.*@image: '"${MANIFEST_IMG}:$(MANIFEST_TAG)"'@' ./manifest/mgmt_cluster_manifest.yaml
 
 set-manifest-pull-policy:
 	$(info Updating kustomize pull policy file for manager resource)
