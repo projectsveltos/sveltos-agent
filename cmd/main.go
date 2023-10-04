@@ -17,22 +17,32 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"os"
 	"sync"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	"github.com/go-logr/logr"
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
+	"k8s.io/klog/v2/klogr"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	"github.com/projectsveltos/libsveltos/lib/clusterproxy"
 	"github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 
@@ -43,17 +53,19 @@ import (
 
 const (
 	noReports = "do-not-send-reports"
+
+	managedCluster = "managed-cluster"
 )
 
 var (
-	setupLog             = ctrl.Log.WithName("setup")
-	metricsAddr          string
-	enableLeaderElection bool
-	probeAddr            string
-	runMode              string
-	clusterNamespace     string
-	clusterName          string
-	clusterType          string
+	setupLog         = ctrl.Log.WithName("setup")
+	metricsAddr      string
+	probeAddr        string
+	runMode          string
+	deployedCluster  string
+	clusterNamespace string
+	clusterName      string
+	clusterType      string
 )
 
 func main() {
@@ -73,17 +85,25 @@ func main() {
 
 	ctx := ctrl.SetupSignalHandler()
 
+	cfg := ctrl.GetConfigOrDie()
+	if deployedCluster != managedCluster {
+		// if sveltos-agent is running in the management cluster, get the kubeconfig
+		// of the managed cluster
+		cfg = getManagedClusterRestConfig(ctx, cfg, ctrl.Log.WithName("get-kubeconfig"))
+	}
+	cfg.Burst = 60
+	cfg.QPS = 40
+
 	logsettings.RegisterForLogSettings(ctx,
 		libsveltosv1alpha1.ComponentClassifierAgent, ctrl.Log.WithName("log-setter"),
-		ctrl.GetConfigOrDie())
+		cfg)
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "e8afc439.projectsveltos.io",
+		LeaderElection:         false,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -133,6 +153,14 @@ func initFlags(fs *pflag.FlagSet) {
 	)
 
 	flag.StringVar(
+		&deployedCluster,
+		"current-cluster",
+		managedCluster,
+		"Indicate whether drift-detection-manager was deployed in the managed or the management cluster. "+
+			"Possible options are managed-cluster or management-cluster.",
+	)
+
+	flag.StringVar(
 		&clusterNamespace,
 		"cluster-namespace",
 		"",
@@ -152,10 +180,6 @@ func initFlags(fs *pflag.FlagSet) {
 		"",
 		"cluster type",
 	)
-
-	fs.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
 }
 
 func setupChecks(mgr ctrl.Manager) {
@@ -254,4 +278,40 @@ func startControllers(mgr manager.Manager, sendReports controllers.Mode) {
 		setupLog.Error(err, "unable to create controller", "controller", "Reloader")
 		os.Exit(1)
 	}
+}
+
+func getManagedClusterRestConfig(ctx context.Context, cfg *rest.Config, logger logr.Logger) *rest.Config {
+	logger = logger.WithValues("cluster", fmt.Sprintf("%s:%s/%s", clusterType, clusterNamespace, clusterName))
+	logger.V(logsettings.LogInfo).Info("get secret with kubeconfig")
+
+	// When running in the management cluster, drift-detection-manager will need
+	// to access Secret and Cluster/SveltosCluster (to verify existence)
+	s := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(s); err != nil {
+		panic(1)
+	}
+	if err := clusterv1.AddToScheme(s); err != nil {
+		panic(1)
+	}
+	if err := libsveltosv1alpha1.AddToScheme(s); err != nil {
+		panic(1)
+	}
+
+	c, err := client.New(cfg, client.Options{Scheme: s})
+	if err != nil {
+		logger.V(logsettings.LogInfo).Info(fmt.Sprintf("failed to get management cluster client: %v", err))
+		panic(1)
+	}
+
+	// In this mode, drift-detection-manager is running in the management cluster.
+	// It access the managed cluster from here.
+	var currentCfg *rest.Config
+	currentCfg, err = clusterproxy.GetKubernetesRestConfig(ctx, c, clusterNamespace, clusterName, "", "",
+		libsveltosv1alpha1.ClusterType(clusterType), klogr.New())
+	if err != nil {
+		logger.V(logsettings.LogInfo).Info(fmt.Sprintf("failed to get secret: %v", err))
+		panic(1)
+	}
+
+	return currentCfg
 }
