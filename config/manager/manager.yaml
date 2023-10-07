@@ -35,7 +35,6 @@ spec:
       - command:
         - /manager
         args:
-        - --leader-elect
         - --v=5
         - --run-mode=do-not-send-reports
         image: controller:latest
