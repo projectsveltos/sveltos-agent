@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Node
+metadata:
+  annotations:
+    cluster.x-k8s.io/cluster-name: clusterapi-workload
+    cluster.x-k8s.io/cluster-namespace: default
+    cluster.x-k8s.io/labels-from-machine: ""
+    cluster.x-k8s.io/machine: clusterapi-workload-md-0-45zln-blzp4-q7n4z
+    cluster.x-k8s.io/owner-kind: MachineSet
+    cluster.x-k8s.io/owner-name: clusterapi-workload-md-0-45zln-blzp4
+    kubeadm.alpha.kubernetes.io/cri-socket: unix:///var/run/containerd/containerd.sock
+    node.alpha.kubernetes.io/ttl: "0"
+    projectcalico.org/IPv4Address: 172.18.0.6/16
+    projectcalico.org/IPv4IPIPTunnelAddr: 10.220.112.0
+    volumes.kubernetes.io/controller-managed-attach-detach: "true"
+  creationTimestamp: "2023-11-15T11:23:26Z"
+  labels:
+    beta.kubernetes.io/arch: arm64
+    beta.kubernetes.io/os: linux
+    kubernetes.io/arch: arm64
+    kubernetes.io/hostname: clusterapi-workload-md-0-45zln-blzp4-q7n4z
+    kubernetes.io/os: linux
+  name: clusterapi-workload-md-0-45zln-blzp4-q7n4z
+  resourceVersion: "816"
+  uid: d99bad07-4e99-43c5-bc66-b5fe7f2fad5d
+spec:
+  podCIDR: 10.220.1.0/24
+  podCIDRs:
+  - 10.220.1.0/24
+  providerID: docker:////clusterapi-workload-md-0-45zln-blzp4-q7n4z
+status:
+  addresses:
+  - address: 172.18.0.6
+    type: InternalIP
+  - address: clusterapi-workload-md-0-45zln-blzp4-q7n4z
+    type: Hostname
+  allocatable:
+    cpu: "6"
+    ephemeral-storage: 107333580Ki
+    hugepages-1Gi: "0"
+    hugepages-2Mi: "0"
+    hugepages-32Mi: "0"
+    hugepages-64Ki: "0"
+    memory: 10189948Ki
+    pods: "110"
+  capacity:
+    cpu: "6"
+    ephemeral-storage: 107333580Ki
+    hugepages-1Gi: "0"
+    hugepages-2Mi: "0"
+    hugepages-32Mi: "0"
+    hugepages-64Ki: "0"
+    memory: 10189948Ki
+    pods: "110"
+  conditions:
+  - lastHeartbeatTime: "2023-11-15T11:24:51Z"
+    lastTransitionTime: "2023-11-15T11:24:51Z"
+    message: Calico is running on this node
+    reason: CalicoIsUp
+    status: "False"
+    type: NetworkUnavailable
+  - lastHeartbeatTime: "2023-11-15T11:24:58Z"
+    lastTransitionTime: "2023-11-15T11:23:26Z"
+    message: kubelet has sufficient memory available
+    reason: KubeletHasSufficientMemory
+    status: "False"
+    type: MemoryPressure
+  - lastHeartbeatTime: "2023-11-15T11:24:58Z"
+    lastTransitionTime: "2023-11-15T11:23:26Z"
+    message: kubelet has no disk pressure
+    reason: KubeletHasNoDiskPressure
+    status: "False"
+    type: DiskPressure
+  - lastHeartbeatTime: "2023-11-15T11:24:58Z"
+    lastTransitionTime: "2023-11-15T11:23:26Z"
+    message: kubelet has sufficient PID available
+    reason: KubeletHasSufficientPID
+    status: "False"
+    type: PIDPressure
+  - lastHeartbeatTime: "2023-11-15T11:24:58Z"
+    lastTransitionTime: "2023-11-15T11:24:28Z"
+    message: kubelet is posting ready status
+    reason: KubeletReady
+    status: "False"
+    type: NotReady
