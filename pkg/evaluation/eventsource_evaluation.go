@@ -184,7 +184,7 @@ func (m *manager) updateEventReport(ctx context.Context, event *libsveltosv1alph
 	if eventReport.Labels == nil {
 		eventReport.Labels = map[string]string{}
 	}
-	eventReport.Labels[libsveltosv1alpha1.EventSourceLabelName] = event.Name
+	eventReport.Labels[libsveltosv1alpha1.EventSourceNameLabel] = event.Name
 	eventReport.Spec.MatchingResources = matchinResources
 	eventReport.Spec.Resources = jsonResources
 
@@ -429,7 +429,7 @@ func (m *manager) getEventReport(eventName string, matchingResources []corev1.Ob
 			Namespace: utils.ReportNamespace,
 			Name:      eventName,
 			Labels: map[string]string{
-				libsveltosv1alpha1.EventSourceLabelName: eventName,
+				libsveltosv1alpha1.EventSourceNameLabel: eventName,
 			},
 		},
 		Spec: libsveltosv1alpha1.EventReportSpec{

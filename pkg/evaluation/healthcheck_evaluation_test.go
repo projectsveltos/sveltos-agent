@@ -577,7 +577,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(strings.ToLower(string(libsveltosv1alpha1.ClusterTypeCapi))))
 
-		v, ok = currentHealthCheckReport.Labels[libsveltosv1alpha1.HealthCheckLabelName]
+		v, ok = currentHealthCheckReport.Labels[libsveltosv1alpha1.HealthCheckNameLabel]
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(healthCheck.Name))
 	})
