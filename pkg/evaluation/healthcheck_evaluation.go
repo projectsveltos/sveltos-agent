@@ -168,7 +168,7 @@ func (m *manager) updateHealthCheckReport(ctx context.Context, healthCheck *libs
 	if healthCheckReport.Labels == nil {
 		healthCheckReport.Labels = map[string]string{}
 	}
-	healthCheckReport.Labels[libsveltosv1alpha1.HealthCheckLabelName] = healthCheck.Name
+	healthCheckReport.Labels[libsveltosv1alpha1.HealthCheckNameLabel] = healthCheck.Name
 	healthCheckReport.Spec.ResourceStatuses = status
 
 	err := m.Update(ctx, healthCheckReport)
@@ -428,7 +428,7 @@ func (m *manager) getHealthCheckReportReport(healthCheckName string,
 			Namespace: utils.ReportNamespace,
 			Name:      healthCheckName,
 			Labels: map[string]string{
-				libsveltosv1alpha1.HealthCheckLabelName: healthCheckName,
+				libsveltosv1alpha1.HealthCheckNameLabel: healthCheckName,
 			},
 		},
 		Spec: libsveltosv1alpha1.HealthCheckReportSpec{
