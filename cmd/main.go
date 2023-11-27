@@ -93,13 +93,13 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	restConfig := ctrl.GetConfigOrDie()
-	restConfig.QPS = restConfigQPS
-	restConfig.Burst = restConfigBurst
 	if deployedCluster != managedCluster {
 		// if sveltos-agent is running in the management cluster, get the kubeconfig
 		// of the managed cluster
 		restConfig = getManagedClusterRestConfig(ctx, restConfig, ctrl.Log.WithName("get-kubeconfig"))
 	}
+	restConfig.QPS = restConfigQPS
+	restConfig.Burst = restConfigBurst
 
 	logsettings.RegisterForLogSettings(ctx,
 		libsveltosv1alpha1.ComponentClassifierAgent, ctrl.Log.WithName("log-setter"),
