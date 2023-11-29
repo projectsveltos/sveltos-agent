@@ -784,7 +784,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(strings.ToLower(string(libsveltosv1alpha1.ClusterTypeCapi))))
 
-		v, ok = currentClassifierReport.Labels[libsveltosv1alpha1.ClassifierLabelName]
+		v, ok = currentClassifierReport.Labels[libsveltosv1alpha1.ClassifierlNameLabel]
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(classifier.Name))
 	})
@@ -795,7 +795,7 @@ func verifyClassifierReport(c client.Client, classifier *libsveltosv1alpha1.Clas
 	Expect(c.Get(context.TODO(), types.NamespacedName{Namespace: utils.ReportNamespace, Name: classifier.Name},
 		classifierReport)).To(Succeed())
 	Expect(classifierReport.Labels).ToNot(BeNil())
-	v, ok := classifierReport.Labels[libsveltosv1alpha1.ClassifierLabelName]
+	v, ok := classifierReport.Labels[libsveltosv1alpha1.ClassifierlNameLabel]
 	Expect(ok).To(BeTrue())
 	Expect(v).To(Equal(classifier.Name))
 	Expect(classifierReport.Spec.Match).To(Equal(isMatch))

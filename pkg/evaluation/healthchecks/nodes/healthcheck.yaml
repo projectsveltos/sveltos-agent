@@ -17,7 +17,7 @@ spec:
     local conditions = obj.status.conditions
     if conditions then
       for _, condition in ipairs(conditions) do
-        if condition.type == "Ready" and condition.status == "True" then
+        if condition.reason == "KubeletReady" and condition.type == "Ready" and condition.status == "True" then
           isKubeletReady = true
           break
         end

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -37,15 +38,17 @@ import (
 	"k8s.io/klog/v2/klogr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	"github.com/projectsveltos/libsveltos/lib/clusterproxy"
 	"github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
-
 	"github.com/projectsveltos/sveltos-agent/controllers"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	//+kubebuilder:scaffold:imports
@@ -66,6 +69,10 @@ var (
 	clusterNamespace string
 	clusterName      string
 	clusterType      string
+	restConfigQPS    float32
+	restConfigBurst  int
+	webhookPort      int
+	syncPeriod       time.Duration
 )
 
 func main() {
@@ -85,26 +92,35 @@ func main() {
 
 	ctx := ctrl.SetupSignalHandler()
 
-	cfg := ctrl.GetConfigOrDie()
+	restConfig := ctrl.GetConfigOrDie()
 	if deployedCluster != managedCluster {
 		// if sveltos-agent is running in the management cluster, get the kubeconfig
 		// of the managed cluster
-		cfg = getManagedClusterRestConfig(ctx, cfg, ctrl.Log.WithName("get-kubeconfig"))
+		restConfig = getManagedClusterRestConfig(ctx, restConfig, ctrl.Log.WithName("get-kubeconfig"))
 	}
-	cfg.Burst = 60
-	cfg.QPS = 40
+	restConfig.QPS = restConfigQPS
+	restConfig.Burst = restConfigBurst
 
 	logsettings.RegisterForLogSettings(ctx,
 		libsveltosv1alpha1.ComponentClassifierAgent, ctrl.Log.WithName("log-setter"),
-		cfg)
+		restConfig)
 
-	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+	ctrlOptions := ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         false,
-	})
+		Metrics: metricsserver.Options{
+			BindAddress: metricsAddr,
+		},
+		WebhookServer: webhook.NewServer(
+			webhook.Options{
+				Port: webhookPort,
+			}),
+		Cache: cache.Options{
+			SyncPeriod: &syncPeriod,
+		},
+	}
+
+	mgr, err := ctrl.NewManager(restConfig, ctrlOptions)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
@@ -180,6 +196,25 @@ func initFlags(fs *pflag.FlagSet) {
 		"",
 		"cluster type",
 	)
+
+	const defautlRestConfigQPS = 40
+	fs.Float32Var(&restConfigQPS, "kube-api-qps", defautlRestConfigQPS,
+		fmt.Sprintf("Maximum queries per second from the controller client to the Kubernetes API server. Defaults to %d",
+			defautlRestConfigQPS))
+
+	const defaultRestConfigBurst = 60
+	fs.IntVar(&restConfigBurst, "kube-api-burst", defaultRestConfigBurst,
+		fmt.Sprintf("Maximum number of queries that should be allowed in one burst from the controller client to the Kubernetes API server. Default %d",
+			defaultRestConfigBurst))
+
+	const defaultWebhookPort = 9443
+	fs.IntVar(&webhookPort, "webhook-port", defaultWebhookPort,
+		"Webhook Server port")
+
+	const defaultSyncPeriod = 10
+	fs.DurationVar(&syncPeriod, "sync-period", defaultSyncPeriod*time.Minute,
+		fmt.Sprintf("The minimum interval at which watched resources are reconciled (e.g. 15m). Default: %d minutes",
+			defaultSyncPeriod))
 }
 
 func setupChecks(mgr ctrl.Manager) {

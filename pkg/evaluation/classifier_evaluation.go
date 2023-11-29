@@ -400,7 +400,7 @@ func (m *manager) getClassifierReport(classifierName string, isMatch bool) *libs
 			Namespace: utils.ReportNamespace,
 			Name:      classifierName,
 			Labels: map[string]string{
-				libsveltosv1alpha1.ClassifierLabelName: classifierName,
+				libsveltosv1alpha1.ClassifierlNameLabel: classifierName,
 			},
 		},
 		Spec: libsveltosv1alpha1.ClassifierReportSpec{
@@ -549,7 +549,7 @@ func (m *manager) updateClassifierReport(ctx context.Context, classifier *libsve
 	if classifierReport.Labels == nil {
 		classifierReport.Labels = map[string]string{}
 	}
-	classifierReport.Labels[libsveltosv1alpha1.ClassifierLabelName] = classifier.Name
+	classifierReport.Labels[libsveltosv1alpha1.ClassifierlNameLabel] = classifier.Name
 	classifierReport.Spec.Match = isMatch
 
 	err := m.Update(ctx, classifierReport)
