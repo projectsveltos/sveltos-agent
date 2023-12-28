@@ -47,6 +47,11 @@ type eventMatchStatus struct {
 	Message  string `json:"message"`
 }
 
+type aggregatedStatus struct {
+	Resources []*unstructured.Unstructured `json:"resources,omitempty"`
+	Message   string                       `json:"message"`
+}
+
 // evaluateEventSources evaluates all healthchecks awaiting evaluation
 func (m *manager) evaluateEventSources(ctx context.Context) {
 	for {
@@ -246,7 +251,7 @@ func (m *manager) cleanEventReport(ctx context.Context, eventName string) error 
 func (m *manager) getEventMatchingResources(ctx context.Context, event *libsveltosv1alpha1.EventSource,
 	logger logr.Logger) ([]corev1.ObjectReference, []unstructured.Unstructured, error) {
 
-	resources, err := m.fetchEventSourceResources(ctx, event)
+	resources, err := m.fetchResourcesMatchingEventSource(ctx, event, logger)
 	if err != nil {
 		m.log.V(logs.LogInfo).Info(fmt.Sprintf("failed to fetch resources: %v", err))
 		return nil, nil, err
@@ -259,27 +264,16 @@ func (m *manager) getEventMatchingResources(ctx context.Context, event *libsvelt
 	matchingResources := make([]corev1.ObjectReference, 0)
 	collectedResources := make([]unstructured.Unstructured, 0)
 
-	for i := range resources.Items {
-		resource := &resources.Items[i]
-		if !resource.GetDeletionTimestamp().IsZero() {
-			continue
-		}
-		l := logger.WithValues("resource", fmt.Sprintf("%s/%s", resource.GetNamespace(), resource.GetName()))
-		isMatch, err := m.isMatchForEventSource(resource, event.Spec.Script, l)
-		if err != nil {
-			return nil, nil, err
-		}
-		if isMatch {
-			matchingResources = append(matchingResources,
-				corev1.ObjectReference{
-					Namespace:  resource.GetNamespace(),
-					Name:       resource.GetName(),
-					Kind:       resource.GetKind(),
-					APIVersion: resource.GetAPIVersion(),
-				})
-			if event.Spec.CollectResources {
-				collectedResources = append(collectedResources, *resource)
-			}
+	for i := range resources {
+		matchingResources = append(matchingResources,
+			corev1.ObjectReference{
+				Namespace:  resources[i].GetNamespace(),
+				Name:       resources[i].GetName(),
+				Kind:       resources[i].GetKind(),
+				APIVersion: resources[i].GetAPIVersion(),
+			})
+		if event.Spec.CollectResources {
+			collectedResources = append(collectedResources, *resources[i])
 		}
 	}
 
@@ -344,14 +338,107 @@ func (m *manager) isMatchForEventSource(resource *unstructured.Unstructured, scr
 	return result.Matching, nil
 }
 
-// fetchEventSourceResources fetchs all resources matching an event
-func (m *manager) fetchEventSourceResources(ctx context.Context, event *libsveltosv1alpha1.EventSource,
-) (*unstructured.UnstructuredList, error) {
+// fetchResourcesMatchingEventSource fetchs all resources matching an event
+func (m *manager) fetchResourcesMatchingEventSource(ctx context.Context,
+	event *libsveltosv1alpha1.EventSource, logger logr.Logger) ([]*unstructured.Unstructured, error) {
+
+	saNamespace, saName := m.getServiceAccountInfo(event)
+	list := []*unstructured.Unstructured{}
+	for i := range event.Spec.ResourceSelectors {
+		rs := &event.Spec.ResourceSelectors[i]
+		tmpList, err := m.fetchResourcesMatchingResourceSelector(ctx, rs, saNamespace, saName, logger)
+		if err != nil {
+			return nil, err
+		}
+
+		list = append(list, tmpList...)
+	}
+
+	if event.Spec.AggregatedSelection != "" {
+		return m.aggregatedSelection(event.Spec.AggregatedSelection, list, logger)
+	}
+
+	return list, nil
+}
+
+func (m *manager) aggregatedSelection(luaScript string, resources []*unstructured.Unstructured,
+	logger logr.Logger) ([]*unstructured.Unstructured, error) {
+
+	if luaScript == "" {
+		return resources, nil
+	}
+
+	// Create a new Lua state
+	l := lua.NewState()
+	defer l.Close()
+
+	// Load the Lua script
+	if err := l.DoString(luaScript); err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("doString failed: %v", err))
+		return nil, err
+	}
+
+	// Create an argument table
+	argTable := l.NewTable()
+	for _, resource := range resources {
+		obj := mapToTable(resource.UnstructuredContent())
+		argTable.Append(obj)
+	}
+
+	l.SetGlobal("resources", argTable)
+
+	if err := l.CallByParam(lua.P{
+		Fn:      l.GetGlobal("evaluate"), // name of Lua function
+		NRet:    1,                       // number of returned values
+		Protect: true,                    // return err or panic
+	}, argTable); err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to call evaluate function: %s", err.Error()))
+		return nil, err
+	}
+
+	lv := l.Get(-1)
+	tbl, ok := lv.(*lua.LTable)
+	if !ok {
+		logger.V(logs.LogInfo).Info(luaTableError)
+		return nil, fmt.Errorf("%s", luaTableError)
+	}
+
+	goResult := toGoValue(tbl)
+	resultJson, err := json.Marshal(goResult)
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to marshal result: %v", err))
+		return nil, err
+	}
+
+	var result aggregatedStatus
+	err = json.Unmarshal(resultJson, &result)
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to marshal result: %v", err))
+		return nil, err
+	}
+
+	if result.Message != "" {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("message: %s", result.Message))
+	}
+
+	for i := range result.Resources {
+		l := logger.WithValues("resource", fmt.Sprintf("%s:%s/%s",
+			result.Resources[i].GetKind(), result.Resources[i].GetNamespace(), result.Resources[i].GetName()))
+		l.Info("found a match")
+	}
+
+	return result.Resources, nil
+}
+
+// fetchResourcesMatchingResourceSelector fetchs all resources matching an event
+func (m *manager) fetchResourcesMatchingResourceSelector(ctx context.Context,
+	resourceSelector *libsveltosv1alpha1.ResourceSelector, saNamespace, saName string,
+	logger logr.Logger) ([]*unstructured.Unstructured, error) {
 
 	gvk := schema.GroupVersionKind{
-		Group:   event.Spec.Group,
-		Version: event.Spec.Version,
-		Kind:    event.Spec.Kind,
+		Group:   resourceSelector.Group,
+		Version: resourceSelector.Version,
+		Kind:    resourceSelector.Kind,
 	}
 
 	dc := discovery.NewDiscoveryClientForConfigOrDie(m.config)
@@ -377,13 +464,13 @@ func (m *manager) fetchEventSourceResources(ctx context.Context, event *libsvelt
 
 	options := metav1.ListOptions{}
 
-	if len(event.Spec.LabelFilters) > 0 {
+	if len(resourceSelector.LabelFilters) > 0 {
 		labelFilter := ""
-		for i := range event.Spec.LabelFilters {
+		for i := range resourceSelector.LabelFilters {
 			if labelFilter != "" {
 				labelFilter += ","
 			}
-			f := event.Spec.LabelFilters[i]
+			f := resourceSelector.LabelFilters[i]
 			if f.Operation == libsveltosv1alpha1.OperationEqual {
 				labelFilter += fmt.Sprintf("%s=%s", f.Key, f.Value)
 			} else {
@@ -394,11 +481,10 @@ func (m *manager) fetchEventSourceResources(ctx context.Context, event *libsvelt
 		options.LabelSelector = labelFilter
 	}
 
-	if event.Spec.Namespace != "" {
-		options.FieldSelector += fmt.Sprintf("metadata.namespace=%s", event.Spec.Namespace)
+	if resourceSelector.Namespace != "" {
+		options.FieldSelector += fmt.Sprintf("metadata.namespace=%s", resourceSelector.Namespace)
 	}
 
-	saNamespace, saName := m.getServiceAccountInfo(event)
 	currentConfig := rest.CopyConfig(m.config)
 	if saName != "" {
 		saNameInManagedCluster := roles.GetServiceAccountNameInManagedCluster(saNamespace, saName)
@@ -417,7 +503,24 @@ func (m *manager) fetchEventSourceResources(ctx context.Context, event *libsvelt
 	}
 
 	m.log.V(logs.LogDebug).Info(fmt.Sprintf("found %d resources", len(list.Items)))
-	return list, nil
+
+	resources := []*unstructured.Unstructured{}
+	for i := range list.Items {
+		resource := &list.Items[i]
+		if !resource.GetDeletionTimestamp().IsZero() {
+			continue
+		}
+		isMatch, err := m.isMatchForEventSource(resource, resourceSelector.Script, logger)
+		if err != nil {
+			return nil, err
+		}
+
+		if isMatch {
+			resources = append(resources, resource)
+		}
+	}
+
+	return resources, nil
 }
 
 // getEventReport returns EventReport instance that needs to be created

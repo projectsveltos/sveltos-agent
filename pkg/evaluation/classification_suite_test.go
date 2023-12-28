@@ -33,7 +33,6 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	"github.com/projectsveltos/libsveltos/lib/crd"
@@ -198,14 +197,4 @@ func getClassifierWithKubernetesConstraints(k8sVersion string, comparison libsve
 			},
 		},
 	}
-}
-
-// waitForObject waits for the cache to be updated helps in preventing test flakes due to the cache sync delays.
-func waitForObject(ctx context.Context, c client.Client, obj client.Object) {
-	// Makes sure the cache is updated with the new object
-	objCopy := obj.DeepCopyObject().(client.Object)
-	key := client.ObjectKeyFromObject(obj)
-	Eventually(func() error {
-		return c.Get(ctx, key, objCopy)
-	}, timeout, pollingInterval).Should(BeNil())
 }

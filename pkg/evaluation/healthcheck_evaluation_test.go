@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -175,8 +175,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("GetResourceHealthStatus: evaluates Cluster as degraded", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -196,8 +196,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		var availableReplicas = 3
 		depl := getDeployment(replicas, int32(availableReplicas))
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -222,8 +222,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		var availableReplicas = 1
 		depl := getDeployment(replicas, int32(availableReplicas))
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -292,8 +292,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			waitForObject(context.TODO(), testEnv.Client, service)
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		healthCheck = &libsveltosv1alpha1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
@@ -357,8 +357,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			},
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -404,8 +404,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			},
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -419,8 +419,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("createHealthCheckReport creates healthCheckReport", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -462,8 +462,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("createHealthCheckReport updates healthCheckReport", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -546,8 +546,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), healthCheckReport)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, healthCheckReport)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 		manager := evaluation.GetManager()
 
 		Expect(evaluation.SendHealthCheckReport(manager, context.TODO(), healthCheck)).To(Succeed())
@@ -606,8 +606,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).WithObjects(initObjects...).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			nil, c, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())

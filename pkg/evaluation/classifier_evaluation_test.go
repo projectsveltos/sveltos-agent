@@ -29,7 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -85,8 +85,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -102,7 +102,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -119,7 +119,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -136,7 +136,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -153,7 +153,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -170,7 +170,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -187,7 +187,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -204,7 +204,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -221,7 +221,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -238,7 +238,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -255,7 +255,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -272,7 +272,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -296,7 +296,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -320,8 +320,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -338,8 +338,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, testEnv,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			nil, testEnv, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -386,8 +386,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).
 			WithObjects(initObjects...).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			nil, c, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -405,8 +405,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -477,8 +477,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			waitForObject(context.TODO(), testEnv.Client, u)
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
 		manager := evaluation.GetManager()
 
 		isMatch, err := evaluation.IsResourceAMatch(manager, context.TODO(),
@@ -566,8 +566,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			waitForObject(context.TODO(), testEnv.Client, u)
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
 		manager := evaluation.GetManager()
 
 		isMatch, err := evaluation.IsResourceAMatch(manager, context.TODO(),
@@ -641,8 +641,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, u)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
 		manager := evaluation.GetManager()
 
 		isMatch, err := evaluation.IsResourceAMatch(manager, context.TODO(),
@@ -687,8 +687,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).
 			WithObjects(initObjects...).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			nil, c, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -712,11 +712,12 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		}
 		waitForObject(context.TODO(), testEnv.Client, ns)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
 		manager := evaluation.GetManager()
 
-		c, err := evaluation.GetManamegentClusterClient(manager, context.TODO(), klogr.New())
+		c, err := evaluation.GetManamegentClusterClient(manager, context.TODO(),
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(err).To(BeNil())
 		Expect(c).ToNot(BeNil())
 	})
@@ -752,8 +753,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		clusterName := randomString()
 		clusterType := libsveltosv1alpha1.ClusterTypeCapi
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 		manager := evaluation.GetManager()
 
 		Expect(evaluation.SendClassifierReport(manager, context.TODO(), classifier)).To(Succeed())

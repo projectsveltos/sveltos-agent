@@ -5,19 +5,20 @@ metadata:
  name: https-service
 spec:
  collectResources: true
- group: ""
- version: "v1"
- kind: "Service"
- script: |
-   function evaluate()
-     hs = {}
-     hs.matching = false
-     if obj.spec.ports ~= nil then
-       for _,p in pairs(obj.spec.ports) do
-         if p.port == 443 or p.port == 8443 then
-           hs.matching = true
+ resourceSelectors:
+ - group: ""
+   version: "v1"
+   kind: "Service"
+   script: |
+     function evaluate()
+       hs = {}
+       hs.matching = false
+       if obj.spec.ports ~= nil then
+         for _,p in pairs(obj.spec.ports) do
+           if p.port == 443 or p.port == 8443 then
+             hs.matching = true
+           end
          end
        end
+       return hs
      end
-     return hs
-   end

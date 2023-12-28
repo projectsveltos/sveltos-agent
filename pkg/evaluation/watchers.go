@@ -222,13 +222,14 @@ func (m *manager) addGVKsForHealthCheck(healthCheck *libsveltosv1alpha1.HealthCh
 func (m *manager) addGVKsForEventSource(eventSource *libsveltosv1alpha1.EventSource,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
-	gvk := schema.GroupVersionKind{
-		Group:   eventSource.Spec.Group,
-		Kind:    eventSource.Spec.Kind,
-		Version: eventSource.Spec.Version,
+	for i := range eventSource.Spec.ResourceSelectors {
+		gvk := schema.GroupVersionKind{
+			Group:   eventSource.Spec.ResourceSelectors[i].Group,
+			Kind:    eventSource.Spec.ResourceSelectors[i].Kind,
+			Version: eventSource.Spec.ResourceSelectors[i].Version,
+		}
+		resources[gvk] = true
 	}
-	resources[gvk] = true
-
 	return resources
 }
 

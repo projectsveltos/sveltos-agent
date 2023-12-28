@@ -30,7 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
@@ -260,7 +260,7 @@ func restartIfNeeded(gvk *schema.GroupVersionKind) {
 		return
 	}
 
-	logger := klogr.New()
+	logger := textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
 	logger.V(logs.LogDebug).Info(fmt.Sprintf("react to CustomResourceDefinition %s change",
 		gvk.String()))
 

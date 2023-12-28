@@ -6,22 +6,22 @@ require (
 	emperror.dev/errors v0.8.1
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/TwiN/go-color v1.4.1
-	github.com/go-logr/logr v1.3.0
-	github.com/onsi/ginkgo/v2 v2.13.1
+	github.com/go-logr/logr v1.4.1
+	github.com/onsi/ginkgo/v2 v2.13.2
 	github.com/onsi/gomega v1.30.0
 	github.com/pkg/errors v0.9.1
-	github.com/projectsveltos/libsveltos v0.20.1-0.20231129081648-ef5be475b0c0
+	github.com/projectsveltos/libsveltos v0.20.1-0.20231228160834-1a2d392f8702
 	github.com/spf13/pflag v1.0.5
-	github.com/yuin/gopher-lua v1.1.0
+	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/text v0.14.0
 	k8s.io/api v0.28.4
 	k8s.io/apiextensions-apiserver v0.28.4
 	k8s.io/apimachinery v0.28.4
 	k8s.io/client-go v0.28.4
 	k8s.io/component-base v0.28.4
-	k8s.io/klog/v2 v2.100.1
+	k8s.io/klog/v2 v2.110.1
 	k8s.io/utils v0.0.0-20231121161247-cf03d44ff3cf
-	sigs.k8s.io/cluster-api v1.6.0-rc.1
+	sigs.k8s.io/cluster-api v1.6.0
 	sigs.k8s.io/controller-runtime v0.16.3
 )
 

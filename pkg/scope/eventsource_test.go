@@ -20,7 +20,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -51,7 +51,7 @@ var _ = Describe("EventSourceScope", func() {
 	It("Return nil,error if client is not specified", func() {
 		params := scope.EventSourceScopeParams{
 			EventSource: eventSource,
-			Logger:      klogr.New(),
+			Logger:      textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 		}
 
 		scope, err := scope.NewEventSourceScope(params)
@@ -62,7 +62,7 @@ var _ = Describe("EventSourceScope", func() {
 	It("Return nil,error if EventSource is not specified", func() {
 		params := scope.EventSourceScopeParams{
 			Client: c,
-			Logger: klogr.New(),
+			Logger: textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 		}
 
 		scope, err := scope.NewEventSourceScope(params)
@@ -74,7 +74,7 @@ var _ = Describe("EventSourceScope", func() {
 		params := scope.EventSourceScopeParams{
 			Client:      c,
 			EventSource: eventSource,
-			Logger:      klogr.New(),
+			Logger:      textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 		}
 
 		scope, err := scope.NewEventSourceScope(params)

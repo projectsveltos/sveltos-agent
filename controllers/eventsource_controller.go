@@ -196,22 +196,25 @@ func (r *EventSourceReconciler) cleanMaps(eventSource *libsveltosv1alpha1.EventS
 }
 
 func (r *EventSourceReconciler) updateMaps(eventSource *libsveltosv1alpha1.EventSource) {
-	gvk := schema.GroupVersionKind{
-		Group:   eventSource.Spec.Group,
-		Version: eventSource.Spec.Version,
-		Kind:    eventSource.Spec.Kind,
-	}
-
-	policyRef := getKeyFromObject(r.Scheme, eventSource)
-
 	r.Mux.Lock()
 	defer r.Mux.Unlock()
 
-	_, ok := r.GVKEventSources[gvk]
-	if !ok {
-		r.GVKEventSources[gvk] = &libsveltosset.Set{}
+	for i := range eventSource.Spec.ResourceSelectors {
+		rs := &eventSource.Spec.ResourceSelectors[i]
+		gvk := schema.GroupVersionKind{
+			Group:   rs.Group,
+			Version: rs.Version,
+			Kind:    rs.Kind,
+		}
+
+		policyRef := getKeyFromObject(r.Scheme, eventSource)
+
+		_, ok := r.GVKEventSources[gvk]
+		if !ok {
+			r.GVKEventSources[gvk] = &libsveltosset.Set{}
+		}
+		r.GVKEventSources[gvk].Insert(policyRef)
 	}
-	r.GVKEventSources[gvk].Insert(policyRef)
 }
 
 // react gets called when an instance of passed in gvk has been modified.
