@@ -193,12 +193,16 @@ func (m *manager) buildListForReloaders(ctx context.Context) (map[schema.GroupVe
 func (m *manager) addGVKsForClassifier(classifier *libsveltosv1alpha1.Classifier,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
-	for i := range classifier.Spec.DeployedResourceConstraints {
-		resource := &classifier.Spec.DeployedResourceConstraints[i]
+	if classifier.Spec.DeployedResourceConstraint == nil {
+		return resources
+	}
+
+	for i := range classifier.Spec.DeployedResourceConstraint.ResourceSelectors {
+		rs := &classifier.Spec.DeployedResourceConstraint.ResourceSelectors[i]
 		gvk := schema.GroupVersionKind{
-			Group:   resource.Group,
-			Kind:    resource.Kind,
-			Version: resource.Version,
+			Group:   rs.Group,
+			Kind:    rs.Kind,
+			Version: rs.Version,
 		}
 		resources[gvk] = true
 	}

@@ -27,7 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2/textlogger"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -433,9 +433,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		verifyClassifierReport(testEnv.Client, classifier, isMatch)
 	})
 
-	It("isResourceAMatch returns true when resources are match for classifier", func() {
-		countMin := 3
-		countMax := 5
+	It("getResourcesForResourceSelector returns resources matching a ResourceSelector", func() {
 		namespace := randomString()
 		classifier = &libsveltosv1alpha1.Classifier{
 			ObjectMeta: metav1.ObjectMeta{
@@ -445,14 +443,14 @@ var _ = Describe("Manager: classifier evaluation", func() {
 				ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
 					{Key: randomString(), Value: randomString()},
 				},
-				DeployedResourceConstraints: []libsveltosv1alpha1.DeployedResourceConstraint{
-					{
-						Namespace: namespace,
-						MinCount:  &countMin,
-						MaxCount:  &countMax,
-						Group:     "",
-						Version:   "v1",
-						Kind:      "Pod",
+				DeployedResourceConstraint: &libsveltosv1alpha1.DeployedResourceConstraint{
+					ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+						{
+							Namespace: namespace,
+							Group:     "",
+							Version:   "v1",
+							Kind:      "Pod",
+						},
 					},
 				},
 			},
@@ -469,7 +467,8 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, ns)
 
-		for i := 0; i < countMin-1; i++ {
+		count := 3
+		for i := 0; i < count; i++ {
 			pod := fmt.Sprintf(podTemplate, namespace, randomString())
 			u, err := libsveltosutils.GetUnstructured([]byte(pod))
 			Expect(err).To(BeNil())
@@ -481,41 +480,29 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
 		manager := evaluation.GetManager()
 
-		isMatch, err := evaluation.IsResourceAMatch(manager, context.TODO(),
-			&classifier.Spec.DeployedResourceConstraints[0])
-		Expect(err).To(BeNil())
-		Expect(isMatch).To(BeFalse())
+		logger := textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
 
-		// Add one more pod so now the number of pod matches countMin
+		resources, err := evaluation.GetResourcesForResourceSelector(manager, context.TODO(),
+			&classifier.Spec.DeployedResourceConstraint.ResourceSelectors[0], logger)
+		Expect(err).To(BeNil())
+		Expect(resources).ToNot(BeNil())
+		Expect(len(resources)).To(Equal(count))
+
+		// Add one more pod so now the number of pod
 		pod := fmt.Sprintf(podTemplate, namespace, randomString())
 		u, err := libsveltosutils.GetUnstructured([]byte(pod))
 		Expect(err).To(BeNil())
 		Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, u)
 
-		isMatch, err = evaluation.IsResourceAMatch(manager, context.TODO(),
-			&classifier.Spec.DeployedResourceConstraints[0])
+		resources, err = evaluation.GetResourcesForResourceSelector(manager, context.TODO(),
+			&classifier.Spec.DeployedResourceConstraint.ResourceSelectors[0], logger)
 		Expect(err).To(BeNil())
-		Expect(isMatch).To(BeTrue())
-
-		// Add more pods so there are now more than maxcount
-		for i := 0; i < countMax; i++ {
-			pod := fmt.Sprintf(podTemplate, namespace, randomString())
-			var u *unstructured.Unstructured
-			u, err = libsveltosutils.GetUnstructured([]byte(pod))
-			Expect(err).To(BeNil())
-			Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
-			waitForObject(context.TODO(), testEnv.Client, u)
-		}
-
-		isMatch, err = evaluation.IsResourceAMatch(manager, context.TODO(),
-			&classifier.Spec.DeployedResourceConstraints[0])
-		Expect(err).To(BeNil())
-		Expect(isMatch).To(BeFalse())
+		Expect(resources).ToNot(BeNil())
+		Expect(len(resources)).To(Equal(count + 1))
 	})
 
-	It("isResourceAMatch returns true when resources with labels are match for classifier", func() {
-		countMin := 1
+	It("getResourcesForResourceSelector returns resources with labels matching the classifier", func() {
 		namespace := randomString()
 		key1 := randomString()
 		value1 := randomString()
@@ -529,17 +516,18 @@ var _ = Describe("Manager: classifier evaluation", func() {
 				ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
 					{Key: randomString(), Value: randomString()},
 				},
-				DeployedResourceConstraints: []libsveltosv1alpha1.DeployedResourceConstraint{
-					{
-						Namespace: namespace,
-						LabelFilters: []libsveltosv1alpha1.LabelFilter{
-							{Key: key1, Operation: libsveltosv1alpha1.OperationEqual, Value: value1},
-							{Key: key2, Operation: libsveltosv1alpha1.OperationEqual, Value: value2},
+				DeployedResourceConstraint: &libsveltosv1alpha1.DeployedResourceConstraint{
+					ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+						{
+							Namespace: namespace,
+							LabelFilters: []libsveltosv1alpha1.LabelFilter{
+								{Key: key1, Operation: libsveltosv1alpha1.OperationEqual, Value: value1},
+								{Key: key2, Operation: libsveltosv1alpha1.OperationEqual, Value: value2},
+							},
+							Group:   "",
+							Version: "v1",
+							Kind:    "Pod",
 						},
-						MinCount: &countMin,
-						Group:    "",
-						Version:  "v1",
-						Kind:     "Pod",
 					},
 				},
 			},
@@ -556,87 +544,10 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, ns)
 
-		// Create enough pod to match CountMin. But labels are currently not a match for classifier
-		for i := 0; i <= countMin; i++ {
-			pod := fmt.Sprintf(podTemplate, namespace, randomString())
-			u, err := libsveltosutils.GetUnstructured([]byte(pod))
-			u.SetLabels(map[string]string{key1: value1})
-			Expect(err).To(BeNil())
-			Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
-			waitForObject(context.TODO(), testEnv.Client, u)
-		}
-
-		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
-			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
-		manager := evaluation.GetManager()
-
-		isMatch, err := evaluation.IsResourceAMatch(manager, context.TODO(),
-			&classifier.Spec.DeployedResourceConstraints[0])
-		Expect(err).To(BeNil())
-		Expect(isMatch).To(BeFalse())
-
-		// Get all pods in namespace and add second label needed for pods to match classifier
-		podList := &corev1.PodList{}
-		listOptions := []client.ListOption{
-			client.InNamespace(namespace),
-		}
-		Expect(testEnv.List(context.TODO(), podList, listOptions...)).To(Succeed())
-
-		for i := range podList.Items {
-			pod := &podList.Items[i]
-			pod.Labels[key2] = value2
-			Expect(testEnv.Update(context.TODO(), pod)).To(Succeed())
-		}
-
-		// Use Eventually so cache is in sync
-		Eventually(func() bool {
-			isMatch, err = evaluation.IsResourceAMatch(manager, context.TODO(),
-				&classifier.Spec.DeployedResourceConstraints[0])
-			return err == nil && isMatch
-		}, timeout, pollingInterval).Should(BeTrue())
-	})
-
-	It("isResourceAMatch returns true when fields resources are match for classifier", func() {
-		countMin := 1
-		namespace := randomString()
-		podIP := "192.168.10.1"
-		classifier = &libsveltosv1alpha1.Classifier{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: randomString(),
-			},
-			Spec: libsveltosv1alpha1.ClassifierSpec{
-				ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
-					{Key: randomString(), Value: randomString()},
-				},
-				DeployedResourceConstraints: []libsveltosv1alpha1.DeployedResourceConstraint{
-					{
-						Namespace: namespace,
-						FieldFilters: []libsveltosv1alpha1.FieldFilter{
-							{Field: "status.podIP", Operation: libsveltosv1alpha1.OperationEqual, Value: podIP},
-						},
-						MinCount: &countMin,
-						Group:    "",
-						Version:  "v1",
-						Kind:     "Pod",
-					},
-				},
-			},
-		}
-
-		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
-		waitForObject(context.TODO(), testEnv.Client, classifier)
-
-		ns := &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: namespace,
-			},
-		}
-		Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
-		waitForObject(context.TODO(), testEnv.Client, ns)
-
-		// fields are not a match for classifier
+		// Create pod (labels are currently not a match for classifier)
 		pod := fmt.Sprintf(podTemplate, namespace, randomString())
 		u, err := libsveltosutils.GetUnstructured([]byte(pod))
+		u.SetLabels(map[string]string{key1: value1})
 		Expect(err).To(BeNil())
 		Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, u)
@@ -645,8 +556,60 @@ var _ = Describe("Manager: classifier evaluation", func() {
 			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
 		manager := evaluation.GetManager()
 
-		isMatch, err := evaluation.IsResourceAMatch(manager, context.TODO(),
-			&classifier.Spec.DeployedResourceConstraints[0])
+		logger := textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
+
+		resources, err := evaluation.GetResourcesForResourceSelector(manager, context.TODO(),
+			&classifier.Spec.DeployedResourceConstraint.ResourceSelectors[0], logger)
+		Expect(err).To(BeNil())
+		Expect(len(resources)).To(BeZero())
+
+		// Get all pods in namespace and add second label needed for pods to match classifier
+		pods := &corev1.PodList{}
+		listOptions := []client.ListOption{
+			client.InNamespace(namespace),
+		}
+		Expect(testEnv.List(context.TODO(), pods, listOptions...)).To(Succeed())
+		Expect(len(pods.Items)).To(Equal(1))
+
+		for i := range pods.Items {
+			pod := &pods.Items[i]
+			pod.Labels[key2] = value2
+			Expect(testEnv.Update(context.TODO(), pod)).To(Succeed())
+		}
+
+		// Use Eventually so cache is in sync
+		Eventually(func() bool {
+			resources, err := evaluation.GetResourcesForResourceSelector(manager, context.TODO(),
+				&classifier.Spec.DeployedResourceConstraint.ResourceSelectors[0], logger)
+			return err == nil && len(resources) == len(pods.Items)
+		}, timeout, pollingInterval).Should(BeTrue())
+	})
+
+	It("IsMatchForResourceSelectorScript returns true when resource is match for evaluate", func() {
+		podIP := "192.168.10.1"
+
+		evaluate := `      function evaluate()
+       hs = {}
+       hs.matching = false
+       hs.message = ""
+       if obj.status ~= nil then
+	       if obj.status.podIP ==  "192.168.10.1" then
+		     hs.matching = true
+         end
+       end
+       return hs
+      end`
+
+		namespace := randomString()
+		u, err := libsveltosutils.GetUnstructured([]byte(fmt.Sprintf(podTemplate, namespace, randomString())))
+		Expect(err).To(BeNil())
+
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
+		manager := evaluation.GetManager()
+
+		isMatch, err := evaluation.IsMatchForResourceSelectorScript(manager, u, evaluate,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeFalse())
 
@@ -657,18 +620,24 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		}
 		Expect(testEnv.List(context.TODO(), podList, listOptions...)).To(Succeed())
 
-		for i := range podList.Items {
-			pod := &podList.Items[i]
-			pod.Status.PodIP = podIP
-			Expect(testEnv.Status().Update(context.TODO(), pod)).To(Succeed())
-		}
+		// Convert unstructured to Pod and set Status.PodIP
+		pod := &corev1.Pod{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.UnstructuredContent(), pod)
+		Expect(err).To(BeNil())
+		pod.Status.PodIP = podIP
+
+		// Convert pod back to unstructured
+		var content map[string]interface{}
+		content, err = runtime.DefaultUnstructuredConverter.ToUnstructured(pod)
+		Expect(err).To(BeNil())
+		Expect(content).ToNot(BeNil())
+		u.SetUnstructuredContent(content)
 
 		// Use Eventually so cache is in sync
-		Eventually(func() bool {
-			isMatch, err = evaluation.IsResourceAMatch(manager, context.TODO(),
-				&classifier.Spec.DeployedResourceConstraints[0])
-			return err == nil && isMatch
-		}, timeout, pollingInterval).Should(BeTrue())
+		isMatch, err = evaluation.IsMatchForResourceSelectorScript(manager, u, evaluate,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
+		Expect(err).To(BeNil())
+		Expect(isMatch).To(BeTrue())
 	})
 
 	It("cleanClassifierReport removes classifierReport", func() {

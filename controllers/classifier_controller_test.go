@@ -88,7 +88,7 @@ var _ = Describe("Controllers: classifier controller", func() {
 
 	It("updateMaps updates map of Classifier using DeployedResourceConstraints verion as criteria", func() {
 		classifier := getClassifierWithResourceConstraints()
-		Expect(len(classifier.Spec.DeployedResourceConstraints) > 0).To(BeTrue())
+		Expect(len(classifier.Spec.DeployedResourceConstraint.ResourceSelectors) > 0).To(BeTrue())
 		Expect(testEnv.Create(watcherCtx, classifier)).To(Succeed())
 		Expect(waitForObject(watcherCtx, testEnv.Client, classifier)).To(Succeed())
 
@@ -102,17 +102,22 @@ var _ = Describe("Controllers: classifier controller", func() {
 
 		controllers.ClassifierUpdateMaps(reconciler, classifier)
 		Expect(reconciler.VersionClassifiers.Len()).To(Equal(0))
-		Expect(len(reconciler.GVKClassifiers)).To(Equal(1))
-		gvk := schema.GroupVersionKind{
-			Group:   classifier.Spec.DeployedResourceConstraints[0].Group,
-			Version: classifier.Spec.DeployedResourceConstraints[0].Version,
-			Kind:    classifier.Spec.DeployedResourceConstraints[0].Kind,
+		Expect(len(reconciler.GVKClassifiers)).To(
+			Equal(len(classifier.Spec.DeployedResourceConstraint.ResourceSelectors)))
+
+		for i := range classifier.Spec.DeployedResourceConstraint.ResourceSelectors {
+			rs := &classifier.Spec.DeployedResourceConstraint.ResourceSelectors[i]
+			gvk := schema.GroupVersionKind{
+				Group:   rs.Group,
+				Version: rs.Version,
+				Kind:    rs.Kind,
+			}
+			v, ok := reconciler.GVKClassifiers[gvk]
+			Expect(ok).To(BeTrue())
+			Expect(v.Len()).To(Equal(1))
+			items := reconciler.GVKClassifiers[gvk].Items()
+			Expect(items[0].Name).To(Equal(classifier.Name))
 		}
-		v, ok := reconciler.GVKClassifiers[gvk]
-		Expect(ok).To(BeTrue())
-		Expect(v.Len()).To(Equal(1))
-		items := reconciler.GVKClassifiers[gvk].Items()
-		Expect(items[0].Name).To(Equal(classifier.Name))
 	})
 
 	It("reconcileDelete remove classifier from VersionClassifiers map", func() {
@@ -145,15 +150,9 @@ var _ = Describe("Controllers: classifier controller", func() {
 
 	It("reconcileDelete remove classifier from GVKClassifiers map", func() {
 		classifier := getClassifierWithResourceConstraints()
-		Expect(len(classifier.Spec.DeployedResourceConstraints) > 0).To(BeTrue())
+		Expect(len(classifier.Spec.DeployedResourceConstraint.ResourceSelectors) > 0).To(BeTrue())
 		Expect(testEnv.Create(watcherCtx, classifier)).To(Succeed())
 		Expect(waitForObject(watcherCtx, testEnv.Client, classifier)).To(Succeed())
-
-		gvk := schema.GroupVersionKind{
-			Group:   classifier.Spec.DeployedResourceConstraints[0].Group,
-			Version: classifier.Spec.DeployedResourceConstraints[0].Version,
-			Kind:    classifier.Spec.DeployedResourceConstraints[0].Kind,
-		}
 
 		reconciler := &controllers.ClassifierReconciler{
 			Client:             testEnv.Client,
@@ -163,9 +162,18 @@ var _ = Describe("Controllers: classifier controller", func() {
 			VersionClassifiers: libsveltosset.Set{},
 		}
 
-		policyRef := controllers.GetKeyFromObject(scheme, classifier)
-		reconciler.GVKClassifiers[gvk] = &libsveltosset.Set{}
-		reconciler.GVKClassifiers[gvk].Insert(policyRef)
+		for i := range classifier.Spec.DeployedResourceConstraint.ResourceSelectors {
+			rs := classifier.Spec.DeployedResourceConstraint.ResourceSelectors[i]
+			gvk := schema.GroupVersionKind{
+				Group:   rs.Group,
+				Version: rs.Version,
+				Kind:    rs.Kind,
+			}
+
+			policyRef := controllers.GetKeyFromObject(scheme, classifier)
+			reconciler.GVKClassifiers[gvk] = &libsveltosset.Set{}
+			reconciler.GVKClassifiers[gvk].Insert(policyRef)
+		}
 
 		classifierScope, err := scope.NewClassifierScope(scope.ClassifierScopeParams{
 			Client:     testEnv.Client,
@@ -177,6 +185,15 @@ var _ = Describe("Controllers: classifier controller", func() {
 		controllers.ClassifierReconcileDelete(reconciler, classifierScope,
 			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(reconciler.VersionClassifiers.Len()).To(Equal(0))
-		Expect(reconciler.GVKClassifiers[gvk].Len()).To(Equal(0))
+
+		for i := range classifier.Spec.DeployedResourceConstraint.ResourceSelectors {
+			rs := classifier.Spec.DeployedResourceConstraint.ResourceSelectors[i]
+			gvk := schema.GroupVersionKind{
+				Group:   rs.Group,
+				Version: rs.Version,
+				Kind:    rs.Kind,
+			}
+			Expect(reconciler.GVKClassifiers[gvk].Len()).To(Equal(0))
+		}
 	})
 })

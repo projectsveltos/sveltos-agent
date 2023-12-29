@@ -195,23 +195,28 @@ func (r *ClassifierReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *ClassifierReconciler) updateMaps(classifier *libsveltosv1alpha1.Classifier) {
-	gvks := make([]schema.GroupVersionKind, len(classifier.Spec.DeployedResourceConstraints))
-	for i := range classifier.Spec.DeployedResourceConstraints {
-		gvk := schema.GroupVersionKind{
-			Group:   classifier.Spec.DeployedResourceConstraints[i].Group,
-			Version: classifier.Spec.DeployedResourceConstraints[i].Version,
-			Kind:    classifier.Spec.DeployedResourceConstraints[i].Kind,
-		}
-		gvks[i] = gvk
-	}
-
-	policyRef := getKeyFromObject(r.Scheme, classifier)
-
 	r.Mux.Lock()
 	defer r.Mux.Unlock()
 
+	policyRef := getKeyFromObject(r.Scheme, classifier)
+
 	if classifier.Spec.KubernetesVersionConstraints != nil {
 		r.VersionClassifiers.Insert(policyRef)
+	}
+
+	if classifier.Spec.DeployedResourceConstraint == nil {
+		return
+	}
+
+	gvks := make([]schema.GroupVersionKind, len(classifier.Spec.DeployedResourceConstraint.ResourceSelectors))
+	for i := range classifier.Spec.DeployedResourceConstraint.ResourceSelectors {
+		rs := &classifier.Spec.DeployedResourceConstraint.ResourceSelectors[i]
+		gvk := schema.GroupVersionKind{
+			Group:   rs.Group,
+			Version: rs.Version,
+			Kind:    rs.Kind,
+		}
+		gvks[i] = gvk
 	}
 
 	for i := range gvks {

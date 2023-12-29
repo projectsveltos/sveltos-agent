@@ -32,25 +32,25 @@ import (
 )
 
 var (
-	pods = libsveltosv1alpha1.DeployedResourceConstraint{
+	pods = libsveltosv1alpha1.ResourceSelector{
 		Group:   "",
 		Version: "v1",
 		Kind:    "Pod",
 	}
 
-	kubeadmconfigs = libsveltosv1alpha1.DeployedResourceConstraint{
+	kubeadmconfigs = libsveltosv1alpha1.ResourceSelector{
 		Group:   "bootstrap.cluster.x-k8s.io",
 		Version: "v1beta1",
 		Kind:    "Kubeadmconfig",
 	}
 
-	classifiers = libsveltosv1alpha1.DeployedResourceConstraint{
+	classifiers = libsveltosv1alpha1.ResourceSelector{
 		Group:   "lib.projectsveltos.io",
 		Version: "v1alpha1",
 		Kind:    "Classifier",
 	}
 
-	debuggingConfigurations = libsveltosv1alpha1.DeployedResourceConstraint{
+	debuggingConfigurations = libsveltosv1alpha1.ResourceSelector{
 		Group:   "lib.projectsveltos.io",
 		Version: "v1alpha1",
 		Kind:    "DebuggingConfiguration",
@@ -79,9 +79,11 @@ var _ = Describe("Manager: watchers", func() {
 
 	It("buildList: builds list of resources to watch", func() {
 		classifier := getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonEqual)
-		classifier.Spec.DeployedResourceConstraints = []libsveltosv1alpha1.DeployedResourceConstraint{
-			pods,
-			kubeadmconfigs,
+		classifier.Spec.DeployedResourceConstraint = &libsveltosv1alpha1.DeployedResourceConstraint{
+			ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+				pods,
+				kubeadmconfigs,
+			},
 		}
 		classifier.Spec.ClassifierLabels = []libsveltosv1alpha1.ClassifierLabel{
 			{Key: randomString(), Value: randomString()},
@@ -109,12 +111,12 @@ var _ = Describe("Manager: watchers", func() {
 		gvks, err := evaluation.BuildList(manager, context.TODO())
 		Expect(err).To(BeNil())
 		Expect(len(gvks)).To(Equal(2))
-		for i := range classifier.Spec.DeployedResourceConstraints {
-			r := classifier.Spec.DeployedResourceConstraints[i]
+		for i := range classifier.Spec.DeployedResourceConstraint.ResourceSelectors {
+			rs := classifier.Spec.DeployedResourceConstraint.ResourceSelectors[i]
 			gvk := schema.GroupVersionKind{
-				Group:   r.Group,
-				Version: r.Version,
-				Kind:    r.Kind,
+				Group:   rs.Group,
+				Version: rs.Version,
+				Kind:    rs.Kind,
 			}
 			Expect(gvks[gvk]).To(BeTrue())
 		}

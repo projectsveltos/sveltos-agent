@@ -159,14 +159,14 @@ func verifyEvent(dirName string) {
 	if matchingResources == nil {
 		By(fmt.Sprintf("%s file not present", matchingFileName))
 	} else {
-		validateResourceSelectorLuaScripts(eventSource, matchingResources, true)
+		validateResourceSelectorLuaScripts(eventSource.Spec.ResourceSelectors, matchingResources, true)
 	}
 
 	nonMatchingResources := getResources(dirName, nonMatchingFileName)
 	if nonMatchingResources == nil {
 		By(fmt.Sprintf("%s file not present", nonMatchingFileName))
 	} else {
-		validateResourceSelectorLuaScripts(eventSource, nonMatchingResources, false)
+		validateResourceSelectorLuaScripts(eventSource.Spec.ResourceSelectors, nonMatchingResources, false)
 	}
 
 	validateAggregatedSelectionLuaScript(eventSource, matchingResources, nonMatchingResources)
@@ -263,32 +263,22 @@ func verifyClassifier(dirName string) {
 	classifier := getClassifier(dirName)
 	Expect(classifier).ToNot(BeNil())
 
-	matchingResource := getResource(dirName, matchingFileName)
-	if matchingResource == nil {
+	matchingResources := getResources(dirName, matchingFileName)
+	if matchingResources == nil {
 		By(fmt.Sprintf("%s file not present", matchingFileName))
 	} else {
 		By("Verifying matching content")
-		for i := range classifier.Spec.DeployedResourceConstraints {
-			isMatch, err := evaluation.IsMatchForClassifierScript(manager, matchingResource,
-				classifier.Spec.DeployedResourceConstraints[i].Script,
-				textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
-			Expect(err).To(BeNil())
-			Expect(isMatch).To(BeTrue())
-		}
+		validateResourceSelectorLuaScripts(classifier.Spec.DeployedResourceConstraint.ResourceSelectors,
+			matchingResources, true)
 	}
 
-	nonMatchingResource := getResource(dirName, nonMatchingFileName)
-	if nonMatchingResource == nil {
+	nonMatchingResources := getResources(dirName, nonMatchingFileName)
+	if nonMatchingResources == nil {
 		By(fmt.Sprintf("%s file not present", nonMatchingFileName))
 	} else {
 		By("Verifying non-matching content")
-		for i := range classifier.Spec.DeployedResourceConstraints {
-			isMatch, err := evaluation.IsMatchForClassifierScript(manager, nonMatchingResource,
-				classifier.Spec.DeployedResourceConstraints[i].Script,
-				textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
-			Expect(err).To(BeNil())
-			Expect(isMatch).To(BeFalse())
-		}
+		validateResourceSelectorLuaScripts(classifier.Spec.DeployedResourceConstraint.ResourceSelectors,
+			nonMatchingResources, false)
 	}
 }
 
@@ -378,16 +368,16 @@ func getResources(dirName, fileName string) []*unstructured.Unstructured {
 	return resources
 }
 
-func validateResourceSelectorLuaScripts(eventSource *libsveltosv1alpha1.EventSource,
+func validateResourceSelectorLuaScripts(resourceSelectors []libsveltosv1alpha1.ResourceSelector,
 	resources []*unstructured.Unstructured, expectedMatch bool) {
 
 	for i := range resources {
 		resource := resources[i]
-		validateResourceSelectorLuaScript(eventSource, resource, expectedMatch)
+		validateResourceSelectorLuaScript(resourceSelectors, resource, expectedMatch)
 	}
 }
 
-func validateResourceSelectorLuaScript(eventSource *libsveltosv1alpha1.EventSource,
+func validateResourceSelectorLuaScript(resourceSelectors []libsveltosv1alpha1.ResourceSelector,
 	resource *unstructured.Unstructured, expectedMatch bool) {
 
 	clusterNamespace := utils.ReportNamespace
@@ -399,14 +389,14 @@ func validateResourceSelectorLuaScript(eventSource *libsveltosv1alpha1.EventSour
 	manager := evaluation.GetManager()
 	Expect(manager).ToNot(BeNil())
 
-	for i := range eventSource.Spec.ResourceSelectors {
-		rs := &eventSource.Spec.ResourceSelectors[i]
-		if rs.Script != "" {
+	for i := range resourceSelectors {
+		rs := &resourceSelectors[i]
+		if rs.Evaluate != "" {
 			if rs.Kind == resource.GetKind() &&
 				rs.Group == resource.GroupVersionKind().Group &&
 				rs.Version == resource.GroupVersionKind().Version {
 
-				isMatch, err := evaluation.IsMatchForEventSource(manager, resource, rs.Script, l)
+				isMatch, err := evaluation.IsMatchForEventSource(manager, resource, rs.Evaluate, l)
 				Expect(err).To(BeNil())
 				Expect(isMatch).To(Equal(expectedMatch))
 			}
