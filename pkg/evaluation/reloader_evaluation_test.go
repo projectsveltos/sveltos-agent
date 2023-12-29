@@ -32,7 +32,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
@@ -115,8 +115,8 @@ var _ = Describe("Manager: reloader evaluation", func() {
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			nil, c, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -196,8 +196,8 @@ var _ = Describe("Manager: reloader evaluation", func() {
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			nil, c, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -300,8 +300,8 @@ var _ = Describe("Manager: reloader evaluation", func() {
 		c := fake.NewClientBuilder().WithScheme(scheme).
 			WithStatusSubresource(initObjects...).WithObjects(initObjects...).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			nil, c, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -364,8 +364,8 @@ var _ = Describe("Manager: reloader evaluation", func() {
 		c := fake.NewClientBuilder().WithScheme(scheme).
 			WithStatusSubresource(initObjects...).WithObjects(initObjects...).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			nil, c, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -402,8 +402,8 @@ var _ = Describe("Manager: reloader evaluation", func() {
 
 		c := fake.NewClientBuilder().WithScheme(scheme).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			nil, c, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -482,8 +482,8 @@ var _ = Describe("Manager: reloader evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), reloaderReport)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, reloaderReport)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			ns.Name, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, ns.Name, clusterName, clusterType, 10)
 		manager := evaluation.GetManager()
 
 		Expect(evaluation.SendReloaderReportToMgtmCluster(manager, context.TODO(), configMapRef)).To(Succeed())

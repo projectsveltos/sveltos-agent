@@ -29,7 +29,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
@@ -44,8 +44,8 @@ var _ = Describe("Controllers: reloader controller", func() {
 
 	BeforeEach(func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
-		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
+		evaluation.InitializeManager(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
 	})
 
 	AfterEach(func() {
@@ -134,12 +134,13 @@ var _ = Describe("Controllers: reloader controller", func() {
 
 		reloaderScope, err := scope.NewReloaderScope(scope.ReloaderScopeParams{
 			Client:   testEnv.Client,
-			Logger:   klogr.New(),
+			Logger:   textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 			Reloader: reloader,
 		})
 		Expect(err).To(BeNil())
 
-		controllers.ReloaderReconcileDelete(reconciler, reloaderScope, klogr.New())
+		controllers.ReloaderReconcileDelete(reconciler, reloaderScope,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(reconciler.GVKReloaders[gvk].Len()).To(Equal(0))
 	})
 

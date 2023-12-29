@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2/textlogger"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
-
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/klog/v2/klogr"
 )
 
 const (
@@ -150,39 +151,25 @@ func verifyEvent(dirName string) {
 		}
 	}
 
-	clusterNamespace := utils.ReportNamespace
-	clusterName := randomString()
-	clusterType := libsveltosv1alpha1.ClusterTypeCapi
-
-	c := fake.NewClientBuilder().WithScheme(scheme).Build()
-	evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
-		clusterNamespace, clusterName, clusterType, 10)
-	manager := evaluation.GetManager()
-	Expect(manager).ToNot(BeNil())
-
 	By(fmt.Sprintf("Validating eventSource in dir: %s", dirName))
 	eventSource := getEventSource(dirName)
 	Expect(eventSource).ToNot(BeNil())
 
-	matchingResource := getResource(dirName, matchingFileName)
-	if matchingResource == nil {
+	matchingResources := getResources(dirName, matchingFileName)
+	if matchingResources == nil {
 		By(fmt.Sprintf("%s file not present", matchingFileName))
 	} else {
-		By("Verifying matching content")
-		isMatch, err := evaluation.IsMatchForEventSource(manager, matchingResource, eventSource.Spec.Script, klogr.New())
-		Expect(err).To(BeNil())
-		Expect(isMatch).To(BeTrue())
+		validateResourceSelectorLuaScripts(eventSource, matchingResources, true)
 	}
 
-	nonMatchingResource := getResource(dirName, nonMatchingFileName)
-	if nonMatchingResource == nil {
+	nonMatchingResources := getResources(dirName, nonMatchingFileName)
+	if nonMatchingResources == nil {
 		By(fmt.Sprintf("%s file not present", nonMatchingFileName))
 	} else {
-		By("Verifying non-matching content")
-		isMatch, err := evaluation.IsMatchForEventSource(manager, nonMatchingResource, eventSource.Spec.Script, klogr.New())
-		Expect(err).To(BeNil())
-		Expect(isMatch).To(BeFalse())
+		validateResourceSelectorLuaScripts(eventSource, nonMatchingResources, false)
 	}
+
+	validateAggregatedSelectionLuaScript(eventSource, matchingResources, nonMatchingResources)
 }
 
 func verifyHealthCheck(dirName string) {
@@ -201,8 +188,8 @@ func verifyHealthCheck(dirName string) {
 	clusterType := libsveltosv1alpha1.ClusterTypeCapi
 
 	c := fake.NewClientBuilder().WithScheme(scheme).Build()
-	evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
-		clusterNamespace, clusterName, clusterType, 10)
+	evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+		nil, c, clusterNamespace, clusterName, clusterType, 10)
 	manager := evaluation.GetManager()
 	Expect(manager).ToNot(BeNil())
 
@@ -267,8 +254,8 @@ func verifyClassifier(dirName string) {
 	clusterType := libsveltosv1alpha1.ClusterTypeCapi
 
 	c := fake.NewClientBuilder().WithScheme(scheme).Build()
-	evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
-		clusterNamespace, clusterName, clusterType, 10)
+	evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+		nil, c, clusterNamespace, clusterName, clusterType, 10)
 	manager := evaluation.GetManager()
 	Expect(manager).ToNot(BeNil())
 
@@ -283,7 +270,8 @@ func verifyClassifier(dirName string) {
 		By("Verifying matching content")
 		for i := range classifier.Spec.DeployedResourceConstraints {
 			isMatch, err := evaluation.IsMatchForClassifierScript(manager, matchingResource,
-				classifier.Spec.DeployedResourceConstraints[i].Script, klogr.New())
+				classifier.Spec.DeployedResourceConstraints[i].Script,
+				textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 			Expect(err).To(BeNil())
 			Expect(isMatch).To(BeTrue())
 		}
@@ -296,7 +284,8 @@ func verifyClassifier(dirName string) {
 		By("Verifying non-matching content")
 		for i := range classifier.Spec.DeployedResourceConstraints {
 			isMatch, err := evaluation.IsMatchForClassifierScript(manager, nonMatchingResource,
-				classifier.Spec.DeployedResourceConstraints[i].Script, klogr.New())
+				classifier.Spec.DeployedResourceConstraints[i].Script,
+				textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 			Expect(err).To(BeNil())
 			Expect(isMatch).To(BeFalse())
 		}
@@ -364,4 +353,87 @@ func getResource(dirName, fileName string) *unstructured.Unstructured {
 	Expect(err).To(BeNil())
 
 	return u
+}
+
+func getResources(dirName, fileName string) []*unstructured.Unstructured {
+	resourceFileName := filepath.Join(dirName, fileName)
+
+	_, err := os.Stat(resourceFileName)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	Expect(err).To(BeNil())
+
+	content, err := os.ReadFile(resourceFileName)
+	Expect(err).To(BeNil())
+
+	resources := make([]*unstructured.Unstructured, 0)
+	elements := strings.Split(string(content), "---")
+	for i := range elements {
+		u, err := libsveltosutils.GetUnstructured([]byte(elements[i]))
+		Expect(err).To(BeNil())
+		resources = append(resources, u)
+	}
+
+	return resources
+}
+
+func validateResourceSelectorLuaScripts(eventSource *libsveltosv1alpha1.EventSource,
+	resources []*unstructured.Unstructured, expectedMatch bool) {
+
+	for i := range resources {
+		resource := resources[i]
+		validateResourceSelectorLuaScript(eventSource, resource, expectedMatch)
+	}
+}
+
+func validateResourceSelectorLuaScript(eventSource *libsveltosv1alpha1.EventSource,
+	resource *unstructured.Unstructured, expectedMatch bool) {
+
+	clusterNamespace := utils.ReportNamespace
+	clusterName := randomString()
+	clusterType := libsveltosv1alpha1.ClusterTypeCapi
+
+	l := textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
+	evaluation.InitializeManagerWithSkip(context.TODO(), l, nil, testEnv, clusterNamespace, clusterName, clusterType, 10)
+	manager := evaluation.GetManager()
+	Expect(manager).ToNot(BeNil())
+
+	for i := range eventSource.Spec.ResourceSelectors {
+		rs := &eventSource.Spec.ResourceSelectors[i]
+		if rs.Script != "" {
+			if rs.Kind == resource.GetKind() &&
+				rs.Group == resource.GroupVersionKind().Group &&
+				rs.Version == resource.GroupVersionKind().Version {
+
+				isMatch, err := evaluation.IsMatchForEventSource(manager, resource, rs.Script, l)
+				Expect(err).To(BeNil())
+				Expect(isMatch).To(Equal(expectedMatch))
+			}
+		}
+	}
+}
+
+func validateAggregatedSelectionLuaScript(eventSource *libsveltosv1alpha1.EventSource,
+	matchingResources []*unstructured.Unstructured, nonMatchingResources []*unstructured.Unstructured) {
+
+	if eventSource.Spec.AggregatedSelection == "" {
+		return
+	}
+
+	clusterNamespace := utils.ReportNamespace
+	clusterName := randomString()
+	clusterType := libsveltosv1alpha1.ClusterTypeCapi
+
+	l := textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
+	evaluation.InitializeManagerWithSkip(context.TODO(), l, nil, testEnv, clusterNamespace, clusterName, clusterType, 10)
+	manager := evaluation.GetManager()
+	Expect(manager).ToNot(BeNil())
+
+	resources := matchingResources
+	resources = append(resources, nonMatchingResources...)
+
+	result, err := evaluation.AggregatedSelection(manager, eventSource.Spec.AggregatedSelection, resources, l)
+	Expect(err).To(BeFalse())
+	verifyResult(result, matchingResources, nonMatchingResources)
 }

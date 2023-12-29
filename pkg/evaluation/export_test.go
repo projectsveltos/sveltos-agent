@@ -64,14 +64,15 @@ var (
 
 // eventSource
 var (
-	GetEventMatchingResources  = (*manager).getEventMatchingResources
-	FetchEventSourceResources  = (*manager).fetchEventSourceResources
-	IsMatchForEventSource      = (*manager).isMatchForEventSource
-	IsMatchForClassifierScript = (*manager).isMatchForClassifierScript
-	CreateEventReport          = (*manager).createEventReport
-	SendEventReport            = (*manager).sendEventReport
-	CleanEventReport           = (*manager).cleanEventReport
-	MarshalSliceOfUnstructured = (*manager).marshalSliceOfUnstructured
+	GetEventMatchingResources         = (*manager).getEventMatchingResources
+	AggregatedSelection               = (*manager).aggregatedSelection
+	FetchResourcesMatchingEventSource = (*manager).fetchResourcesMatchingEventSource
+	IsMatchForEventSource             = (*manager).isMatchForEventSource
+	IsMatchForClassifierScript        = (*manager).isMatchForClassifierScript
+	CreateEventReport                 = (*manager).createEventReport
+	SendEventReport                   = (*manager).sendEventReport
+	CleanEventReport                  = (*manager).cleanEventReport
+	MarshalSliceOfUnstructured        = (*manager).marshalSliceOfUnstructured
 )
 
 // reloader

@@ -253,9 +253,13 @@ func getEventSource() *libsveltosv1alpha1.EventSource {
 			Name: randomString(),
 		},
 		Spec: libsveltosv1alpha1.EventSourceSpec{
-			Group:   randomString(),
-			Version: randomString(),
-			Kind:    randomString(),
+			ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+				{
+					Group:   randomString(),
+					Version: randomString(),
+					Kind:    randomString(),
+				},
+			},
 		},
 	}
 }

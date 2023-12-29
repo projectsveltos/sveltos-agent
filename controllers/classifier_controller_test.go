@@ -25,7 +25,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
@@ -40,7 +40,8 @@ var _ = Describe("Controllers: classifier controller", func() {
 
 	BeforeEach(func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
-		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
+		evaluation.InitializeManager(watcherCtx,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
 			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
 	})
 
@@ -132,12 +133,13 @@ var _ = Describe("Controllers: classifier controller", func() {
 
 		classifierScope, err := scope.NewClassifierScope(scope.ClassifierScopeParams{
 			Client:     testEnv.Client,
-			Logger:     klogr.New(),
+			Logger:     textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 			Classifier: classifier,
 		})
 		Expect(err).To(BeNil())
 
-		controllers.ClassifierReconcileDelete(reconciler, classifierScope, klogr.New())
+		controllers.ClassifierReconcileDelete(reconciler, classifierScope,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(reconciler.VersionClassifiers.Len()).To(Equal(0))
 	})
 
@@ -167,12 +169,13 @@ var _ = Describe("Controllers: classifier controller", func() {
 
 		classifierScope, err := scope.NewClassifierScope(scope.ClassifierScopeParams{
 			Client:     testEnv.Client,
-			Logger:     klogr.New(),
+			Logger:     textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 			Classifier: classifier,
 		})
 		Expect(err).To(BeNil())
 
-		controllers.ClassifierReconcileDelete(reconciler, classifierScope, klogr.New())
+		controllers.ClassifierReconcileDelete(reconciler, classifierScope,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(reconciler.VersionClassifiers.Len()).To(Equal(0))
 		Expect(reconciler.GVKClassifiers[gvk].Len()).To(Equal(0))
 	})

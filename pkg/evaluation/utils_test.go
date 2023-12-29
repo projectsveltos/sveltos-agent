@@ -24,6 +24,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func getDeployment(replicas, availableReplicas int32) *appsv1.Deployment {
@@ -78,6 +81,12 @@ func getService() *corev1.Service {
 }
 
 func createNamespace(name string) {
+	currentNamespace := &corev1.Namespace{}
+	err := testEnv.Get(context.TODO(), types.NamespacedName{Name: name}, currentNamespace)
+	if err == nil {
+		return
+	}
+
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -86,4 +95,25 @@ func createNamespace(name string) {
 
 	Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
 	waitForObject(context.TODO(), testEnv.Client, ns)
+}
+
+// waitForObject waits for the cache to be updated helps in preventing test flakes
+// due to the cache sync delays.
+func waitForObject(ctx context.Context, c client.Client, obj client.Object) {
+	// Makes sure the cache is updated with the new object
+	objCopy := obj.DeepCopyObject().(client.Object)
+	key := client.ObjectKeyFromObject(obj)
+	Eventually(func() error {
+		return c.Get(ctx, key, objCopy)
+	}, timeout, pollingInterval).Should(BeNil())
+}
+
+func verifyResult(result, matchingResources, nonMatchingResources []*unstructured.Unstructured) {
+	for i := range matchingResources {
+		Expect(result).To(ContainElement(matchingResources[i]))
+	}
+
+	for i := range nonMatchingResources {
+		Expect(result).ToNot(ContainElement(nonMatchingResources[i]))
+	}
 }

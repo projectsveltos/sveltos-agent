@@ -35,7 +35,7 @@ import (
 	"k8s.io/client-go/rest"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -342,7 +342,8 @@ func getManagedClusterRestConfig(ctx context.Context, cfg *rest.Config, logger l
 	// It access the managed cluster from here.
 	var currentCfg *rest.Config
 	currentCfg, err = clusterproxy.GetKubernetesRestConfig(ctx, c, clusterNamespace, clusterName, "", "",
-		libsveltosv1alpha1.ClusterType(clusterType), klogr.New())
+		libsveltosv1alpha1.ClusterType(clusterType),
+		textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 	if err != nil {
 		logger.V(logsettings.LogInfo).Info(fmt.Sprintf("failed to get secret: %v", err))
 		panic(1)

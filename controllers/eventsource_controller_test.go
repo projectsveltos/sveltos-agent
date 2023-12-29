@@ -24,7 +24,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2"
+	"k8s.io/klog/v2/textlogger"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
@@ -39,8 +40,8 @@ var _ = Describe("Controllers: eventSource controller", func() {
 
 	BeforeEach(func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
-		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
+		evaluation.InitializeManager(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
 	})
 
 	AfterEach(func() {
@@ -68,16 +69,19 @@ var _ = Describe("Controllers: eventSource controller", func() {
 
 		controllers.EventSourceUpdateMaps(reconciler, eventSource)
 		Expect(len(reconciler.GVKEventSources)).To(Equal(1))
-		gvk := schema.GroupVersionKind{
-			Group:   eventSource.Spec.Group,
-			Version: eventSource.Spec.Version,
-			Kind:    eventSource.Spec.Kind,
+		for i := range eventSource.Spec.ResourceSelectors {
+			rs := &eventSource.Spec.ResourceSelectors[i]
+			gvk := schema.GroupVersionKind{
+				Group:   rs.Group,
+				Version: rs.Version,
+				Kind:    rs.Kind,
+			}
+			v, ok := reconciler.GVKEventSources[gvk]
+			Expect(ok).To(BeTrue())
+			Expect(v.Len()).To(Equal(1))
+			items := reconciler.GVKEventSources[gvk].Items()
+			Expect(items[0].Name).To(Equal(eventSource.Name))
 		}
-		v, ok := reconciler.GVKEventSources[gvk]
-		Expect(ok).To(BeTrue())
-		Expect(v.Len()).To(Equal(1))
-		items := reconciler.GVKEventSources[gvk].Items()
-		Expect(items[0].Name).To(Equal(eventSource.Name))
 	})
 
 	It("reconcileDelete remove eventSource from GVKEventSources map", func() {
@@ -85,11 +89,7 @@ var _ = Describe("Controllers: eventSource controller", func() {
 		Expect(testEnv.Create(watcherCtx, eventSource)).To(Succeed())
 		Expect(waitForObject(watcherCtx, testEnv.Client, eventSource)).To(Succeed())
 
-		gvk := schema.GroupVersionKind{
-			Group:   eventSource.Spec.Group,
-			Version: eventSource.Spec.Version,
-			Kind:    eventSource.Spec.Kind,
-		}
+		policyRef := controllers.GetKeyFromObject(scheme, eventSource)
 
 		reconciler := &controllers.EventSourceReconciler{
 			Client:          testEnv.Client,
@@ -98,18 +98,32 @@ var _ = Describe("Controllers: eventSource controller", func() {
 			GVKEventSources: make(map[schema.GroupVersionKind]*libsveltosset.Set),
 		}
 
-		policyRef := controllers.GetKeyFromObject(scheme, eventSource)
-		reconciler.GVKEventSources[gvk] = &libsveltosset.Set{}
-		reconciler.GVKEventSources[gvk].Insert(policyRef)
+		gvks := []schema.GroupVersionKind{}
+		for i := range eventSource.Spec.ResourceSelectors {
+			rs := &eventSource.Spec.ResourceSelectors[i]
+			gvk := schema.GroupVersionKind{
+				Group:   rs.Group,
+				Version: rs.Version,
+				Kind:    rs.Kind,
+			}
+			gvks = append(gvks, gvk)
+
+			reconciler.GVKEventSources[gvk] = &libsveltosset.Set{}
+			reconciler.GVKEventSources[gvk].Insert(policyRef)
+
+		}
 
 		eventSourceScope, err := scope.NewEventSourceScope(scope.EventSourceScopeParams{
 			Client:      testEnv.Client,
-			Logger:      klogr.New(),
+			Logger:      klog.FromContext(ctx),
 			EventSource: eventSource,
 		})
 		Expect(err).To(BeNil())
 
-		controllers.EventSourceReconcileDelete(reconciler, context.TODO(), eventSourceScope, klogr.New())
-		Expect(reconciler.GVKEventSources[gvk].Len()).To(Equal(0))
+		controllers.EventSourceReconcileDelete(reconciler, context.TODO(), eventSourceScope,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
+		for i := range gvks {
+			Expect(reconciler.GVKEventSources[gvks[i]].Len()).To(Equal(0))
+		}
 	})
 })
