@@ -284,7 +284,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 						Version:   "v1",
 						Kind:      "Deployment",
 						Namespace: namespace,
-						Script:    degradedDeploymentLuaScript,
+						Evaluate:  degradedDeploymentLuaScript,
 					},
 				},
 				CollectResources: true,

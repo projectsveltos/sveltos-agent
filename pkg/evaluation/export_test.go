@@ -37,19 +37,19 @@ import (
 
 // Classifier
 var (
-	IsVersionAMatch            = (*manager).isVersionAMatch
-	IsResourceAMatch           = (*manager).isResourceAMatch
-	CleanClassifierReport      = (*manager).cleanClassifierReport
-	CreateClassifierReport     = (*manager).createClassifierReport
-	EvaluateClassifierInstance = (*manager).evaluateClassifierInstance
-	BuildList                  = (*manager).buildList
-	BuildSortedList            = (*manager).buildSortedList
-	GvkInstalled               = (*manager).gvkInstalled
-	GetInstalledResources      = (*manager).getInstalledResources
-	StartWatcher               = (*manager).startWatcher
-	UpdateWatchers             = (*manager).updateWatchers
-	GetManamegentClusterClient = (*manager).getManamegentClusterClient
-	SendClassifierReport       = (*manager).sendClassifierReport
+	IsVersionAMatch                 = (*manager).isVersionAMatch
+	GetResourcesForResourceSelector = (*manager).getResourcesForResourceSelector
+	CleanClassifierReport           = (*manager).cleanClassifierReport
+	CreateClassifierReport          = (*manager).createClassifierReport
+	EvaluateClassifierInstance      = (*manager).evaluateClassifierInstance
+	BuildList                       = (*manager).buildList
+	BuildSortedList                 = (*manager).buildSortedList
+	GvkInstalled                    = (*manager).gvkInstalled
+	GetInstalledResources           = (*manager).getInstalledResources
+	StartWatcher                    = (*manager).startWatcher
+	UpdateWatchers                  = (*manager).updateWatchers
+	GetManamegentClusterClient      = (*manager).getManamegentClusterClient
+	SendClassifierReport            = (*manager).sendClassifierReport
 )
 
 // healthCheck
@@ -68,7 +68,7 @@ var (
 	AggregatedSelection               = (*manager).aggregatedSelection
 	FetchResourcesMatchingEventSource = (*manager).fetchResourcesMatchingEventSource
 	IsMatchForEventSource             = (*manager).isMatchForEventSource
-	IsMatchForClassifierScript        = (*manager).isMatchForClassifierScript
+	IsMatchForResourceSelectorScript  = (*manager).isMatchForResourceSelectorScript
 	CreateEventReport                 = (*manager).createEventReport
 	SendEventReport                   = (*manager).sendEventReport
 	CleanEventReport                  = (*manager).cleanEventReport

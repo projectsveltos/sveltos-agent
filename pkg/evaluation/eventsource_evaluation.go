@@ -510,7 +510,7 @@ func (m *manager) fetchResourcesMatchingResourceSelector(ctx context.Context,
 		if !resource.GetDeletionTimestamp().IsZero() {
 			continue
 		}
-		isMatch, err := m.isMatchForEventSource(resource, resourceSelector.Script, logger)
+		isMatch, err := m.isMatchForEventSource(resource, resourceSelector.Evaluate, logger)
 		if err != nil {
 			return nil, err
 		}

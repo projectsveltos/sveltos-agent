@@ -75,10 +75,10 @@ var _ = Describe("Events", func() {
 			Spec: libsveltosv1alpha1.EventSourceSpec{
 				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
 					{
-						Group:   "apps",
-						Version: "v1",
-						Kind:    "Deployment",
-						Script:  luaAvailableReplicasScript,
+						Group:    "apps",
+						Version:  "v1",
+						Kind:     "Deployment",
+						Evaluate: luaAvailableReplicasScript,
 					},
 				},
 			},

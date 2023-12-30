@@ -216,16 +216,18 @@ func getClassifierWithResourceConstraints() *libsveltosv1alpha1.Classifier {
 			ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
 				{Key: randomString(), Value: randomString()},
 			},
-			DeployedResourceConstraints: []libsveltosv1alpha1.DeployedResourceConstraint{
-				{
-					Group:   randomString(),
-					Version: randomString(),
-					Kind:    randomString(),
-					LabelFilters: []libsveltosv1alpha1.LabelFilter{
-						{
-							Key:       randomString(),
-							Operation: libsveltosv1alpha1.OperationEqual,
-							Value:     randomString(),
+			DeployedResourceConstraint: &libsveltosv1alpha1.DeployedResourceConstraint{
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:   randomString(),
+						Version: randomString(),
+						Kind:    randomString(),
+						LabelFilters: []libsveltosv1alpha1.LabelFilter{
+							{
+								Key:       randomString(),
+								Operation: libsveltosv1alpha1.OperationEqual,
+								Value:     randomString(),
+							},
 						},
 					},
 				},
