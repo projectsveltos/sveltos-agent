@@ -121,7 +121,7 @@ func (r *ClassifierReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// Handle non-deleted classifier
-	return r.reconcileNormal(ctx, classifierScope, logger)
+	return ctrl.Result{}, r.reconcileNormal(ctx, classifierScope, logger)
 }
 
 func (r *ClassifierReconciler) reconcileDelete(
@@ -157,7 +157,7 @@ func (r *ClassifierReconciler) reconcileDelete(
 func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
 	classifierScope *scope.ClassifierScope,
 	logger logr.Logger,
-) (reconcile.Result, error) {
+) error {
 
 	logger.V(logs.LogDebug).Info("reconcile")
 
@@ -165,7 +165,7 @@ func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
 		if err := addFinalizer(ctx, r.Client, classifierScope.Classifier, libsveltosv1alpha1.ClassifierFinalizer,
 			logger); err != nil {
 			logger.V(logs.LogDebug).Info("failed to update finalizer")
-			return reconcile.Result{}, err
+			return err
 		}
 	}
 
@@ -177,7 +177,7 @@ func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
 	manager.EvaluateClassifier(classifierScope.Name())
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
-	return ctrl.Result{}, nil
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
