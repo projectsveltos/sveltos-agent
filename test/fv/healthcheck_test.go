@@ -103,7 +103,7 @@ var _ = Describe("Classification", func() {
 
 	It("Evaluate healthCheck", Label("FV"), func() {
 		By("Creating a nginx deployment")
-		deploymentName := "nginx-deployment-" + randomString()
+		deploymentName := nginxPrefix + randomString()
 		u, err := libsveltosutils.GetUnstructured([]byte(fmt.Sprintf(nginxDeployment, deploymentName, "default")))
 		Expect(err).To(BeNil())
 		err = k8sClient.Create(context.TODO(), u)

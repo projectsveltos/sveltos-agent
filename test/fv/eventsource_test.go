@@ -57,7 +57,7 @@ var _ = Describe("Events", func() {
 
 	It("Evaluate eventSource", Label("FV"), func() {
 		By("Creating a nginx deployment")
-		deploymentName := "nginx-deployment-" + randomString()
+		deploymentName := nginxPrefix + randomString()
 		u, err := libsveltosutils.GetUnstructured([]byte(fmt.Sprintf(nginxDeployment, deploymentName, randomString())))
 		Expect(err).To(BeNil())
 		err = k8sClient.Create(context.TODO(), u)

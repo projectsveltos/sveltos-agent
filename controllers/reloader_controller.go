@@ -115,7 +115,7 @@ func (r *ReloaderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_
 	}
 
 	// Handle non-deleted healthCheck
-	return r.reconcileNormal(ctx, reloaderScope, logger)
+	return ctrl.Result{}, r.reconcileNormal(ctx, reloaderScope, logger)
 }
 
 func (r *ReloaderReconciler) reconcileDelete(reloaderScope *scope.ReloaderScope,
@@ -145,7 +145,7 @@ func (r *ReloaderReconciler) reconcileDelete(reloaderScope *scope.ReloaderScope,
 
 func (r *ReloaderReconciler) reconcileNormal(ctx context.Context,
 	reloaderScope *scope.ReloaderScope, logger logr.Logger,
-) (reconcile.Result, error) {
+) error {
 
 	logger.V(logs.LogDebug).Info("reconcile")
 
@@ -153,7 +153,7 @@ func (r *ReloaderReconciler) reconcileNormal(ctx context.Context,
 		if err := addFinalizer(ctx, r.Client, reloaderScope.Reloader, libsveltosv1alpha1.ReloaderFinalizer,
 			logger); err != nil {
 			logger.V(logs.LogDebug).Info("failed to update finalizer")
-			return reconcile.Result{}, err
+			return err
 		}
 	}
 
@@ -165,7 +165,7 @@ func (r *ReloaderReconciler) reconcileNormal(ctx context.Context,
 	manager.EvaluateReloader(reloaderScope.Name())
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
-	return ctrl.Result{}, nil
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

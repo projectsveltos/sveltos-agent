@@ -110,7 +110,7 @@ func (r *EventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	// Handle non-deleted eventSource
-	return r.reconcileNormal(ctx, eventSourceScope, logger)
+	return ctrl.Result{}, r.reconcileNormal(ctx, eventSourceScope, logger)
 }
 
 func (r *EventSourceReconciler) reconcileDelete(ctx context.Context,
@@ -147,7 +147,7 @@ func (r *EventSourceReconciler) reconcileDelete(ctx context.Context,
 func (r *EventSourceReconciler) reconcileNormal(ctx context.Context,
 	eventSourceScope *scope.EventSourceScope,
 	logger logr.Logger,
-) (reconcile.Result, error) {
+) error {
 
 	logger.V(logs.LogDebug).Info("reconcile")
 
@@ -155,7 +155,7 @@ func (r *EventSourceReconciler) reconcileNormal(ctx context.Context,
 		if err := addFinalizer(ctx, r.Client, eventSourceScope.EventSource, libsveltosv1alpha1.EventSourceFinalizer,
 			logger); err != nil {
 			logger.V(logs.LogDebug).Info("failed to update finalizer")
-			return reconcile.Result{}, err
+			return err
 		}
 	}
 
@@ -167,7 +167,7 @@ func (r *EventSourceReconciler) reconcileNormal(ctx context.Context,
 	manager.EvaluateEventSource(eventSourceScope.Name())
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
-	return ctrl.Result{}, nil
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

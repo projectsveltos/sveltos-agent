@@ -46,6 +46,10 @@ const (
 	pollingInterval = 5 * time.Second
 )
 
+const (
+	nginxPrefix = "nginx-deployment-"
+)
+
 func TestFv(t *testing.T) {
 	RegisterFailHandler(Fail)
 
