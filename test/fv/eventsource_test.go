@@ -24,11 +24,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
@@ -53,35 +51,13 @@ end
 )
 
 var _ = Describe("Events", func() {
-	var key string
-	var value string
 	const (
 		namePrefix = "event-"
 	)
 
-	BeforeEach(func() {
-		key = randomString()
-		value = randomString()
-	})
-
-	AfterEach(func() {
-		listOptions := []client.ListOption{
-			client.MatchingLabels{
-				key: value,
-			},
-		}
-
-		namespaceList := &corev1.NamespaceList{}
-		Expect(k8sClient.List(context.TODO(), namespaceList, listOptions...)).To(Succeed())
-
-		for i := range namespaceList.Items {
-			Expect(k8sClient.Delete(context.TODO(), &namespaceList.Items[i])).To(Succeed())
-		}
-	})
-
 	It("Evaluate eventSource", Label("FV"), func() {
 		By("Creating a nginx deployment")
-		deploymentName := "nginx-deployment-" + randomString()
+		deploymentName := nginxPrefix + randomString()
 		u, err := libsveltosutils.GetUnstructured([]byte(fmt.Sprintf(nginxDeployment, deploymentName, randomString())))
 		Expect(err).To(BeNil())
 		err = k8sClient.Create(context.TODO(), u)
@@ -97,10 +73,14 @@ var _ = Describe("Events", func() {
 				},
 			},
 			Spec: libsveltosv1alpha1.EventSourceSpec{
-				Group:   "apps",
-				Version: "v1",
-				Kind:    "Deployment",
-				Script:  luaAvailableReplicasScript,
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:    "apps",
+						Version:  "v1",
+						Kind:     "Deployment",
+						Evaluate: luaAvailableReplicasScript,
+					},
+				},
 			},
 		}
 
@@ -108,7 +88,7 @@ var _ = Describe("Events", func() {
 		Expect(k8sClient.Create(context.TODO(), &eventSource)).To(Succeed())
 
 		By("Verifying EventReport has match for nginx Deployment")
-		verifyEventReport(u.GetNamespace(), u.GetName(), eventSource.Name)
+		verifyEventReport("Deployment", u.GetNamespace(), u.GetName(), eventSource.Name)
 
 		By(fmt.Sprintf("Deleting EventSource %s", eventSource.Name))
 		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: eventSource.Name}, &eventSource))
@@ -133,7 +113,7 @@ var _ = Describe("Events", func() {
 	})
 })
 
-func verifyEventReport(deplNamespace, deplName, eventSourceName string) {
+func verifyEventReport(resourceKind, resourceNamespace, resourceName, eventSourceName string) {
 	Eventually(func() bool {
 		eventReport := &libsveltosv1alpha1.EventReport{}
 		err := k8sClient.Get(context.TODO(),
@@ -145,9 +125,10 @@ func verifyEventReport(deplNamespace, deplName, eventSourceName string) {
 			return false
 		}
 		for i := range eventReport.Spec.MatchingResources {
-			s := eventReport.Spec.MatchingResources[i]
-			if s.Namespace == deplNamespace &&
-				s.Name == deplName {
+			resource := eventReport.Spec.MatchingResources[i]
+			if resource.Kind == resourceKind &&
+				resource.Namespace == resourceNamespace &&
+				resource.Name == resourceName {
 
 				return true
 			}

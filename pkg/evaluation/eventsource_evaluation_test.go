@@ -30,7 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -119,8 +119,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("isMatchForEventSource: evaluates deployment as match", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -130,14 +130,15 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(err).To(BeNil())
 
 		var isMatch bool
-		isMatch, err = evaluation.IsMatchForEventSource(manager, depl, degradedDeploymentLuaScript, klogr.New())
+		isMatch, err = evaluation.IsMatchForEventSource(manager, depl, degradedDeploymentLuaScript,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeTrue())
 	})
 
 	It("isMatchForEventSource: evaluates deployment as non match", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -148,7 +149,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(err).To(BeNil())
 
 		var isMatch bool
-		isMatch, err = evaluation.IsMatchForEventSource(manager, depl, degradedDeploymentLuaScript, klogr.New())
+		isMatch, err = evaluation.IsMatchForEventSource(manager, depl, degradedDeploymentLuaScript,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeFalse()) // Not a match because availableReplicas = replicas
 	})
@@ -201,27 +203,32 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			waitForObject(context.TODO(), testEnv.Client, service)
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		eventSource = &libsveltosv1alpha1.EventSource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.EventSourceSpec{
-				Group:        "",
-				Version:      "v1",
-				Kind:         "Service",
-				Namespace:    namespace,
-				LabelFilters: labelFilters,
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:        "",
+						Version:      "v1",
+						Kind:         "Service",
+						Namespace:    namespace,
+						LabelFilters: labelFilters,
+					},
+				},
 			},
 		}
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
-		deployments, err := evaluation.FetchEventSourceResources(manager, context.TODO(), eventSource)
+		deployments, err := evaluation.FetchResourcesMatchingEventSource(manager, context.TODO(), eventSource,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(err).To(BeNil())
-		Expect(len(deployments.Items)).To(Equal(matchingServices))
+		Expect(len(deployments)).To(Equal(matchingServices))
 
 		By("Deleting all created namespaces")
 		for i := range namespaces {
@@ -271,23 +278,28 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.EventSourceSpec{
-				Group:            "apps",
-				Version:          "v1",
-				Kind:             "Deployment",
-				Namespace:        namespace,
-				Script:           degradedDeploymentLuaScript,
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:     "apps",
+						Version:   "v1",
+						Kind:      "Deployment",
+						Namespace: namespace,
+						Evaluate:  degradedDeploymentLuaScript,
+					},
+				},
 				CollectResources: true,
 			},
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
 
 		matchingResources, collectedResources, err :=
-			evaluation.GetEventMatchingResources(manager, context.TODO(), eventSource, klogr.New())
+			evaluation.GetEventMatchingResources(manager, context.TODO(), eventSource,
+				textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(err).To(BeNil())
 		Expect(len(matchingResources)).To(Equal(1))
 		Expect(matchingResources[0].Name).To(Equal(progressingDepl.Name))
@@ -296,8 +308,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("createEventReport creates eventReport", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -309,10 +321,14 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.EventSourceSpec{
-				Group:     "apps",
-				Version:   "v1",
-				Kind:      "Deployment",
-				Namespace: namespace,
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:     "apps",
+						Version:   "v1",
+						Kind:      "Deployment",
+						Namespace: namespace,
+					},
+				},
 			},
 		}
 
@@ -339,8 +355,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("createEventReport updates eventReport", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -352,10 +368,14 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.EventSourceSpec{
-				Group:     "apps",
-				Version:   "v1",
-				Kind:      "Deployment",
-				Namespace: namespace,
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:     "apps",
+						Version:   "v1",
+						Kind:      "Deployment",
+						Namespace: namespace,
+					},
+				},
 			},
 		}
 
@@ -396,9 +416,13 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.EventSourceSpec{
-				Group:   "",
-				Version: "v1",
-				Kind:    "Namespace",
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:   "",
+						Version: "v1",
+						Kind:    "Namespace",
+					},
+				},
 			},
 		}
 		Expect(testEnv.Create(context.TODO(), eventSource)).To(Succeed())
@@ -421,8 +445,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), eventReport)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, eventReport)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 		manager := evaluation.GetManager()
 
 		Expect(evaluation.SendEventReport(manager, context.TODO(), eventSource)).To(Succeed())
@@ -482,8 +506,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).
 			WithObjects(initObjects...).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), nil, c,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			nil, c, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
@@ -530,24 +554,29 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.EventSourceSpec{
-				Group:   "apps",
-				Version: "v1",
-				Kind:    "Deployment",
-				LabelFilters: []libsveltosv1alpha1.LabelFilter{
-					{Key: key, Operation: libsveltosv1alpha1.OperationEqual, Value: value},
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:   "apps",
+						Version: "v1",
+						Kind:    "Deployment",
+						LabelFilters: []libsveltosv1alpha1.LabelFilter{
+							{Key: key, Operation: libsveltosv1alpha1.OperationEqual, Value: value},
+						},
+						Namespace: ns.Name,
+					},
 				},
-				Namespace:        ns.Name,
 				CollectResources: true,
 			},
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), klogr.New(), testEnv.Config, testEnv.Client,
-			clusterNamespace, clusterName, clusterType, 10)
+		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
 
-		_, collectedRespurce, err := evaluation.GetEventMatchingResources(manager, context.TODO(), eventSource, klogr.New())
+		_, collectedRespurce, err := evaluation.GetEventMatchingResources(manager, context.TODO(), eventSource,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(err).To(BeNil())
 		Expect(collectedRespurce).ToNot(BeNil())
 		Expect(len(collectedRespurce)).To(Equal(2))

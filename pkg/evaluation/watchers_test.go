@@ -24,7 +24,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
@@ -32,25 +32,25 @@ import (
 )
 
 var (
-	pods = libsveltosv1alpha1.DeployedResourceConstraint{
+	pods = libsveltosv1alpha1.ResourceSelector{
 		Group:   "",
 		Version: "v1",
 		Kind:    "Pod",
 	}
 
-	kubeadmconfigs = libsveltosv1alpha1.DeployedResourceConstraint{
+	kubeadmconfigs = libsveltosv1alpha1.ResourceSelector{
 		Group:   "bootstrap.cluster.x-k8s.io",
 		Version: "v1beta1",
 		Kind:    "Kubeadmconfig",
 	}
 
-	classifiers = libsveltosv1alpha1.DeployedResourceConstraint{
+	classifiers = libsveltosv1alpha1.ResourceSelector{
 		Group:   "lib.projectsveltos.io",
 		Version: "v1alpha1",
 		Kind:    "Classifier",
 	}
 
-	debuggingConfigurations = libsveltosv1alpha1.DeployedResourceConstraint{
+	debuggingConfigurations = libsveltosv1alpha1.ResourceSelector{
 		Group:   "lib.projectsveltos.io",
 		Version: "v1alpha1",
 		Kind:    "DebuggingConfiguration",
@@ -79,9 +79,11 @@ var _ = Describe("Manager: watchers", func() {
 
 	It("buildList: builds list of resources to watch", func() {
 		classifier := getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonEqual)
-		classifier.Spec.DeployedResourceConstraints = []libsveltosv1alpha1.DeployedResourceConstraint{
-			pods,
-			kubeadmconfigs,
+		classifier.Spec.DeployedResourceConstraint = &libsveltosv1alpha1.DeployedResourceConstraint{
+			ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+				pods,
+				kubeadmconfigs,
+			},
 		}
 		classifier.Spec.ClassifierLabels = []libsveltosv1alpha1.ClassifierLabel{
 			{Key: randomString(), Value: randomString()},
@@ -103,26 +105,26 @@ var _ = Describe("Manager: watchers", func() {
 				client.ObjectKey{Name: classifier.Name}, currentClassifier)
 		}, timeout, pollingInterval).Should(BeNil())
 
-		evaluation.InitializeManagerWithSkip(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
+		evaluation.InitializeManagerWithSkip(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
 		manager := evaluation.GetManager()
 		gvks, err := evaluation.BuildList(manager, context.TODO())
 		Expect(err).To(BeNil())
 		Expect(len(gvks)).To(Equal(2))
-		for i := range classifier.Spec.DeployedResourceConstraints {
-			r := classifier.Spec.DeployedResourceConstraints[i]
+		for i := range classifier.Spec.DeployedResourceConstraint.ResourceSelectors {
+			rs := classifier.Spec.DeployedResourceConstraint.ResourceSelectors[i]
 			gvk := schema.GroupVersionKind{
-				Group:   r.Group,
-				Version: r.Version,
-				Kind:    r.Kind,
+				Group:   rs.Group,
+				Version: rs.Version,
+				Kind:    rs.Kind,
 			}
 			Expect(gvks[gvk]).To(BeTrue())
 		}
 	})
 
 	It("buildSortedList creates a sorted list", func() {
-		evaluation.InitializeManagerWithSkip(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
+		evaluation.InitializeManagerWithSkip(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
 		manager := evaluation.GetManager()
 
 		gvk1 := schema.GroupVersionKind{Group: pods.Group, Version: pods.Version, Kind: pods.Kind}
@@ -137,8 +139,8 @@ var _ = Describe("Manager: watchers", func() {
 	})
 
 	It("gvkInstalled returns true if resource is installed, false otherwise", func() {
-		evaluation.InitializeManagerWithSkip(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
+		evaluation.InitializeManagerWithSkip(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
 		manager := evaluation.GetManager()
 
 		gvk1 := schema.GroupVersionKind{Group: pods.Group, Version: pods.Version, Kind: pods.Kind}
@@ -159,8 +161,8 @@ var _ = Describe("Manager: watchers", func() {
 	})
 
 	It("getInstalledResources returns list of installed api-resources", func() {
-		evaluation.InitializeManagerWithSkip(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
+		evaluation.InitializeManagerWithSkip(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
 		manager := evaluation.GetManager()
 
 		resources, err := evaluation.GetInstalledResources(manager)
@@ -175,8 +177,8 @@ var _ = Describe("Manager: watchers", func() {
 	})
 
 	It("startWatcher starts a watcher when resource is installed", func() {
-		evaluation.InitializeManagerWithSkip(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
+		evaluation.InitializeManagerWithSkip(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeSveltos, 10)
 		manager := evaluation.GetManager()
 
 		gvk := &schema.GroupVersionKind{Group: classifiers.Group, Version: classifiers.Version, Kind: classifiers.Kind}
@@ -191,8 +193,8 @@ var _ = Describe("Manager: watchers", func() {
 	})
 
 	It("updateWatchers starts new watchers", func() {
-		evaluation.InitializeManagerWithSkip(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
+		evaluation.InitializeManagerWithSkip(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
 		manager := evaluation.GetManager()
 
 		gvk := schema.GroupVersionKind{Group: pods.Group, Version: pods.Version, Kind: pods.Kind}
@@ -208,8 +210,8 @@ var _ = Describe("Manager: watchers", func() {
 	})
 
 	It("updateWatchers stores resources to watch which are not installed yet", func() {
-		evaluation.InitializeManagerWithSkip(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
+		evaluation.InitializeManagerWithSkip(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10)
 		manager := evaluation.GetManager()
 
 		gvk1 := schema.GroupVersionKind{Group: pods.Group, Version: pods.Version, Kind: pods.Kind}

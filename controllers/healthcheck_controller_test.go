@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
@@ -39,8 +39,8 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 
 	BeforeEach(func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
-		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
+		evaluation.InitializeManager(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
 	})
 
 	AfterEach(func() {
@@ -104,12 +104,13 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 
 		healthCheckScope, err := scope.NewHealthCheckScope(scope.HealthCheckScopeParams{
 			Client:      testEnv.Client,
-			Logger:      klogr.New(),
+			Logger:      textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 			HealthCheck: healthCheck,
 		})
 		Expect(err).To(BeNil())
 
-		controllers.HealthCheckReconcileDelete(reconciler, context.TODO(), healthCheckScope, klogr.New())
+		controllers.HealthCheckReconcileDelete(reconciler, context.TODO(), healthCheckScope,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(reconciler.GVKHealthChecks[gvk].Len()).To(Equal(0))
 	})
 })

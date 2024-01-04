@@ -24,7 +24,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -66,7 +66,8 @@ var _ = Describe("Controllers: node controller", func() {
 			Scheme: scheme,
 		}
 
-		classifiers, err := controllers.FindClassifierUsingKubernetesVersion(reconciler, watcherCtx, klogr.New())
+		classifiers, err := controllers.FindClassifierUsingKubernetesVersion(reconciler, watcherCtx,
+			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(err).To(BeNil())
 		Expect(classifiers).ToNot(BeNil())
 		Expect(classifiers).To(ContainElement(classifier1.Name))
@@ -84,8 +85,8 @@ var _ = Describe("Controllers: node controller", func() {
 		currentNode.Status = node.Status
 		Expect(testEnv.Status().Update(watcherCtx, &currentNode)).To(Succeed())
 
-		evaluation.InitializeManager(watcherCtx, klogr.New(), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
+		evaluation.InitializeManager(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
 
 		reconciler := &controllers.NodeReconciler{
 			Client: testEnv.Client,

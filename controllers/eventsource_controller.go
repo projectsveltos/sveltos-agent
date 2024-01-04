@@ -110,7 +110,7 @@ func (r *EventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	// Handle non-deleted eventSource
-	return r.reconcileNormal(ctx, eventSourceScope, logger)
+	return ctrl.Result{}, r.reconcileNormal(ctx, eventSourceScope, logger)
 }
 
 func (r *EventSourceReconciler) reconcileDelete(ctx context.Context,
@@ -147,7 +147,7 @@ func (r *EventSourceReconciler) reconcileDelete(ctx context.Context,
 func (r *EventSourceReconciler) reconcileNormal(ctx context.Context,
 	eventSourceScope *scope.EventSourceScope,
 	logger logr.Logger,
-) (reconcile.Result, error) {
+) error {
 
 	logger.V(logs.LogDebug).Info("reconcile")
 
@@ -155,7 +155,7 @@ func (r *EventSourceReconciler) reconcileNormal(ctx context.Context,
 		if err := addFinalizer(ctx, r.Client, eventSourceScope.EventSource, libsveltosv1alpha1.EventSourceFinalizer,
 			logger); err != nil {
 			logger.V(logs.LogDebug).Info("failed to update finalizer")
-			return reconcile.Result{}, err
+			return err
 		}
 	}
 
@@ -167,7 +167,7 @@ func (r *EventSourceReconciler) reconcileNormal(ctx context.Context,
 	manager.EvaluateEventSource(eventSourceScope.Name())
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
-	return ctrl.Result{}, nil
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -196,22 +196,25 @@ func (r *EventSourceReconciler) cleanMaps(eventSource *libsveltosv1alpha1.EventS
 }
 
 func (r *EventSourceReconciler) updateMaps(eventSource *libsveltosv1alpha1.EventSource) {
-	gvk := schema.GroupVersionKind{
-		Group:   eventSource.Spec.Group,
-		Version: eventSource.Spec.Version,
-		Kind:    eventSource.Spec.Kind,
-	}
-
-	policyRef := getKeyFromObject(r.Scheme, eventSource)
-
 	r.Mux.Lock()
 	defer r.Mux.Unlock()
 
-	_, ok := r.GVKEventSources[gvk]
-	if !ok {
-		r.GVKEventSources[gvk] = &libsveltosset.Set{}
+	for i := range eventSource.Spec.ResourceSelectors {
+		rs := &eventSource.Spec.ResourceSelectors[i]
+		gvk := schema.GroupVersionKind{
+			Group:   rs.Group,
+			Version: rs.Version,
+			Kind:    rs.Kind,
+		}
+
+		policyRef := getKeyFromObject(r.Scheme, eventSource)
+
+		_, ok := r.GVKEventSources[gvk]
+		if !ok {
+			r.GVKEventSources[gvk] = &libsveltosset.Set{}
+		}
+		r.GVKEventSources[gvk].Insert(policyRef)
 	}
-	r.GVKEventSources[gvk].Insert(policyRef)
 }
 
 // react gets called when an instance of passed in gvk has been modified.

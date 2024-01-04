@@ -45,6 +45,11 @@ import (
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
+type aggregatedClassification struct {
+	Matching bool   `json:"matching,omitempty"`
+	Message  string `json:"message"`
+}
+
 // evaluateClassifiers evaluates all classifiers awaiting evaluation
 func (m *manager) evaluateClassifiers(ctx context.Context) {
 	for {
@@ -197,29 +202,61 @@ func (m *manager) isVersionAMatch(ctx context.Context,
 	return true, nil
 }
 
+// areResourcesAMatch consider all ResourceSelectors and AggregatedClassification.
+// If AggregatedClassification is not provided, a cluster is considered a match if and
+// only if each ResourceSelector finds at least one matching resource.
+// Otherwise, the function first collects the resources that match each ResourceSelector
+// and then passes all of these resources to the AggregatedClassification function for
+// further evaluation.
 func (m *manager) areResourcesAMatch(ctx context.Context,
 	classifier *libsveltosv1alpha1.Classifier) (bool, error) {
 
-	for i := range classifier.Spec.DeployedResourceConstraints {
-		r := &classifier.Spec.DeployedResourceConstraints[i]
-		isMatch, err := m.isResourceAMatch(ctx, r)
+	if classifier.Spec.DeployedResourceConstraint == nil {
+		return true, nil
+	}
+
+	logger := m.log.WithValues("classifier", classifier.Name)
+	var resources []*unstructured.Unstructured
+	// Consider all ResourceSelectors. If AggregatedClassification is not defined,
+	// a Cluster is a match only if each ResourceSelector returns at least a match.
+	// If AggregatedClassification is specified, collect all resources via ResourceSelectors
+	// then pass those to AggregatedClassification and let that method decide if cluster
+	// is a match
+	for i := range classifier.Spec.DeployedResourceConstraint.ResourceSelectors {
+		rs := &classifier.Spec.DeployedResourceConstraint.ResourceSelectors[i]
+		tmpResult, err := m.getResourcesForResourceSelector(ctx, rs, logger)
 		if err != nil {
 			return false, err
 		}
-		if !isMatch {
-			return false, nil
+		if classifier.Spec.DeployedResourceConstraint.AggregatedClassification == "" {
+			// If AggregatedClassification is not specified, a Cluster is a match if
+			// each ResourceSelector returns at least a match.
+			if len(tmpResult) == 0 {
+				logger.V(logs.LogDebug).Info(fmt.Sprintf("not a match for %s:%s:%s",
+					rs.Group, rs.Version, rs.Kind))
+				return false, nil
+			}
 		}
+		logger.V(logs.LogDebug).Info(fmt.Sprintf("GVK: %s.%s:%s found %d resources",
+			rs.Group, rs.Version, rs.Kind, len(tmpResult)))
+		resources = append(resources, tmpResult...)
 	}
+
+	if classifier.Spec.DeployedResourceConstraint.AggregatedClassification != "" {
+		return m.aggregatedClassification(classifier.Spec.DeployedResourceConstraint.AggregatedClassification,
+			resources, logger)
+	}
+
 	return true, nil
 }
 
-func (m *manager) fetchClassifierDeployedResources(ctx context.Context,
-	deployedResource *libsveltosv1alpha1.DeployedResourceConstraint) (*unstructured.UnstructuredList, error) {
+func (m *manager) fetchClassifierDeployedResources(ctx context.Context, rs *libsveltosv1alpha1.ResourceSelector,
+) (*unstructured.UnstructuredList, error) {
 
 	gvk := schema.GroupVersionKind{
-		Group:   deployedResource.Group,
-		Version: deployedResource.Version,
-		Kind:    deployedResource.Kind,
+		Group:   rs.Group,
+		Version: rs.Version,
+		Kind:    rs.Kind,
 	}
 
 	dc := discovery.NewDiscoveryClientForConfigOrDie(m.config)
@@ -247,13 +284,13 @@ func (m *manager) fetchClassifierDeployedResources(ctx context.Context,
 
 	options := metav1.ListOptions{}
 
-	if len(deployedResource.LabelFilters) > 0 {
+	if len(rs.LabelFilters) > 0 {
 		labelFilter := ""
-		for i := range deployedResource.LabelFilters {
+		for i := range rs.LabelFilters {
 			if labelFilter != "" {
 				labelFilter += ","
 			}
-			f := deployedResource.LabelFilters[i]
+			f := rs.LabelFilters[i]
 			if f.Operation == libsveltosv1alpha1.OperationEqual {
 				labelFilter += fmt.Sprintf("%s=%s", f.Key, f.Value)
 			} else {
@@ -264,27 +301,11 @@ func (m *manager) fetchClassifierDeployedResources(ctx context.Context,
 		options.LabelSelector = labelFilter
 	}
 
-	if len(deployedResource.FieldFilters) > 0 {
-		fieldFilter := ""
-		for i := range deployedResource.FieldFilters {
-			if fieldFilter != "" {
-				fieldFilter += ","
-			}
-			f := deployedResource.FieldFilters[i]
-			if f.Operation == libsveltosv1alpha1.OperationEqual {
-				fieldFilter += fmt.Sprintf("%s=%s", f.Field, f.Value)
-			} else {
-				fieldFilter += fmt.Sprintf("%s!=%s", f.Field, f.Value)
-			}
-		}
-		options.FieldSelector = fieldFilter
-	}
-
-	if deployedResource.Namespace != "" {
+	if rs.Namespace != "" {
 		if options.FieldSelector != "" {
 			options.FieldSelector += ","
 		}
-		options.FieldSelector += fmt.Sprintf("metadata.namespace=%s", deployedResource.Namespace)
+		options.FieldSelector += fmt.Sprintf("metadata.namespace=%s", rs.Namespace)
 	}
 
 	list, err := d.Resource(resourceId).List(ctx, options)
@@ -295,47 +316,100 @@ func (m *manager) fetchClassifierDeployedResources(ctx context.Context,
 	return list, nil
 }
 
-func (m *manager) isResourceAMatch(ctx context.Context,
-	deployedResource *libsveltosv1alpha1.DeployedResourceConstraint) (bool, error) {
+func (m *manager) getResourcesForResourceSelector(ctx context.Context, rs *libsveltosv1alpha1.ResourceSelector,
+	logger logr.Logger) ([]*unstructured.Unstructured, error) {
 
-	list, err := m.fetchClassifierDeployedResources(ctx, deployedResource)
+	list, err := m.fetchClassifierDeployedResources(ctx, rs)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	if list == nil {
-		return false, nil
+		return nil, nil
 	}
 
 	result := make([]*unstructured.Unstructured, 0)
 	for i := range list.Items {
-		logger := m.log.WithValues("resource", fmt.Sprintf("%s/%s", list.Items[i].GetNamespace(), list.Items[i].GetName()))
+		l := logger.WithValues("resource", fmt.Sprintf("%s/%s", list.Items[i].GetNamespace(), list.Items[i].GetName()))
 		var match bool
-		match, err = m.isMatchForClassifierScript(&list.Items[i], deployedResource.Script, logger)
+		match, err = m.isMatchForResourceSelectorScript(&list.Items[i], rs.Evaluate, l)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 		if match {
 			result = append(result, &list.Items[i])
 		}
 	}
 
-	if deployedResource.MinCount != nil {
-		if len(result) < *deployedResource.MinCount {
-			return false, nil
-		}
-	}
-
-	if deployedResource.MaxCount != nil {
-		if len(result) > *deployedResource.MaxCount {
-			return false, nil
-		}
-	}
-
-	return true, nil
+	return result, nil
 }
 
-func (m *manager) isMatchForClassifierScript(resource *unstructured.Unstructured, script string,
+func (m *manager) aggregatedClassification(luaScript string, resources []*unstructured.Unstructured,
+	logger logr.Logger) (bool, error) {
+
+	if luaScript == "" {
+		return true, nil
+	}
+
+	// Create a new Lua state
+	l := lua.NewState()
+	defer l.Close()
+
+	// Load the Lua script
+	if err := l.DoString(luaScript); err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("doString failed: %v", err))
+		return false, err
+	}
+
+	// Create an argument table
+	argTable := l.NewTable()
+	for _, resource := range resources {
+		obj := mapToTable(resource.UnstructuredContent())
+		argTable.Append(obj)
+	}
+
+	l.SetGlobal("resources", argTable)
+
+	if err := l.CallByParam(lua.P{
+		Fn:      l.GetGlobal("evaluate"), // name of Lua function
+		NRet:    1,                       // number of returned values
+		Protect: true,                    // return err or panic
+	}, argTable); err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to call evaluate function: %s", err.Error()))
+		return false, err
+	}
+
+	lv := l.Get(-1)
+	tbl, ok := lv.(*lua.LTable)
+	if !ok {
+		logger.V(logs.LogInfo).Info(luaTableError)
+		return false, fmt.Errorf("%s", luaTableError)
+	}
+
+	goResult := toGoValue(tbl)
+	resultJson, err := json.Marshal(goResult)
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to marshal result: %v", err))
+		return false, err
+	}
+
+	var result aggregatedClassification
+	err = json.Unmarshal(resultJson, &result)
+	if err != nil {
+		m.log.V(logs.LogInfo).Info(fmt.Sprintf("failed to marshal result: %v", err))
+		return false, err
+	}
+
+	if result.Message != "" {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("message: %s", result.Message))
+	}
+
+	logger.V(logs.LogInfo).Info(fmt.Sprintf("matching: %t", result.Matching))
+
+	return result.Matching, nil
+}
+
+func (m *manager) isMatchForResourceSelectorScript(resource *unstructured.Unstructured, script string,
 	logger logr.Logger) (bool, error) {
 
 	if script == "" {

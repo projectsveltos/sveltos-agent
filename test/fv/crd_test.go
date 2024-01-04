@@ -19,6 +19,7 @@ package fv_test
 import (
 	"context"
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -77,21 +78,6 @@ var _ = Describe("Classification: crd", Serial, func() {
 			}
 		}, timeout, pollingInterval).Should(BeTrue())
 
-		By("Posting ServiceMonitor CRD")
-		var serviceMonitor *unstructured.Unstructured
-		serviceMonitor, err := libsveltosutils.GetUnstructured([]byte(serviceMonitorCRD))
-		Expect(err).To(BeNil())
-		err = k8sClient.Create(context.TODO(), serviceMonitor)
-		if err != nil {
-			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
-		}
-
-		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: "servicemonitors.monitoring.coreos.com"},
-			currentServiceMonitorCRD)).To(Succeed())
-
-		minCount := 3
-		maxCount := 5
-
 		classifier := libsveltosv1alpha1.Classifier{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namePrefix + randomString(),
@@ -103,15 +89,15 @@ var _ = Describe("Classification: crd", Serial, func() {
 				ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
 					{Key: randomString(), Value: randomString()},
 				},
-				DeployedResourceConstraints: []libsveltosv1alpha1.DeployedResourceConstraint{
-					{
-						MinCount: &minCount,
-						MaxCount: &maxCount,
-						Group:    "monitoring.coreos.com",
-						Version:  "v1",
-						Kind:     "ServiceMonitor",
-						LabelFilters: []libsveltosv1alpha1.LabelFilter{
-							{Key: key, Value: value, Operation: libsveltosv1alpha1.OperationEqual},
+				DeployedResourceConstraint: &libsveltosv1alpha1.DeployedResourceConstraint{
+					ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+						{
+							Group:   "monitoring.coreos.com",
+							Version: "v1",
+							Kind:    "ServiceMonitor",
+							LabelFilters: []libsveltosv1alpha1.LabelFilter{
+								{Key: key, Value: value, Operation: libsveltosv1alpha1.OperationEqual},
+							},
 						},
 					},
 				},
@@ -124,31 +110,44 @@ var _ = Describe("Classification: crd", Serial, func() {
 		By("Verifying Cluster is currently not a match (ServiceMonitor CRD is not present in the cluster yet)")
 		Eventually(func() bool {
 			classifierReport := &libsveltosv1alpha1.ClassifierReport{}
-			err = k8sClient.Get(context.TODO(),
+			err := k8sClient.Get(context.TODO(),
 				types.NamespacedName{Namespace: utils.ReportNamespace, Name: classifier.Name}, classifierReport)
 			return err == nil && !classifierReport.Spec.Match
 		}, timeout, pollingInterval).Should(BeTrue())
 
-		By("Creating enough ServiceMonitor for cluster to match Classifier")
-		for i := 0; i < minCount; i++ {
-			tmpNs := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: randomString(),
-					Labels: map[string]string{
-						key: value,
-					},
-				},
-			}
-			Expect(k8sClient.Create(context.TODO(), tmpNs)).To(Succeed())
-
-			tmpServiceMonitorYAML := fmt.Sprintf(serviceMonitorInstance, tmpNs.Name, key, value)
-			var tmpServiceMonitor *unstructured.Unstructured
-			tmpServiceMonitor, err = libsveltosutils.GetUnstructured([]byte(tmpServiceMonitorYAML))
-			Expect(err).To(BeNil())
-			Expect(k8sClient.Create(context.TODO(), tmpServiceMonitor)).To(Succeed())
+		By("Posting ServiceMonitor CRD")
+		var crd *unstructured.Unstructured
+		crd, err := libsveltosutils.GetUnstructured([]byte(serviceMonitorCRD))
+		Expect(err).To(BeNil())
+		err = k8sClient.Create(context.TODO(), crd)
+		if err != nil {
+			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
 		}
 
-		By("Verifying Cluster is a match (ServiceMonitor CRD is not present in the cluster yet)")
+		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: "servicemonitors.monitoring.coreos.com"},
+			currentServiceMonitorCRD)).To(Succeed())
+
+		// After installing CRD, wait to make sure resources can be installed
+		time.Sleep(pollingInterval)
+
+		By("Creating  ServiceMonitor for cluster to match Classifier")
+		tmpNs := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: randomString(),
+				Labels: map[string]string{
+					key: value,
+				},
+			},
+		}
+		Expect(k8sClient.Create(context.TODO(), tmpNs)).To(Succeed())
+
+		tmpServiceMonitorYAML := fmt.Sprintf(serviceMonitorInstance, tmpNs.Name, key, value)
+		var tmpServiceMonitor *unstructured.Unstructured
+		tmpServiceMonitor, err = libsveltosutils.GetUnstructured([]byte(tmpServiceMonitorYAML))
+		Expect(err).To(BeNil())
+		Expect(k8sClient.Create(context.TODO(), tmpServiceMonitor)).To(Succeed())
+
+		By("Verifying Cluster is a match")
 		Eventually(func() bool {
 			classifierReport := &libsveltosv1alpha1.ClassifierReport{}
 			err := k8sClient.Get(context.TODO(),

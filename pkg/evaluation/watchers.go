@@ -193,12 +193,16 @@ func (m *manager) buildListForReloaders(ctx context.Context) (map[schema.GroupVe
 func (m *manager) addGVKsForClassifier(classifier *libsveltosv1alpha1.Classifier,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
-	for i := range classifier.Spec.DeployedResourceConstraints {
-		resource := &classifier.Spec.DeployedResourceConstraints[i]
+	if classifier.Spec.DeployedResourceConstraint == nil {
+		return resources
+	}
+
+	for i := range classifier.Spec.DeployedResourceConstraint.ResourceSelectors {
+		rs := &classifier.Spec.DeployedResourceConstraint.ResourceSelectors[i]
 		gvk := schema.GroupVersionKind{
-			Group:   resource.Group,
-			Kind:    resource.Kind,
-			Version: resource.Version,
+			Group:   rs.Group,
+			Kind:    rs.Kind,
+			Version: rs.Version,
 		}
 		resources[gvk] = true
 	}
@@ -222,13 +226,14 @@ func (m *manager) addGVKsForHealthCheck(healthCheck *libsveltosv1alpha1.HealthCh
 func (m *manager) addGVKsForEventSource(eventSource *libsveltosv1alpha1.EventSource,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
-	gvk := schema.GroupVersionKind{
-		Group:   eventSource.Spec.Group,
-		Kind:    eventSource.Spec.Kind,
-		Version: eventSource.Spec.Version,
+	for i := range eventSource.Spec.ResourceSelectors {
+		gvk := schema.GroupVersionKind{
+			Group:   eventSource.Spec.ResourceSelectors[i].Group,
+			Kind:    eventSource.Spec.ResourceSelectors[i].Kind,
+			Version: eventSource.Spec.ResourceSelectors[i].Version,
+		}
+		resources[gvk] = true
 	}
-	resources[gvk] = true
-
 	return resources
 }
 

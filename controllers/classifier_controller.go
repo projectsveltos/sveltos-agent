@@ -121,7 +121,7 @@ func (r *ClassifierReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// Handle non-deleted classifier
-	return r.reconcileNormal(ctx, classifierScope, logger)
+	return ctrl.Result{}, r.reconcileNormal(ctx, classifierScope, logger)
 }
 
 func (r *ClassifierReconciler) reconcileDelete(
@@ -157,7 +157,7 @@ func (r *ClassifierReconciler) reconcileDelete(
 func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
 	classifierScope *scope.ClassifierScope,
 	logger logr.Logger,
-) (reconcile.Result, error) {
+) error {
 
 	logger.V(logs.LogDebug).Info("reconcile")
 
@@ -165,7 +165,7 @@ func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
 		if err := addFinalizer(ctx, r.Client, classifierScope.Classifier, libsveltosv1alpha1.ClassifierFinalizer,
 			logger); err != nil {
 			logger.V(logs.LogDebug).Info("failed to update finalizer")
-			return reconcile.Result{}, err
+			return err
 		}
 	}
 
@@ -177,7 +177,7 @@ func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
 	manager.EvaluateClassifier(classifierScope.Name())
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
-	return ctrl.Result{}, nil
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -195,23 +195,28 @@ func (r *ClassifierReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *ClassifierReconciler) updateMaps(classifier *libsveltosv1alpha1.Classifier) {
-	gvks := make([]schema.GroupVersionKind, len(classifier.Spec.DeployedResourceConstraints))
-	for i := range classifier.Spec.DeployedResourceConstraints {
-		gvk := schema.GroupVersionKind{
-			Group:   classifier.Spec.DeployedResourceConstraints[i].Group,
-			Version: classifier.Spec.DeployedResourceConstraints[i].Version,
-			Kind:    classifier.Spec.DeployedResourceConstraints[i].Kind,
-		}
-		gvks[i] = gvk
-	}
-
-	policyRef := getKeyFromObject(r.Scheme, classifier)
-
 	r.Mux.Lock()
 	defer r.Mux.Unlock()
 
+	policyRef := getKeyFromObject(r.Scheme, classifier)
+
 	if classifier.Spec.KubernetesVersionConstraints != nil {
 		r.VersionClassifiers.Insert(policyRef)
+	}
+
+	if classifier.Spec.DeployedResourceConstraint == nil {
+		return
+	}
+
+	gvks := make([]schema.GroupVersionKind, len(classifier.Spec.DeployedResourceConstraint.ResourceSelectors))
+	for i := range classifier.Spec.DeployedResourceConstraint.ResourceSelectors {
+		rs := &classifier.Spec.DeployedResourceConstraint.ResourceSelectors[i]
+		gvk := schema.GroupVersionKind{
+			Group:   rs.Group,
+			Version: rs.Version,
+			Kind:    rs.Kind,
+		}
+		gvks[i] = gvk
 	}
 
 	for i := range gvks {
