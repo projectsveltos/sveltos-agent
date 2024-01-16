@@ -52,9 +52,13 @@ var (
 	SendClassifierReport            = (*manager).sendClassifierReport
 )
 
+type (
+	HealthStatus = healthStatus
+)
+
 // healthCheck
 var (
-	GetResourceHealthStatus   = (*manager).getResourceHealthStatus
+	GetResourceHealthStatuses = (*manager).getResourceHealthStatuses
 	FetchHealthCheckResources = (*manager).fetchHealthCheckResources
 	GetHealthStatus           = (*manager).getHealthStatus
 	CreateHealthCheckReport   = (*manager).createHealthCheckReport

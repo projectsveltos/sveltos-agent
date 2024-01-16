@@ -197,44 +197,52 @@ func verifyHealthCheck(dirName string) {
 	healthCheck := getHealthCheck(dirName)
 	Expect(healthCheck).ToNot(BeNil())
 
-	healthyResource := getResource(dirName, healthyFileName)
-	if healthyResource == nil {
+	healthyResources := getResources(dirName, healthyFileName)
+	if healthyResources == nil {
 		By(fmt.Sprintf("%s file not present", healthyFileName))
 	} else {
 		By("Verifying healthy resource")
-		result, err := evaluation.GetResourceHealthStatus(manager, healthyResource, healthCheck.Spec.Script)
+		result, err := evaluation.GetResourceHealthStatuses(manager, healthyResources, healthCheck.Spec.EvaluateHealth)
 		Expect(err).To(BeNil())
-		Expect(result.HealthStatus).To(Equal(libsveltosv1alpha1.HealthStatusHealthy))
+		for i := range result.Resources {
+			Expect(result.Resources[i].Status).To(Equal(libsveltosv1alpha1.HealthStatusHealthy))
+		}
 	}
 
-	progressingResource := getResource(dirName, progressingFileName)
-	if progressingResource == nil {
+	progressingResources := getResources(dirName, progressingFileName)
+	if progressingResources == nil {
 		By(fmt.Sprintf("%s file not present", progressingFileName))
 	} else {
 		By("Verifying progressing resource")
-		result, err := evaluation.GetResourceHealthStatus(manager, progressingResource, healthCheck.Spec.Script)
+		result, err := evaluation.GetResourceHealthStatuses(manager, progressingResources, healthCheck.Spec.EvaluateHealth)
 		Expect(err).To(BeNil())
-		Expect(result.HealthStatus).To(Equal(libsveltosv1alpha1.HealthStatusProgressing))
+		for i := range result.Resources {
+			Expect(result.Resources[i].Status).To(Equal(libsveltosv1alpha1.HealthStatusProgressing))
+		}
 	}
 
-	degradedResource := getResource(dirName, degradedFileName)
-	if degradedResource == nil {
+	degradedResources := getResources(dirName, degradedFileName)
+	if degradedResources == nil {
 		By(fmt.Sprintf("%s file not present", degradedFileName))
 	} else {
 		By("Verifying degraded resource")
-		result, err := evaluation.GetResourceHealthStatus(manager, degradedResource, healthCheck.Spec.Script)
+		result, err := evaluation.GetResourceHealthStatuses(manager, degradedResources, healthCheck.Spec.EvaluateHealth)
 		Expect(err).To(BeNil())
-		Expect(result.HealthStatus).To(Equal(libsveltosv1alpha1.HealthStatusDegraded))
+		for i := range result.Resources {
+			Expect(result.Resources[i].Status).To(Equal(libsveltosv1alpha1.HealthStatusDegraded))
+		}
 	}
 
-	suspendedResource := getResource(dirName, suspendedFileName)
-	if suspendedResource == nil {
+	suspendedResources := getResources(dirName, suspendedFileName)
+	if suspendedResources == nil {
 		By(fmt.Sprintf("%s file not present", suspendedFileName))
 	} else {
 		By("Verifying suspended resource")
-		result, err := evaluation.GetResourceHealthStatus(manager, suspendedResource, healthCheck.Spec.Script)
+		result, err := evaluation.GetResourceHealthStatuses(manager, suspendedResources, healthCheck.Spec.EvaluateHealth)
 		Expect(err).To(BeNil())
-		Expect(result.HealthStatus).To(Equal(libsveltosv1alpha1.HealthStatusSuspended))
+		for i := range result.Resources {
+			Expect(result.Resources[i].Status).To(Equal(libsveltosv1alpha1.HealthStatusSuspended))
+		}
 	}
 }
 
@@ -325,24 +333,6 @@ func getClassifier(dirName string) *libsveltosv1alpha1.Classifier {
 		FromUnstructured(u.UnstructuredContent(), &classifier)
 	Expect(err).To(BeNil())
 	return &classifier
-}
-
-func getResource(dirName, fileName string) *unstructured.Unstructured {
-	resourceFileName := filepath.Join(dirName, fileName)
-
-	_, err := os.Stat(resourceFileName)
-	if os.IsNotExist(err) {
-		return nil
-	}
-	Expect(err).To(BeNil())
-
-	content, err := os.ReadFile(resourceFileName)
-	Expect(err).To(BeNil())
-
-	u, err := libsveltosutils.GetUnstructured(content)
-	Expect(err).To(BeNil())
-
-	return u
 }
 
 func getResources(dirName, fileName string) []*unstructured.Unstructured {
