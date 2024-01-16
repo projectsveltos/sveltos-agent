@@ -35,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
@@ -45,19 +44,28 @@ import (
 var (
 	deploymentReplicaCheck = `
 function evaluate()
-	hs = {}
-    hs.status = "Progressing"
-    hs.message = ""
-	if obj.status ~= nil then
-        if obj.status.availableReplicas ~= nil then
-			if obj.status.availableReplicas == obj.spec.replicas then
-				hs.status = "Healthy"
-			end
-        	if obj.status.availableReplicas ~= obj.spec.replicas then
-				hs.status = "Progressing"
-            	hs.message = "expected replicas: " .. obj.spec.replicas .. " available: " .. obj.status.availableReplicas
-            end
+    local statuses = {}
+    for _, resource in ipairs(resources) do
+	  local status = "Progressing"
+	  local message = ""
+	  if resource.status ~= nil then
+        if resource.status.availableReplicas ~= nil then
+          if resource.status.availableReplicas == resource.spec.replicas then
+            status="Healthy"
+          end
+          if resource.status.availableReplicas ~= resource.spec.replicas then
+            message = "expected replicas: " .. resource.spec.replicas .. " available: " .. resource.status.availableReplicas
+            status="Progressing"
+          end
         end
+	  end
+
+	  table.insert(statuses, {resource=resource, status =  status, message = message})
+	end
+
+	local hs = {}
+	if #statuses > 0 then
+	  hs.resources = statuses 
 	end
     return hs
 end
@@ -66,45 +74,37 @@ end
 	// Credit to argoCD. Using this to validate any script used in argoCD can be used here.
 	clusterCheck = `
 function getStatusBasedOnPhase(obj, hs)
-    hs.status = "Progressing"
-    hs.message = "Waiting for clusters"
+    status = "Progressing"
+    message = "Waiting for clusters"
     if obj.status ~= nil and obj.status.phase ~= nil then
         if obj.status.phase == "Provisioned" then
-            hs.status = "Healthy"
-            hs.message = "Cluster is running"
+            status = "Healthy"
+            message = "Cluster is running"
         end
         if obj.status.phase == "Failed" then
-            hs.status = "Degraded"
-            hs.message = ""
+            status = "Degraded"
+            message = ""
         end
     end
-    return hs
-end
-
-function getReadyContitionStatus(obj, hs)
-    if obj.status ~= nil and obj.status.conditions ~= nil then
-        for i, condition in ipairs(obj.status.conditions) do
-        if condition.type == "Ready" and condition.status == "False" then
-            hs.status = "Degraded"
-            hs.message = condition.message
-            return hs
-        end
-        end
-    end
-    return hs
+    return status, message
 end
 
 function evaluate()
-	hs = {}
-	if obj.spec.paused ~= nil and obj.spec.paused then
-    	hs.status = "Suspended"
-    	hs.message = "Cluster is paused"
-    	return hs
+	local statuses = {}
+
+	for _, resource in ipairs(resources) do
+	  if resource.spec.paused ~= nil and obj.spec.paused then
+	    table.insert(statuses, {resource=resource, status="Suspended", message="Cluster is paused"})
+      else
+        status,message = getStatusBasedOnPhase(resource)
+        table.insert(statuses, {resource=resource, status=status, message=message}) 
+	  end 	
 	end
 
-	getStatusBasedOnPhase(obj, hs)
-	getReadyContitionStatus(obj, hs)
-
+	local hs = {}
+	if #statuses > 0 then
+	  hs.resources = statuses 
+	end
 	return hs
 end	
 `
@@ -184,17 +184,19 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		cluster, err := libsveltosutils.GetUnstructured([]byte(cluster_degraded))
 		Expect(err).To(BeNil())
 
-		var status *v1alpha1.ResourceStatus
-		status, err = evaluation.GetResourceHealthStatus(manager, cluster, clusterCheck)
+		var status *evaluation.HealthStatus
+		status, err = evaluation.GetResourceHealthStatuses(manager, []*unstructured.Unstructured{cluster}, clusterCheck)
 		Expect(err).To(BeNil())
 		Expect(status).ToNot(BeNil())
-		Expect(status.HealthStatus).To(Equal(libsveltosv1alpha1.HealthStatusDegraded))
+		Expect(len(status.Resources)).To(Equal(1))
+		Expect(status.Resources[0].Status).To(Equal(libsveltosv1alpha1.HealthStatusDegraded))
 	})
 
 	It("GetResourceHealthStatus: evaluates Deployment in HealthStatusHealthy state", func() {
 		var replicas int32 = 3
 		var availableReplicas = 3
 		depl := getDeployment(replicas, int32(availableReplicas))
+		addTypeInformationToObject(scheme, depl)
 
 		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
@@ -210,17 +212,19 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		var u unstructured.Unstructured
 		u.SetUnstructuredContent(content)
 
-		var status *v1alpha1.ResourceStatus
-		status, err = evaluation.GetResourceHealthStatus(manager, &u, deploymentReplicaCheck)
+		var status *evaluation.HealthStatus
+		status, err = evaluation.GetResourceHealthStatuses(manager, []*unstructured.Unstructured{&u}, deploymentReplicaCheck)
 		Expect(err).To(BeNil())
 		Expect(status).ToNot(BeNil())
-		Expect(status.HealthStatus).To(Equal(libsveltosv1alpha1.HealthStatusHealthy))
+		Expect(len(status.Resources)).To(Equal(1))
+		Expect(status.Resources[0].Status).To(Equal(libsveltosv1alpha1.HealthStatusHealthy))
 	})
 
 	It("GetResourceHealthStatus: evaluates Deployment in HealthStatusProgressing state", func() {
 		var replicas int32 = 3
 		var availableReplicas = 1
 		depl := getDeployment(replicas, int32(availableReplicas))
+		addTypeInformationToObject(scheme, depl)
 
 		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
@@ -236,12 +240,13 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		var u unstructured.Unstructured
 		u.SetUnstructuredContent(content)
 
-		var status *v1alpha1.ResourceStatus
-		status, err = evaluation.GetResourceHealthStatus(manager, &u, deploymentReplicaCheck)
+		var status *evaluation.HealthStatus
+		status, err = evaluation.GetResourceHealthStatuses(manager, []*unstructured.Unstructured{&u}, deploymentReplicaCheck)
 		Expect(err).To(BeNil())
 		Expect(status).ToNot(BeNil())
-		Expect(status.HealthStatus).To(Equal(libsveltosv1alpha1.HealthStatusProgressing))
-		Expect(status.Message).To(Equal("expected replicas: 3 available: 1"))
+		Expect(len(status.Resources)).To(Equal(1))
+		Expect(status.Resources[0].Status).To(Equal(libsveltosv1alpha1.HealthStatusProgressing))
+		Expect(status.Resources[0].Message).To(Equal("expected replicas: 3 available: 1"))
 	})
 
 	It("fetchHealthCheckResources: fetches all resources mathing label selectors", func() {
@@ -270,6 +275,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			service.Namespace = namespace
 			service.Labels = labels
 			Expect(testEnv.Create(context.TODO(), service)).To(Succeed())
+			addTypeInformationToObject(scheme, service)
 		}
 
 		By(fmt.Sprintf("Creating %d services in the incorrect namespace with proper labels", matchingServices))
@@ -281,6 +287,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			namespaces = append(namespaces, randomNamespace)
 			service.Labels = labels
 			Expect(testEnv.Create(context.TODO(), service)).To(Succeed())
+			addTypeInformationToObject(scheme, service)
 		}
 
 		By(fmt.Sprintf("Creating %d services in the correct namespace with wrong labels", matchingServices))
@@ -290,6 +297,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			service.Labels = map[string]string{randomString(): randomString()}
 			Expect(testEnv.Create(context.TODO(), service)).To(Succeed())
 			waitForObject(context.TODO(), testEnv.Client, service)
+			addTypeInformationToObject(scheme, service)
 		}
 
 		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
@@ -300,11 +308,15 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				Group:        "",
-				Version:      "v1",
-				Kind:         "Service",
-				Namespace:    namespace,
-				LabelFilters: labelFilters,
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:        "",
+						Version:      "v1",
+						Kind:         "Service",
+						Namespace:    namespace,
+						LabelFilters: labelFilters,
+					},
+				},
 			},
 		}
 
@@ -312,7 +324,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(manager).ToNot(BeNil())
 		deployments, err := evaluation.FetchHealthCheckResources(manager, context.TODO(), healthCheck)
 		Expect(err).To(BeNil())
-		Expect(len(deployments.Items)).To(Equal(matchingServices))
+		Expect(len(deployments)).To(Equal(matchingServices))
 
 		By("Deleting all created namespaces")
 		for i := range namespaces {
@@ -328,6 +340,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		By("Creating a deployment in healthy state")
 		healthyDepl := getDeployment(1, 1)
+		addTypeInformationToObject(scheme, healthyDepl)
 		healthyDepl.Namespace = namespace
 		Expect(testEnv.Create(context.TODO(), healthyDepl)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, healthyDepl)
@@ -339,6 +352,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		By("Creating a deployment in progressing state")
 		progressingDepl := getDeployment(2, 0)
+		addTypeInformationToObject(scheme, progressingDepl)
 		progressingDepl.Namespace = namespace
 		Expect(testEnv.Create(context.TODO(), progressingDepl)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, progressingDepl)
@@ -349,11 +363,15 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				Group:     "apps",
-				Version:   "v1",
-				Kind:      "Deployment",
-				Namespace: namespace,
-				Script:    deploymentReplicaCheck,
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:     "apps",
+						Version:   "v1",
+						Kind:      "Deployment",
+						Namespace: namespace,
+					},
+				},
+				EvaluateHealth: deploymentReplicaCheck,
 			},
 		}
 
@@ -363,9 +381,9 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
 
-		statuses, err := evaluation.GetHealthStatus(manager, context.TODO(), healthCheck)
+		result, err := evaluation.GetHealthStatus(manager, context.TODO(), healthCheck)
 		Expect(err).To(BeNil())
-		Expect(len(statuses)).To(Equal(2))
+		Expect(len(result)).To(Equal(2))
 	})
 
 	It("getHealthStatus: returns health status containing resources", func() {
@@ -374,6 +392,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		By("Creating a deployment in healthy state")
 		healthyDepl := getDeployment(1, 1)
+		addTypeInformationToObject(scheme, healthyDepl)
 		healthyDepl.Namespace = namespace
 		Expect(testEnv.Create(context.TODO(), healthyDepl)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, healthyDepl)
@@ -385,6 +404,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		By("Creating a deployment in progressing state")
 		progressingDepl := getDeployment(2, 0)
+		addTypeInformationToObject(scheme, progressingDepl)
 		progressingDepl.Namespace = namespace
 		Expect(testEnv.Create(context.TODO(), progressingDepl)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, progressingDepl)
@@ -395,11 +415,15 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				Group:            "apps",
-				Version:          "v1",
-				Kind:             "Deployment",
-				Namespace:        namespace,
-				Script:           deploymentReplicaCheck,
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:     "apps",
+						Version:   "v1",
+						Kind:      "Deployment",
+						Namespace: namespace,
+					},
+				},
+				EvaluateHealth:   deploymentReplicaCheck,
 				CollectResources: true,
 			},
 		}
@@ -432,10 +456,14 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				Group:     "apps",
-				Version:   "v1",
-				Kind:      "Deployment",
-				Namespace: namespace,
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:     "apps",
+						Version:   "v1",
+						Kind:      "Deployment",
+						Namespace: namespace,
+					},
+				},
 			},
 		}
 
@@ -475,10 +503,14 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				Group:     "apps",
-				Version:   "v1",
-				Kind:      "Deployment",
-				Namespace: namespace,
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:     "apps",
+						Version:   "v1",
+						Kind:      "Deployment",
+						Namespace: namespace,
+					},
+				},
 			},
 		}
 
@@ -521,9 +553,15 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 				Name: randomString(),
 			},
 			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				Group:   "",
-				Version: "v1",
-				Kind:    "Namespace",
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:   "",
+						Version: "v1",
+						Kind:    "Namespace",
+					},
+				},
+				// Not used by test
+				EvaluateHealth: randomString(),
 			},
 		}
 		Expect(testEnv.Create(context.TODO(), healthCheck)).To(Succeed())

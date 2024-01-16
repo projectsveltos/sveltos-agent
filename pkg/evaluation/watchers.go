@@ -213,13 +213,14 @@ func (m *manager) addGVKsForClassifier(classifier *libsveltosv1alpha1.Classifier
 func (m *manager) addGVKsForHealthCheck(healthCheck *libsveltosv1alpha1.HealthCheck,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
-	gvk := schema.GroupVersionKind{
-		Group:   healthCheck.Spec.Group,
-		Kind:    healthCheck.Spec.Kind,
-		Version: healthCheck.Spec.Version,
+	for i := range healthCheck.Spec.ResourceSelectors {
+		gvk := schema.GroupVersionKind{
+			Group:   healthCheck.Spec.ResourceSelectors[i].Group,
+			Kind:    healthCheck.Spec.ResourceSelectors[i].Kind,
+			Version: healthCheck.Spec.ResourceSelectors[i].Version,
+		}
+		resources[gvk] = true
 	}
-	resources[gvk] = true
-
 	return resources
 }
 

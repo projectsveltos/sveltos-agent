@@ -3,31 +3,37 @@ kind: HealthCheck
 metadata:
  name: pod-not-ready
 spec:
- collectResources: true
- group: ""
- version: v1
- kind: Node
- script: |
-  function evaluate()
-    hs = {}
-    hs.status = "Healthy"
-    hs.ignore = false
+  collectResources: true
+  resourceSelectors: 
+  - group: ""
+    version: v1
+    kind: Node
+  evaluateHealth: |
+    function evaluate()
+      local statuses = {}
+      
+      for _,resource in ipairs(resources) do
+        local isKubeletReady = false
+        local conditions = resource.status.conditions
+        if conditions then
+          for _, condition in ipairs(conditions) do
+            if condition.reason == "KubeletReady" and condition.type == "Ready" and condition.status == "True" then
+              isKubeletReady = true
+              break
+            end
+          end        
+        end
 
-    local isKubeletReady = false
-    local conditions = obj.status.conditions
-    if conditions then
-      for _, condition in ipairs(conditions) do
-        if condition.reason == "KubeletReady" and condition.type == "Ready" and condition.status == "True" then
-          isKubeletReady = true
-          break
+        if not isKubeletReady then
+          status = "Degraded"
+          table.insert(statuses, {resource=resource, status = status})
         end
       end
-    end
 
-    if not isKubeletReady then
-      hs.status = "Degraded"
+      local hs = {}
+      if #statuses > 0 then
+        hs.resources = statuses 
+      end
+      return hs
     end
-
-    return hs
-  end
 

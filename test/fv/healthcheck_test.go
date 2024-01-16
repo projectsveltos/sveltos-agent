@@ -38,11 +38,20 @@ import (
 const (
 	luaPausedScript = `
 function evaluate()
-	hs = {}
-	hs.status = "Healthy"
-    hs.message = ""	
-	if obj.spec.paused == true then
-		hs.status = "Suspended"
+	local statuses = {}
+	for _, resource in ipairs(resources) do
+	  if resource.spec.paused == true then
+        status = "Suspended"
+        table.insert(statuses, {resource=resource, status = status})
+	  else
+        status = "Healthy"
+        table.insert(statuses, {resource=resource, status = status})
+	  end
+	end
+	
+	local hs = {}
+	if #statuses > 0 then
+	  hs.resources = statuses 
 	end
 	return hs
 end	
@@ -119,10 +128,14 @@ var _ = Describe("Classification", func() {
 				},
 			},
 			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				Group:   "apps",
-				Version: "v1",
-				Kind:    "Deployment",
-				Script:  luaPausedScript,
+				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+					{
+						Group:   "apps",
+						Version: "v1",
+						Kind:    "Deployment",
+					},
+				},
+				EvaluateHealth: luaPausedScript,
 			},
 		}
 
