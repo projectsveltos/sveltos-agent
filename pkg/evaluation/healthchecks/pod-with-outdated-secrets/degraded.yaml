@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dotfile-secret
+  namespace: foo
+  managedFields:
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:data:
+          f:.secret-file: {}
+        f:metadata:
+          f:annotations:
+            f:projectsveltos.io/hash: {}
+          f:labels:
+            f:projectsveltos.io/reason: {}
+            f:projectsveltos.io/reference-kind: {}
+            f:projectsveltos.io/reference-name: {}
+            f:projectsveltos.io/reference-namespace: {}
+          f:ownerReferences:
+            k:{"uid":"b6d54cae-c887-4afa-a47c-4f468c4cce6a"}: {}
+      manager: application/apply-patch
+      operation: Apply
+      time: "2024-01-17T08:53:07Z"
+    - apiVersion: v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        f:data:
+          f:SLACK_CHANNEL_ID: {}
+      manager: kubectl-edit
+      operation: Update
+      time: "2024-01-17T09:04:12Z"
+data:
+  .secret-file: dmFsdWUtMg0KDQo=
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-dotfiles-pod
+  namespace: foo
+  creationTimestamp: "2024-01-17T08:53:07Z"
+spec:
+  volumes:
+    - name: secret-volume
+      secret:
+        secretName: dotfile-secret
+  containers:
+    - name: dotfile-test-container
+      image: registry.k8s.io/busybox
+      command:
+        - ls
+        - "-l"
+        - "/etc/secret-volume"
+      volumeMounts:
+        - name: secret-volume
+          readOnly: true
+          mountPath: "/etc/secret-volume"
