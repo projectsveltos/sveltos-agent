@@ -28,8 +28,11 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	"github.com/go-logr/logr"
 	"github.com/spf13/pflag"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
@@ -48,6 +51,7 @@ import (
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	"github.com/projectsveltos/libsveltos/lib/clusterproxy"
 	"github.com/projectsveltos/libsveltos/lib/logsettings"
+	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 	"github.com/projectsveltos/sveltos-agent/controllers"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
@@ -138,7 +142,7 @@ func main() {
 		mgr.GetConfig(), mgr.GetClient(), clusterNamespace, clusterName, libsveltosv1alpha1.ClusterType(clusterType),
 		intervalInSecond, doSendReports)
 
-	startControllers(mgr, sendReports)
+	go startControllers(ctx, mgr, sendReports)
 	//+kubebuilder:scaffold:builder
 
 	setupChecks(mgr)
@@ -228,91 +232,171 @@ func setupChecks(mgr ctrl.Manager) {
 	}
 }
 
-func startControllers(mgr manager.Manager, sendReports controllers.Mode) {
-	var err error
-	// Do not change order. ClassifierReconciler initializes classification manager.
-	// NodeReconciler uses classification manager.
-	if err = (&controllers.ClassifierReconciler{
-		Client:             mgr.GetClient(),
-		Scheme:             mgr.GetScheme(),
-		RunMode:            sendReports,
-		Mux:                sync.RWMutex{},
-		GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
-		VersionClassifiers: libsveltosset.Set{},
-		ClusterNamespace:   clusterNamespace,
-		ClusterName:        clusterName,
-		ClusterType:        libsveltosv1alpha1.ClusterType(clusterType),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Classifier")
-		os.Exit(1)
+func startClassifierReconciler(ctx context.Context, mgr manager.Manager, sendReports controllers.Mode) {
+	for {
+		isPresent, err := isCRDPresent(ctx, mgr.GetClient(), "classifiers.lib.projectsveltos.io")
+		if err != nil {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if isPresent {
+			setupLog.V(logs.LogInfo).Info("start classifier/node controller")
+			if err = (&controllers.NodeReconciler{
+				Client: mgr.GetClient(),
+				Scheme: mgr.GetScheme(),
+				Config: mgr.GetConfig(),
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "Node")
+				os.Exit(1)
+			}
+
+			// Do not change order. ClassifierReconciler initializes classification manager.
+			// NodeReconciler uses classification manager.
+			if err = (&controllers.ClassifierReconciler{
+				Client:             mgr.GetClient(),
+				Scheme:             mgr.GetScheme(),
+				RunMode:            sendReports,
+				Mux:                sync.RWMutex{},
+				GVKClassifiers:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
+				VersionClassifiers: libsveltosset.Set{},
+				ClusterNamespace:   clusterNamespace,
+				ClusterName:        clusterName,
+				ClusterType:        libsveltosv1alpha1.ClusterType(clusterType),
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "Classifier")
+				os.Exit(1)
+			}
+		}
+		break
+	}
+}
+
+func startHealthCheckReconciler(ctx context.Context, mgr manager.Manager, sendReports controllers.Mode) {
+	for {
+		isPresent, err := isCRDPresent(ctx, mgr.GetClient(), "healthchecks.lib.projectsveltos.io")
+		if err != nil {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if isPresent {
+			setupLog.V(logs.LogInfo).Info("start healthCheck/healthCheckReport controllers")
+			if err = (&controllers.HealthCheckReconciler{
+				Client:           mgr.GetClient(),
+				Scheme:           mgr.GetScheme(),
+				RunMode:          sendReports,
+				Mux:              sync.RWMutex{},
+				GVKHealthChecks:  make(map[schema.GroupVersionKind]*libsveltosset.Set),
+				ClusterNamespace: clusterNamespace,
+				ClusterName:      clusterName,
+				ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "HealthCheck")
+				os.Exit(1)
+			}
+
+			if err = (&controllers.HealthCheckReportReconciler{
+				Client: mgr.GetClient(),
+				Scheme: mgr.GetScheme(),
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "HealthCheckReport")
+				os.Exit(1)
+			}
+		}
+
+		break
+	}
+}
+
+func startEventSourceReconciler(ctx context.Context, mgr manager.Manager, sendReports controllers.Mode) {
+	for {
+		isPresent, err := isCRDPresent(ctx, mgr.GetClient(), "eventsources.lib.projectsveltos.io")
+		if err != nil {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if isPresent {
+			setupLog.V(logs.LogInfo).Info("start eventSource/eventReport controllers")
+			if err = (&controllers.EventSourceReconciler{
+				Client:           mgr.GetClient(),
+				Scheme:           mgr.GetScheme(),
+				RunMode:          sendReports,
+				Mux:              sync.RWMutex{},
+				GVKEventSources:  make(map[schema.GroupVersionKind]*libsveltosset.Set),
+				ClusterNamespace: clusterNamespace,
+				ClusterName:      clusterName,
+				ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "EventSource")
+				os.Exit(1)
+			}
+
+			if err = (&controllers.EventReportReconciler{
+				Client: mgr.GetClient(),
+				Scheme: mgr.GetScheme(),
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "EventReport")
+				os.Exit(1)
+			}
+		}
+
+		break
+	}
+}
+
+func startReloaderReconciler(ctx context.Context, mgr manager.Manager, sendReports controllers.Mode) {
+	for {
+		isPresent, err := isCRDPresent(ctx, mgr.GetClient(), "reloaders.lib.projectsveltos.io")
+		if err != nil {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if isPresent {
+			setupLog.V(logs.LogInfo).Info("start reloader controllers")
+			if err = (&controllers.ReloaderReconciler{
+				Client:           mgr.GetClient(),
+				Scheme:           mgr.GetScheme(),
+				RunMode:          sendReports,
+				Mux:              sync.RWMutex{},
+				GVKReloaders:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
+				ClusterNamespace: clusterNamespace,
+				ClusterName:      clusterName,
+				ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "Reloader")
+				os.Exit(1)
+			}
+		}
+
+		break
+	}
+}
+
+func startControllers(ctx context.Context, mgr manager.Manager, sendReports controllers.Mode) {
+	for {
+		// wait for debugging configuration CRD so we know we are ready to check for other CRDs
+		// This must always exist. So isCRDPresent is not used, rather we keep trying till we
+		// successfully get it
+		crd := &apiextensionsv1.CustomResourceDefinition{}
+		err := mgr.GetClient().Get(ctx, types.NamespacedName{Name: "debuggingconfigurations.lib.projectsveltos.io"}, crd)
+		if err != nil {
+			time.Sleep(time.Second)
+			continue
+		}
+		setupLog.V(logsettings.LogInfo).Info("verified debuggingconfigurations")
+		break
 	}
 
-	if err = (&controllers.NodeReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Config: mgr.GetConfig(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Node")
-		os.Exit(1)
-	}
+	startClassifierReconciler(ctx, mgr, sendReports)
 
-	if err = (&controllers.HealthCheckReconciler{
-		Client:           mgr.GetClient(),
-		Scheme:           mgr.GetScheme(),
-		RunMode:          sendReports,
-		Mux:              sync.RWMutex{},
-		GVKHealthChecks:  make(map[schema.GroupVersionKind]*libsveltosset.Set),
-		ClusterNamespace: clusterNamespace,
-		ClusterName:      clusterName,
-		ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "HealthCheck")
-		os.Exit(1)
-	}
+	startHealthCheckReconciler(ctx, mgr, sendReports)
 
-	if err = (&controllers.HealthCheckReportReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "HealthCheckReport")
-		os.Exit(1)
-	}
+	startEventSourceReconciler(ctx, mgr, sendReports)
 
-	if err = (&controllers.EventSourceReconciler{
-		Client:           mgr.GetClient(),
-		Scheme:           mgr.GetScheme(),
-		RunMode:          sendReports,
-		Mux:              sync.RWMutex{},
-		GVKEventSources:  make(map[schema.GroupVersionKind]*libsveltosset.Set),
-		ClusterNamespace: clusterNamespace,
-		ClusterName:      clusterName,
-		ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "EventSource")
-		os.Exit(1)
-	}
-
-	if err = (&controllers.EventReportReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "EventReport")
-		os.Exit(1)
-	}
-
-	if err = (&controllers.ReloaderReconciler{
-		Client:           mgr.GetClient(),
-		Scheme:           mgr.GetScheme(),
-		RunMode:          sendReports,
-		Mux:              sync.RWMutex{},
-		GVKReloaders:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
-		ClusterNamespace: clusterNamespace,
-		ClusterName:      clusterName,
-		ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Reloader")
-		os.Exit(1)
-	}
+	startReloaderReconciler(ctx, mgr, sendReports)
 }
 
 func getManagedClusterRestConfig(ctx context.Context, cfg *rest.Config, logger logr.Logger) *rest.Config {
@@ -350,4 +434,18 @@ func getManagedClusterRestConfig(ctx context.Context, cfg *rest.Config, logger l
 	}
 
 	return currentCfg
+}
+
+func isCRDPresent(ctx context.Context, c client.Client, crdName string) (bool, error) {
+	crd := &apiextensionsv1.CustomResourceDefinition{}
+
+	err := c.Get(ctx, types.NamespacedName{Name: crdName}, crd)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }

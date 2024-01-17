@@ -38,7 +38,7 @@ kind: Pod
 metadata:
   name: secret-dotfiles-pod
   namespace: foo
-  creationTimestamp: "2024-01-17T08:53:07Z"
+  creationTimestamp: "2024-01-17T08:53:04Z"
 spec:
   volumes:
     - name: secret-volume
@@ -55,3 +55,29 @@ spec:
         - name: secret-volume
           readOnly: true
           mountPath: "/etc/secret-volume"
+status:
+  conditions:
+  - lastProbeTime: null
+    lastTransitionTime: "2024-01-17T08:53:08Z"
+    status: "True"
+    type: PodReadyToStartContainers
+  - lastProbeTime: null
+    lastTransitionTime: "2024-01-17T08:53:06Z"
+    status: "True"
+    type: Initialized
+  - lastProbeTime: null
+    lastTransitionTime: "2024-01-17T08:53:05Z"
+    message: 'containers with unready status: [dotfile-test-container]'
+    reason: ContainersNotReady
+    status: "False"
+    type: Ready
+  - lastProbeTime: null
+    lastTransitionTime: "2024-01-17T08:53:04Z"
+    message: 'containers with unready status: [dotfile-test-container]'
+    reason: ContainersNotReady
+    status: "False"
+    type: ContainersReady
+  - lastProbeTime: null
+    lastTransitionTime: "2024-01-17T08:53:04Z"
+    status: "True"
+    type: PodScheduled          
