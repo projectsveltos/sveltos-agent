@@ -270,6 +270,7 @@ func (m *manager) getHealthStatus(ctx context.Context, healthCheck *libsveltosv1
 		resourceStatuses[i].ObjectRef.Name = healthStatus.Resources[i].Resource.GetName()
 		resourceStatuses[i].ObjectRef.APIVersion = healthStatus.Resources[i].Resource.GetAPIVersion()
 		resourceStatuses[i].HealthStatus = healthStatus.Resources[i].Status
+		resourceStatuses[i].Message = healthStatus.Resources[i].Message
 	}
 
 	return resourceStatuses, nil
