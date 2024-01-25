@@ -200,22 +200,25 @@ func (r *HealthCheckReconciler) cleanMaps(healthCheck *libsveltosv1alpha1.Health
 }
 
 func (r *HealthCheckReconciler) updateMaps(healthCheck *libsveltosv1alpha1.HealthCheck) {
-	gvk := schema.GroupVersionKind{
-		Group:   healthCheck.Spec.Group,
-		Version: healthCheck.Spec.Version,
-		Kind:    healthCheck.Spec.Kind,
-	}
-
 	policyRef := getKeyFromObject(r.Scheme, healthCheck)
 
 	r.Mux.Lock()
 	defer r.Mux.Unlock()
 
-	_, ok := r.GVKHealthChecks[gvk]
-	if !ok {
-		r.GVKHealthChecks[gvk] = &libsveltosset.Set{}
+	for i := range healthCheck.Spec.ResourceSelectors {
+		rs := &healthCheck.Spec.ResourceSelectors[i]
+		gvk := schema.GroupVersionKind{
+			Group:   rs.Group,
+			Version: rs.Version,
+			Kind:    rs.Kind,
+		}
+
+		_, ok := r.GVKHealthChecks[gvk]
+		if !ok {
+			r.GVKHealthChecks[gvk] = &libsveltosset.Set{}
+		}
+		r.GVKHealthChecks[gvk].Insert(policyRef)
 	}
-	r.GVKHealthChecks[gvk].Insert(policyRef)
 }
 
 // react gets called when an instance of passed in gvk has been modified.

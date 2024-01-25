@@ -242,9 +242,14 @@ func getHealthCheck() *libsveltosv1alpha1.HealthCheck {
 			Name: randomString(),
 		},
 		Spec: libsveltosv1alpha1.HealthCheckSpec{
-			Group:   randomString(),
-			Version: randomString(),
-			Kind:    randomString(),
+			ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+				{
+					Group:   randomString(),
+					Version: randomString(),
+					Kind:    randomString(),
+				},
+			},
+			EvaluateHealth: randomString(),
 		},
 	}
 }

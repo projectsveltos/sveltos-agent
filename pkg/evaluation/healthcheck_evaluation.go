@@ -23,28 +23,31 @@ import (
 	"time"
 
 	lua "github.com/yuin/gopher-lua"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/restmapper"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
-	"github.com/projectsveltos/libsveltos/lib/roles"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
-type healthCheckStatus struct {
-	Status  libsveltosv1alpha1.HealthStatus `json:"status"`
-	Message string                          `json:"message"`
-	Ignore  bool                            `json:"ignore"`
+type ResourceResult struct {
+	// Resource identify a Kubernetes resource
+	Resource *unstructured.Unstructured `json:"resource"`
+
+	// Status is the current status of the resource
+	Status libsveltosv1alpha1.HealthStatus `json:"status"`
+
+	// Message is an optional field.
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
+// HealthSource.EvaluateHealth will return a struct of this type
+type healthStatus struct {
+	Resources []ResourceResult `json:"resources,omitempty"`
 }
 
 // evaluateHealthChecks evaluates all healthchecks awaiting evaluation
@@ -227,11 +230,12 @@ func (m *manager) cleanHealthCheckReport(ctx context.Context, healthCheckName st
 }
 
 // getHealthStatus returns current health status.
-// All resources matching this healthCheck instance are fetched.
-// For each resource, health status is checked by running the lua code present in the referenced ConfigMap (if any).
+// fetch all matching resources based on ResourceSelectors.
+// For every resource matching ResourceSelectors, health is evaluated using EvaluateHealth
 func (m *manager) getHealthStatus(ctx context.Context, healthCheck *libsveltosv1alpha1.HealthCheck,
 ) ([]libsveltosv1alpha1.ResourceStatus, error) {
 
+	// use ResourceSelectors to fetch all resources to be considered.
 	resources, err := m.fetchHealthCheckResources(ctx, healthCheck)
 	if err != nil {
 		m.log.V(logs.LogInfo).Info(fmt.Sprintf("failed to fetch resources: %v", err))
@@ -242,67 +246,60 @@ func (m *manager) getHealthStatus(ctx context.Context, healthCheck *libsveltosv1
 		return nil, nil
 	}
 
-	resourceStatuses := make([]libsveltosv1alpha1.ResourceStatus, 0)
+	// Pass all selected resources using ResourceSelectors to EvaluateHealth
+	healthStatus, err := m.getResourceHealthStatuses(resources, healthCheck.Spec.EvaluateHealth)
+	if err != nil {
+		return nil, err
+	}
 
-	for i := range resources.Items {
-		resource := &resources.Items[i]
-		if !resource.GetDeletionTimestamp().IsZero() {
-			continue
-		}
-		s, err := m.getResourceHealthStatus(resource, healthCheck.Spec.Script)
-		if err != nil {
-			return nil, err
-		}
-		if s == nil {
-			// Ignore
-			continue
-		}
+	if healthStatus == nil {
+		return nil, nil
+	}
+
+	resourceStatuses := make([]libsveltosv1alpha1.ResourceStatus, len(healthStatus.Resources))
+	for i := range healthStatus.Resources {
 		if healthCheck.Spec.CollectResources {
-			tmpJson, err := resource.MarshalJSON()
+			tmpJson, err := healthStatus.Resources[i].Resource.MarshalJSON()
 			if err != nil {
 				return nil, err
 			}
-			s.Resource = tmpJson
+			resourceStatuses[i].Resource = tmpJson
 		}
-
-		resourceStatuses = append(resourceStatuses, *s)
+		resourceStatuses[i].ObjectRef.Kind = healthStatus.Resources[i].Resource.GetKind()
+		resourceStatuses[i].ObjectRef.Namespace = healthStatus.Resources[i].Resource.GetNamespace()
+		resourceStatuses[i].ObjectRef.Name = healthStatus.Resources[i].Resource.GetName()
+		resourceStatuses[i].ObjectRef.APIVersion = healthStatus.Resources[i].Resource.GetAPIVersion()
+		resourceStatuses[i].HealthStatus = healthStatus.Resources[i].Status
+		resourceStatuses[i].Message = healthStatus.Resources[i].Message
 	}
 
 	return resourceStatuses, nil
 }
 
-func (m *manager) getResourceHealthStatus(resource *unstructured.Unstructured, script string,
-) (*libsveltosv1alpha1.ResourceStatus, error) {
-
-	if script == "" {
-		return &libsveltosv1alpha1.ResourceStatus{
-			HealthStatus: libsveltosv1alpha1.HealthStatusHealthy,
-			ObjectRef: corev1.ObjectReference{
-				Namespace:  resource.GetNamespace(),
-				Name:       resource.GetName(),
-				Kind:       resource.GetKind(),
-				APIVersion: resource.GetAPIVersion(),
-			},
-		}, nil
-	}
-
+// All resources selected using ResourceSelectors will be passed to EvaluateHealth
+func (m *manager) getResourceHealthStatuses(resources []*unstructured.Unstructured, evaluateHealth string) (*healthStatus, error) {
 	l := lua.NewState()
 	defer l.Close()
 
-	obj := mapToTable(resource.UnstructuredContent())
+	// Create an argument table
+	argTable := l.NewTable()
+	for i := range resources {
+		obj := mapToTable(resources[i].UnstructuredContent())
+		argTable.Append(obj)
+	}
 
-	if err := l.DoString(script); err != nil {
+	if err := l.DoString(evaluateHealth); err != nil {
 		m.log.V(logs.LogInfo).Info(fmt.Sprintf("doString failed: %v", err))
 		return nil, err
 	}
 
-	l.SetGlobal("obj", obj)
+	l.SetGlobal("resources", argTable)
 
 	if err := l.CallByParam(lua.P{
 		Fn:      l.GetGlobal("evaluate"), // name of Lua function
 		NRet:    1,                       // number of returned values
 		Protect: true,                    // return err or panic
-	}, obj); err != nil {
+	}, argTable); err != nil {
 		m.log.V(logs.LogInfo).Info(fmt.Sprintf("failed to evaluate health for resource: %v", err))
 		return nil, err
 	}
@@ -321,99 +318,30 @@ func (m *manager) getResourceHealthStatus(resource *unstructured.Unstructured, s
 		return nil, err
 	}
 
-	var result healthCheckStatus
+	var result healthStatus
 	err = json.Unmarshal(resultJson, &result)
 	if err != nil {
 		m.log.V(logs.LogInfo).Info(fmt.Sprintf("failed to marshal result: %v", err))
 		return nil, err
 	}
 
-	if result.Ignore {
-		return nil, nil
-	}
-
-	return &libsveltosv1alpha1.ResourceStatus{
-		HealthStatus: result.Status,
-		Message:      result.Message,
-		ObjectRef: corev1.ObjectReference{
-			Namespace:  resource.GetNamespace(),
-			Name:       resource.GetName(),
-			Kind:       resource.GetKind(),
-			APIVersion: resource.GetAPIVersion(),
-		},
-	}, nil
+	return &result, nil
 }
 
 // fetchHealthCheckResources fetchs all resources matching an healthCheck
 func (m *manager) fetchHealthCheckResources(ctx context.Context, healthCheck *libsveltosv1alpha1.HealthCheck,
-) (*unstructured.UnstructuredList, error) {
+) ([]*unstructured.Unstructured, error) {
 
-	gvk := schema.GroupVersionKind{
-		Group:   healthCheck.Spec.Group,
-		Version: healthCheck.Spec.Version,
-		Kind:    healthCheck.Spec.Kind,
-	}
-
-	dc := discovery.NewDiscoveryClientForConfigOrDie(m.config)
-	groupResources, err := restmapper.GetAPIGroupResources(dc)
-	if err != nil {
-		return nil, err
-	}
-	mapper := restmapper.NewDiscoveryRESTMapper(groupResources)
-
-	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-	if err != nil {
-		if meta.IsNoMatchError(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	resourceId := schema.GroupVersionResource{
-		Group:    gvk.Group,
-		Version:  gvk.Version,
-		Resource: mapping.Resource.Resource,
-	}
-
-	options := metav1.ListOptions{}
-
-	if len(healthCheck.Spec.LabelFilters) > 0 {
-		labelFilter := ""
-		for i := range healthCheck.Spec.LabelFilters {
-			if labelFilter != "" {
-				labelFilter += ","
-			}
-			f := healthCheck.Spec.LabelFilters[i]
-			if f.Operation == libsveltosv1alpha1.OperationEqual {
-				labelFilter += fmt.Sprintf("%s=%s", f.Key, f.Value)
-			} else {
-				labelFilter += fmt.Sprintf("%s!=%s", f.Key, f.Value)
-			}
-		}
-
-		options.LabelSelector = labelFilter
-	}
-
-	if healthCheck.Spec.Namespace != "" {
-		options.FieldSelector += fmt.Sprintf("metadata.namespace=%s", healthCheck.Spec.Namespace)
-	}
+	list := []*unstructured.Unstructured{}
 
 	saNamespace, saName := m.getServiceAccountInfo(healthCheck)
-	currentConfig := rest.CopyConfig(m.config)
-	if saName != "" {
-		saNameInManagedCluster := roles.GetServiceAccountNameInManagedCluster(saNamespace, saName)
-		m.log.V(logs.LogInfo).Info(fmt.Sprintf("Impersonating serviceAccount (%s/%s) projectsveltos:%s",
-			saNamespace, saName, saNameInManagedCluster))
-		// ServiceAccount for a tenant admin is created in the projectsveltos namespace
-		currentConfig.Impersonate = rest.ImpersonationConfig{
-			UserName: fmt.Sprintf("system:serviceaccount:projectsveltos:%s", saNameInManagedCluster),
+	for i := range healthCheck.Spec.ResourceSelectors {
+		rs := &healthCheck.Spec.ResourceSelectors[i]
+		tmpList, err := m.fetchResourcesMatchingResourceSelector(ctx, rs, saNamespace, saName, m.log)
+		if err != nil {
+			return nil, err
 		}
-	}
-	d := dynamic.NewForConfigOrDie(currentConfig)
-	var list *unstructured.UnstructuredList
-	list, err = d.Resource(resourceId).List(ctx, options)
-	if err != nil {
-		return nil, err
+		list = append(list, tmpList...)
 	}
 
 	return list, nil

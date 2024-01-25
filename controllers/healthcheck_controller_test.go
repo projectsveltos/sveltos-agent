@@ -59,6 +59,9 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 		Expect(testEnv.Create(watcherCtx, healthCheck)).To(Succeed())
 		Expect(waitForObject(watcherCtx, testEnv.Client, healthCheck)).To(Succeed())
 
+		rs := healthCheck.Spec.ResourceSelectors
+		Expect(rs).ToNot(BeNil())
+
 		reconciler := &controllers.HealthCheckReconciler{
 			Client:          testEnv.Client,
 			Scheme:          scheme,
@@ -67,17 +70,19 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 		}
 
 		controllers.HealthCheckUpdateMaps(reconciler, healthCheck)
-		Expect(len(reconciler.GVKHealthChecks)).To(Equal(1))
-		gvk := schema.GroupVersionKind{
-			Group:   healthCheck.Spec.Group,
-			Version: healthCheck.Spec.Version,
-			Kind:    healthCheck.Spec.Kind,
+		Expect(len(reconciler.GVKHealthChecks)).To(Equal(len(rs)))
+		for i := range rs {
+			gvk := schema.GroupVersionKind{
+				Group:   rs[i].Group,
+				Version: rs[i].Version,
+				Kind:    rs[i].Kind,
+			}
+			v, ok := reconciler.GVKHealthChecks[gvk]
+			Expect(ok).To(BeTrue())
+			Expect(v.Len()).To(Equal(1))
+			items := reconciler.GVKHealthChecks[gvk].Items()
+			Expect(items[0].Name).To(Equal(healthCheck.Name))
 		}
-		v, ok := reconciler.GVKHealthChecks[gvk]
-		Expect(ok).To(BeTrue())
-		Expect(v.Len()).To(Equal(1))
-		items := reconciler.GVKHealthChecks[gvk].Items()
-		Expect(items[0].Name).To(Equal(healthCheck.Name))
 	})
 
 	It("reconcileDelete remove healthCheck from GVKHealthChecks map", func() {
@@ -85,11 +90,8 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 		Expect(testEnv.Create(watcherCtx, healthCheck)).To(Succeed())
 		Expect(waitForObject(watcherCtx, testEnv.Client, healthCheck)).To(Succeed())
 
-		gvk := schema.GroupVersionKind{
-			Group:   healthCheck.Spec.Group,
-			Version: healthCheck.Spec.Version,
-			Kind:    healthCheck.Spec.Kind,
-		}
+		rs := healthCheck.Spec.ResourceSelectors
+		Expect(rs).ToNot(BeNil())
 
 		reconciler := &controllers.HealthCheckReconciler{
 			Client:          testEnv.Client,
@@ -98,10 +100,17 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 			GVKHealthChecks: make(map[schema.GroupVersionKind]*libsveltosset.Set),
 		}
 
-		policyRef := controllers.GetKeyFromObject(scheme, healthCheck)
-		reconciler.GVKHealthChecks[gvk] = &libsveltosset.Set{}
-		reconciler.GVKHealthChecks[gvk].Insert(policyRef)
+		for i := range rs {
+			gvk := schema.GroupVersionKind{
+				Group:   rs[i].Group,
+				Version: rs[i].Version,
+				Kind:    rs[i].Kind,
+			}
 
+			policyRef := controllers.GetKeyFromObject(scheme, healthCheck)
+			reconciler.GVKHealthChecks[gvk] = &libsveltosset.Set{}
+			reconciler.GVKHealthChecks[gvk].Insert(policyRef)
+		}
 		healthCheckScope, err := scope.NewHealthCheckScope(scope.HealthCheckScopeParams{
 			Client:      testEnv.Client,
 			Logger:      textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
@@ -111,6 +120,14 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 
 		controllers.HealthCheckReconcileDelete(reconciler, context.TODO(), healthCheckScope,
 			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
-		Expect(reconciler.GVKHealthChecks[gvk].Len()).To(Equal(0))
+
+		for i := range rs {
+			gvk := schema.GroupVersionKind{
+				Group:   rs[i].Group,
+				Version: rs[i].Version,
+				Kind:    rs[i].Kind,
+			}
+			Expect(reconciler.GVKHealthChecks[gvk].Len()).To(Equal(0))
+		}
 	})
 })

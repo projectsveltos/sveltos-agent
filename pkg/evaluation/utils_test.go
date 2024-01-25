@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -115,5 +116,23 @@ func verifyResult(result, matchingResources, nonMatchingResources []*unstructure
 
 	for i := range nonMatchingResources {
 		Expect(result).ToNot(ContainElement(nonMatchingResources[i]))
+	}
+}
+
+func addTypeInformationToObject(scheme *runtime.Scheme, obj client.Object) {
+	gvks, _, err := scheme.ObjectKinds(obj)
+	if err != nil {
+		panic(1)
+	}
+
+	for _, gvk := range gvks {
+		if gvk.Kind == "" {
+			continue
+		}
+		if gvk.Version == "" || gvk.Version == runtime.APIVersionInternal {
+			continue
+		}
+		obj.GetObjectKind().SetGroupVersionKind(gvk)
+		break
 	}
 }

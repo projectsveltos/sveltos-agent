@@ -27,6 +27,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
@@ -111,13 +112,16 @@ func (m *manager) buildList(ctx context.Context) (map[schema.GroupVersionKind]bo
 }
 
 func (m *manager) buildListForClassifiers(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
+	resources := make(map[schema.GroupVersionKind]bool)
+
 	classifiers := &libsveltosv1alpha1.ClassifierList{}
 	err := m.List(ctx, classifiers)
 	if err != nil {
+		if meta.IsNoMatchError(err) {
+			return resources, nil
+		}
 		return nil, err
 	}
-
-	resources := make(map[schema.GroupVersionKind]bool)
 
 	for i := range classifiers.Items {
 		classifier := &classifiers.Items[i]
@@ -131,13 +135,16 @@ func (m *manager) buildListForClassifiers(ctx context.Context) (map[schema.Group
 }
 
 func (m *manager) buildListForHealthChecks(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
+	resources := make(map[schema.GroupVersionKind]bool)
+
 	healthChecks := &libsveltosv1alpha1.HealthCheckList{}
 	err := m.List(ctx, healthChecks)
 	if err != nil {
+		if meta.IsNoMatchError(err) {
+			return resources, nil
+		}
 		return nil, err
 	}
-
-	resources := make(map[schema.GroupVersionKind]bool)
 
 	for i := range healthChecks.Items {
 		healthCheck := &healthChecks.Items[i]
@@ -151,13 +158,16 @@ func (m *manager) buildListForHealthChecks(ctx context.Context) (map[schema.Grou
 }
 
 func (m *manager) buildListForEventSources(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
+	resources := make(map[schema.GroupVersionKind]bool)
+
 	eventSources := &libsveltosv1alpha1.EventSourceList{}
 	err := m.List(ctx, eventSources)
 	if err != nil {
+		if meta.IsNoMatchError(err) {
+			return resources, nil
+		}
 		return nil, err
 	}
-
-	resources := make(map[schema.GroupVersionKind]bool)
 
 	for i := range eventSources.Items {
 		eventSource := &eventSources.Items[i]
@@ -171,13 +181,16 @@ func (m *manager) buildListForEventSources(ctx context.Context) (map[schema.Grou
 }
 
 func (m *manager) buildListForReloaders(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
+	resources := make(map[schema.GroupVersionKind]bool)
+
 	reloaders := &libsveltosv1alpha1.ReloaderList{}
 	err := m.List(ctx, reloaders)
 	if err != nil {
+		if meta.IsNoMatchError(err) {
+			return resources, nil
+		}
 		return nil, err
 	}
-
-	resources := make(map[schema.GroupVersionKind]bool)
 
 	for i := range reloaders.Items {
 		reloader := &reloaders.Items[i]
@@ -213,13 +226,14 @@ func (m *manager) addGVKsForClassifier(classifier *libsveltosv1alpha1.Classifier
 func (m *manager) addGVKsForHealthCheck(healthCheck *libsveltosv1alpha1.HealthCheck,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
-	gvk := schema.GroupVersionKind{
-		Group:   healthCheck.Spec.Group,
-		Kind:    healthCheck.Spec.Kind,
-		Version: healthCheck.Spec.Version,
+	for i := range healthCheck.Spec.ResourceSelectors {
+		gvk := schema.GroupVersionKind{
+			Group:   healthCheck.Spec.ResourceSelectors[i].Group,
+			Kind:    healthCheck.Spec.ResourceSelectors[i].Kind,
+			Version: healthCheck.Spec.ResourceSelectors[i].Version,
+		}
+		resources[gvk] = true
 	}
-	resources[gvk] = true
-
 	return resources
 }
 
@@ -375,11 +389,17 @@ func (m *manager) gvkInstalled(gvk *schema.GroupVersionKind,
 }
 
 func (m *manager) react(gvk *schema.GroupVersionKind) {
-	m.reactClassifier(gvk)
+	if m.reactClassifier != nil {
+		m.reactClassifier(gvk)
+	}
 
-	m.reactHealthCheck(gvk)
+	if m.reactHealthCheck != nil {
+		m.reactHealthCheck(gvk)
+	}
 
-	m.reactEventSource(gvk)
+	if m.reactEventSource != nil {
+		m.reactEventSource(gvk)
+	}
 }
 
 func (m *manager) startWatcher(ctx context.Context, gvk *schema.GroupVersionKind) error {
