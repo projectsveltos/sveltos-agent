@@ -42,7 +42,7 @@ var _ = Describe("Controllers: classifier controller", func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
 		evaluation.InitializeManager(watcherCtx,
 			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))), testEnv.Config, testEnv.Client,
-			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 10, false)
+			randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 3, false)
 	})
 
 	AfterEach(func() {
