@@ -40,9 +40,9 @@ import (
 )
 
 const (
-	version29 = "v1.29.0"
-	version28 = "v1.28.0" // taken from KUBEBUILDER_ENVTEST_KUBERNETES_VERSION in Makefile
-	version27 = "v1.27.1"
+	version31 = "v1.31.0"
+	version30 = "v1.30.0" // taken from KUBEBUILDER_ENVTEST_KUBERNETES_VERSION in Makefile
+	version29 = "v1.29.1"
 )
 
 var (
@@ -80,7 +80,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: comparisonEqual returns true when version matches", func() {
-		classifier = getClassifierWithKubernetesConstraints(version28, libsveltosv1alpha1.ComparisonEqual)
+		classifier = getClassifierWithKubernetesConstraints(version30, libsveltosv1alpha1.ComparisonEqual)
 
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
@@ -115,7 +115,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: ComparisonNotEqual returns true when version doesn't match", func() {
-		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonNotEqual)
+		classifier = getClassifierWithKubernetesConstraints(version29, libsveltosv1alpha1.ComparisonNotEqual)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
@@ -132,7 +132,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: ComparisonNotEqual returns false when version matches", func() {
-		classifier = getClassifierWithKubernetesConstraints(version28, libsveltosv1alpha1.ComparisonNotEqual)
+		classifier = getClassifierWithKubernetesConstraints(version30, libsveltosv1alpha1.ComparisonNotEqual)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
@@ -149,7 +149,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: ComparisonGreaterThan returns true when version is strictly greater than specified one", func() {
-		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonGreaterThan)
+		classifier = getClassifierWithKubernetesConstraints(version29, libsveltosv1alpha1.ComparisonGreaterThan)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
@@ -166,7 +166,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: ComparisonGreaterThan returns false when version is not strictly greater than specified one", func() {
-		classifier = getClassifierWithKubernetesConstraints(version28, libsveltosv1alpha1.ComparisonGreaterThan)
+		classifier = getClassifierWithKubernetesConstraints(version30, libsveltosv1alpha1.ComparisonGreaterThan)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
@@ -183,7 +183,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: ComparisonGreaterThanOrEqualTo returns true when version is equal to specified one", func() {
-		classifier = getClassifierWithKubernetesConstraints(version28, libsveltosv1alpha1.ComparisonGreaterThanOrEqualTo)
+		classifier = getClassifierWithKubernetesConstraints(version30, libsveltosv1alpha1.ComparisonGreaterThanOrEqualTo)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
@@ -200,7 +200,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: ComparisonGreaterThanOrEqualTo returns false when version is not equal/greater than specified one", func() {
-		classifier = getClassifierWithKubernetesConstraints(version29, libsveltosv1alpha1.ComparisonGreaterThanOrEqualTo)
+		classifier = getClassifierWithKubernetesConstraints(version31, libsveltosv1alpha1.ComparisonGreaterThanOrEqualTo)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
@@ -217,7 +217,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: ComparisonLessThan returns true when version is strictly less than specified one", func() {
-		classifier = getClassifierWithKubernetesConstraints(version29, libsveltosv1alpha1.ComparisonLessThan)
+		classifier = getClassifierWithKubernetesConstraints(version31, libsveltosv1alpha1.ComparisonLessThan)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
@@ -234,7 +234,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: ComparisonLessThan returns false when version is not strictly less than specified one", func() {
-		classifier = getClassifierWithKubernetesConstraints(version28, libsveltosv1alpha1.ComparisonLessThan)
+		classifier = getClassifierWithKubernetesConstraints(version30, libsveltosv1alpha1.ComparisonLessThan)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
@@ -251,7 +251,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: ComparisonLessThanOrEqualTo returns true when version is equal to specified one", func() {
-		classifier = getClassifierWithKubernetesConstraints(version28, libsveltosv1alpha1.ComparisonLessThanOrEqualTo)
+		classifier = getClassifierWithKubernetesConstraints(version30, libsveltosv1alpha1.ComparisonLessThanOrEqualTo)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
@@ -268,7 +268,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: ComparisonLessThanOrEqualTo returns false when version is not equal/less than specified one", func() {
-		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonLessThanOrEqualTo)
+		classifier = getClassifierWithKubernetesConstraints(version29, libsveltosv1alpha1.ComparisonLessThanOrEqualTo)
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
 
@@ -285,11 +285,11 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: multiple constraints returns true when all checks pass", func() {
-		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonGreaterThanOrEqualTo)
+		classifier = getClassifierWithKubernetesConstraints(version29, libsveltosv1alpha1.ComparisonGreaterThanOrEqualTo)
 		classifier.Spec.KubernetesVersionConstraints = append(classifier.Spec.KubernetesVersionConstraints,
 			libsveltosv1alpha1.KubernetesVersionConstraint{
 				Comparison: string(libsveltosv1alpha1.ComparisonLessThan),
-				Version:    version29,
+				Version:    version31,
 			},
 		)
 
@@ -309,11 +309,11 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("IsVersionAMatch: multiple constraints returns false if at least one check fails", func() {
-		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonGreaterThan)
+		classifier = getClassifierWithKubernetesConstraints(version29, libsveltosv1alpha1.ComparisonGreaterThan)
 		classifier.Spec.KubernetesVersionConstraints = append(classifier.Spec.KubernetesVersionConstraints,
 			libsveltosv1alpha1.KubernetesVersionConstraint{
 				Comparison: string(libsveltosv1alpha1.ComparisonLessThan),
-				Version:    version28,
+				Version:    version30,
 			},
 		)
 
@@ -333,7 +333,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("createClassifierReport creates ClassifierReport", func() {
-		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonGreaterThan)
+		classifier = getClassifierWithKubernetesConstraints(version29, libsveltosv1alpha1.ComparisonGreaterThan)
 
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
@@ -364,7 +364,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("createClassifierReport updates ClassifierReport", func() {
 		phase := libsveltosv1alpha1.ReportProcessed
 		isMatch := false
-		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonGreaterThan)
+		classifier = getClassifierWithKubernetesConstraints(version29, libsveltosv1alpha1.ComparisonGreaterThan)
 		classifierReport := &libsveltosv1alpha1.ClassifierReport{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: utils.ReportNamespace,
@@ -400,7 +400,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	It("evaluateClassifierInstance creates ClassifierReport", func() {
 		// Create node and classifier so cluster is a match
 		isMatch := true
-		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonGreaterThan)
+		classifier = getClassifierWithKubernetesConstraints(version29, libsveltosv1alpha1.ComparisonGreaterThan)
 
 		Expect(testEnv.Create(context.TODO(), classifier)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, classifier)
@@ -641,7 +641,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("cleanClassifierReport removes classifierReport", func() {
-		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonGreaterThan)
+		classifier = getClassifierWithKubernetesConstraints(version29, libsveltosv1alpha1.ComparisonGreaterThan)
 		classifierReport := &libsveltosv1alpha1.ClassifierReport{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      classifier.Name,
@@ -692,7 +692,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 	})
 
 	It("sendClassifierReport sends classifierReport to management cluster", func() {
-		classifier = getClassifierWithKubernetesConstraints(version27, libsveltosv1alpha1.ComparisonGreaterThan)
+		classifier = getClassifierWithKubernetesConstraints(version29, libsveltosv1alpha1.ComparisonGreaterThan)
 		classifier.Spec.ClassifierLabels = []libsveltosv1alpha1.ClassifierLabel{
 			{Key: randomString(), Value: randomString()},
 		}
