@@ -28,10 +28,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
@@ -170,41 +171,44 @@ func (r *ReloaderReconciler) reconcileNormal(ctx context.Context,
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReloaderReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	c, err := ctrl.NewControllerManagedBy(mgr).
+	// Reloader contains list of Deployment/StatefulSet/DaemonSet instances
+	// to reload if mounted ConfigMap/Secret changes. A watcher on ConfigMap/Secret is started
+	// here. When ConfigMap/Secret changes according to ConfigMapPredicates/SecretPredicates,
+	// ConfigMap/Secret is queued to be evaluated by evaluation manager. The queueing is done
+	// in the Predicate itself.
+	// Manager has full view of which Deployment/StatefulSet/DaemonSet instances are mounting
+	// which ConfigMap instances.
+
+	// nil handler is used as we don't need to requeue Reloader.
+	_, err := ctrl.NewControllerManagedBy(mgr).
 		For(&libsveltosv1alpha1.Reloader{}).
+		Watches(&corev1.ConfigMap{},
+			handler.EnqueueRequestsFromMapFunc(r.nilHandler),
+			builder.WithPredicates(
+				ConfigMapPredicates(mgr.GetLogger().WithValues("predicate", "configmappredicate")),
+			),
+		).
+		Watches(&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.nilHandler),
+			builder.WithPredicates(
+				SecretPredicates(mgr.GetLogger().WithValues("predicate", "secretpredicate")),
+			),
+		).
 		Build(r)
 	if err != nil {
 		return errors.Wrap(err, "error creating controller")
 	}
 
-	// Reloader contains list of Deployment/StatefulSet/DaemonSet instances
-	// to reload if mounted ConfigMap changes. A watcher on ConfigMap is started
-	// here. When ConfigMap changes according to ConfigMapPredicates, ConfigMap
-	// is queued to be evaluated by evaluation manager. Manager has full view
-	// of which Deployment/StatefulSet/DaemonSet instances are mounting which ConfigMap
-	// instances.
-	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}),
-		nil,
-		ConfigMapPredicates(mgr.GetLogger().WithValues("predicate", "configmappredicate")),
-	)
-	if err != nil {
-		return err
-	}
-
-	// Reloader contains list of Deployment/StatefulSet/DaemonSet instances
-	// to reload if mounted Secret changes. A watcher on Secret is started
-	// here. When Secret changes according to SecretMapPredicates, Secret
-	// is queued to be evaluated by evaluation manager. Manager has full view
-	// of which Deployment/StatefulSet/DaemonSet instances are mounting which Secret
-	// instances.
-	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}),
-		nil,
-		SecretPredicates(mgr.GetLogger().WithValues("predicate", "secretpredicate")),
-	)
-
 	evaluation.GetManager().RegisterReloaderMethod(r.react)
 
 	return err
+}
+
+func (r *ReloaderReconciler) nilHandler(
+	ctx context.Context, o client.Object,
+) []reconcile.Request {
+
+	return nil
 }
 
 func (r *ReloaderReconciler) cleanMaps(reloader *libsveltosv1alpha1.Reloader) {
