@@ -24,14 +24,14 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 )
 
 // ClassifierScopeParams defines the input parameters used to create a new Classifier Scope.
 type ClassifierScopeParams struct {
 	Client     client.Client
 	Logger     logr.Logger
-	Classifier *libsveltosv1alpha1.Classifier
+	Classifier *libsveltosv1beta1.Classifier
 }
 
 // NewClassifierScope creates a new Classifier Scope from the supplied parameters.
@@ -61,7 +61,7 @@ type ClassifierScope struct {
 	logr.Logger
 	client      client.Client
 	patchHelper *patch.Helper
-	Classifier  *libsveltosv1alpha1.Classifier
+	Classifier  *libsveltosv1beta1.Classifier
 }
 
 // PatchObject persists the feature configuration and status.

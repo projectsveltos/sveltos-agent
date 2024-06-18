@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/sveltos-agent/pkg/scope"
 )
 
@@ -33,11 +33,11 @@ const (
 )
 
 var _ = Describe("ClassifierScope", func() {
-	var classifier *libsveltosv1alpha1.Classifier
+	var classifier *libsveltosv1beta1.Classifier
 	var c client.Client
 
 	BeforeEach(func() {
-		classifier = &libsveltosv1alpha1.Classifier{
+		classifier = &libsveltosv1beta1.Classifier{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: classifierNamePrefix + randomString(),
 			},

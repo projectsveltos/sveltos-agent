@@ -28,7 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
@@ -181,15 +181,15 @@ var _ = Describe("Aggregated Events", func() {
 		}
 		Expect(k8sClient.Create(context.TODO(), &configMap)).To(Succeed())
 
-		eventSource := libsveltosv1alpha1.EventSource{
+		eventSource := libsveltosv1beta1.EventSource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namePrefix + randomString(),
 				Annotations: map[string]string{
 					"projectsveltos.io/deployed-by-sveltos": "ok",
 				},
 			},
-			Spec: libsveltosv1alpha1.EventSourceSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.EventSourceSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:   "",
 						Version: "v1",
@@ -217,7 +217,7 @@ var _ = Describe("Aggregated Events", func() {
 
 		By("Verifying EventReport is marked for deletion")
 		Eventually(func() bool {
-			eventReport := &libsveltosv1alpha1.EventReport{}
+			eventReport := &libsveltosv1beta1.EventReport{}
 			err := k8sClient.Get(context.TODO(),
 				types.NamespacedName{Namespace: utils.ReportNamespace, Name: eventSource.Name}, eventReport)
 			if err != nil {

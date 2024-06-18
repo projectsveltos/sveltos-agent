@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
@@ -47,7 +47,7 @@ type EventSourceReconciler struct {
 	RunMode          Mode
 	ClusterNamespace string
 	ClusterName      string
-	ClusterType      libsveltosv1alpha1.ClusterType
+	ClusterType      libsveltosv1beta1.ClusterType
 	// Used to update internal maps and sets
 	Mux sync.RWMutex
 	// key: GVK, Value: list of EventSources based on that GVK
@@ -64,7 +64,7 @@ func (r *EventSourceReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	logger.V(logs.LogInfo).Info("Reconciling")
 
 	// Fecth the EventSource instance
-	eventSource := &libsveltosv1alpha1.EventSource{}
+	eventSource := &libsveltosv1beta1.EventSource{}
 	err := r.Get(ctx, req.NamespacedName, eventSource)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -133,8 +133,8 @@ func (r *EventSourceReconciler) reconcileDelete(ctx context.Context,
 	}
 
 	if canRemove {
-		if controllerutil.ContainsFinalizer(eventSourceScope.EventSource, libsveltosv1alpha1.EventSourceFinalizer) {
-			controllerutil.RemoveFinalizer(eventSourceScope.EventSource, libsveltosv1alpha1.EventSourceFinalizer)
+		if controllerutil.ContainsFinalizer(eventSourceScope.EventSource, libsveltosv1beta1.EventSourceFinalizer) {
+			controllerutil.RemoveFinalizer(eventSourceScope.EventSource, libsveltosv1beta1.EventSourceFinalizer)
 		}
 	} else {
 		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}
@@ -151,8 +151,8 @@ func (r *EventSourceReconciler) reconcileNormal(ctx context.Context,
 
 	logger.V(logs.LogDebug).Info("reconcile")
 
-	if !controllerutil.ContainsFinalizer(eventSourceScope.EventSource, libsveltosv1alpha1.EventSourceFinalizer) {
-		if err := addFinalizer(ctx, r.Client, eventSourceScope.EventSource, libsveltosv1alpha1.EventSourceFinalizer,
+	if !controllerutil.ContainsFinalizer(eventSourceScope.EventSource, libsveltosv1beta1.EventSourceFinalizer) {
+		if err := addFinalizer(ctx, r.Client, eventSourceScope.EventSource, libsveltosv1beta1.EventSourceFinalizer,
 			logger); err != nil {
 			logger.V(logs.LogDebug).Info("failed to update finalizer")
 			return err
@@ -173,7 +173,7 @@ func (r *EventSourceReconciler) reconcileNormal(ctx context.Context,
 // SetupWithManager sets up the controller with the Manager.
 func (r *EventSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	_, err := ctrl.NewControllerManagedBy(mgr).
-		For(&libsveltosv1alpha1.EventSource{}).
+		For(&libsveltosv1beta1.EventSource{}).
 		Build(r)
 	if err != nil {
 		return errors.Wrap(err, "error creating controller")
@@ -184,7 +184,7 @@ func (r *EventSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-func (r *EventSourceReconciler) cleanMaps(eventSource *libsveltosv1alpha1.EventSource) {
+func (r *EventSourceReconciler) cleanMaps(eventSource *libsveltosv1beta1.EventSource) {
 	r.Mux.Lock()
 	defer r.Mux.Unlock()
 
@@ -195,7 +195,7 @@ func (r *EventSourceReconciler) cleanMaps(eventSource *libsveltosv1alpha1.EventS
 	}
 }
 
-func (r *EventSourceReconciler) updateMaps(eventSource *libsveltosv1alpha1.EventSource) {
+func (r *EventSourceReconciler) updateMaps(eventSource *libsveltosv1beta1.EventSource) {
 	r.Mux.Lock()
 	defer r.Mux.Unlock()
 
@@ -244,7 +244,7 @@ func (r *EventSourceReconciler) react(gvk *schema.GroupVersionKind) {
 func (r *EventSourceReconciler) canRemoveFinalizer(ctx context.Context,
 	eventSourceScope *scope.EventSourceScope) (bool, error) {
 
-	eventReport := &libsveltosv1alpha1.EventReport{}
+	eventReport := &libsveltosv1beta1.EventReport{}
 	err := r.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: eventSourceScope.Name()}, eventReport)
 	if err != nil {
@@ -256,7 +256,7 @@ func (r *EventSourceReconciler) canRemoveFinalizer(ctx context.Context,
 
 	if eventReport.DeletionTimestamp.IsZero() ||
 		eventReport.Status.Phase == nil ||
-		*eventReport.Status.Phase != libsveltosv1alpha1.ReportProcessed {
+		*eventReport.Status.Phase != libsveltosv1beta1.ReportProcessed {
 
 		return false, nil
 	}

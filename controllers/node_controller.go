@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	"github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
@@ -104,7 +104,7 @@ func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *NodeReconciler) findClassifierUsingKubernetesVersion(ctx context.Context,
 	logger logr.Logger) ([]string, error) {
 
-	classifierList := &libsveltosv1alpha1.ClassifierList{}
+	classifierList := &libsveltosv1beta1.ClassifierList{}
 	err := r.List(ctx, classifierList)
 	if err != nil {
 		return nil, err

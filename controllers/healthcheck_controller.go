@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
@@ -47,7 +47,7 @@ type HealthCheckReconciler struct {
 	RunMode          Mode
 	ClusterNamespace string
 	ClusterName      string
-	ClusterType      libsveltosv1alpha1.ClusterType
+	ClusterType      libsveltosv1beta1.ClusterType
 	// Used to update internal maps and sets
 	Mux sync.RWMutex
 	// key: GVK, Value: list of HealthChecks based on that GVK
@@ -64,7 +64,7 @@ func (r *HealthCheckReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	logger.V(logs.LogInfo).Info("Reconciling")
 
 	// Fecth the HealthCheck instance
-	healthCheck := &libsveltosv1alpha1.HealthCheck{}
+	healthCheck := &libsveltosv1beta1.HealthCheck{}
 	err := r.Get(ctx, req.NamespacedName, healthCheck)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -137,8 +137,8 @@ func (r *HealthCheckReconciler) reconcileDelete(ctx context.Context,
 	}
 
 	if canRemove {
-		if controllerutil.ContainsFinalizer(healthCheckScope.HealthCheck, libsveltosv1alpha1.HealthCheckFinalizer) {
-			controllerutil.RemoveFinalizer(healthCheckScope.HealthCheck, libsveltosv1alpha1.HealthCheckFinalizer)
+		if controllerutil.ContainsFinalizer(healthCheckScope.HealthCheck, libsveltosv1beta1.HealthCheckFinalizer) {
+			controllerutil.RemoveFinalizer(healthCheckScope.HealthCheck, libsveltosv1beta1.HealthCheckFinalizer)
 		}
 	} else {
 		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}
@@ -155,8 +155,8 @@ func (r *HealthCheckReconciler) reconcileNormal(ctx context.Context,
 
 	logger.V(logs.LogDebug).Info("reconcile")
 
-	if !controllerutil.ContainsFinalizer(healthCheckScope.HealthCheck, libsveltosv1alpha1.HealthCheckFinalizer) {
-		if err := addFinalizer(ctx, r.Client, healthCheckScope.HealthCheck, libsveltosv1alpha1.HealthCheckFinalizer,
+	if !controllerutil.ContainsFinalizer(healthCheckScope.HealthCheck, libsveltosv1beta1.HealthCheckFinalizer) {
+		if err := addFinalizer(ctx, r.Client, healthCheckScope.HealthCheck, libsveltosv1beta1.HealthCheckFinalizer,
 			logger); err != nil {
 			logger.V(logs.LogDebug).Info("failed to update finalizer")
 			return err
@@ -177,7 +177,7 @@ func (r *HealthCheckReconciler) reconcileNormal(ctx context.Context,
 // SetupWithManager sets up the controller with the Manager.
 func (r *HealthCheckReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	_, err := ctrl.NewControllerManagedBy(mgr).
-		For(&libsveltosv1alpha1.HealthCheck{}).
+		For(&libsveltosv1beta1.HealthCheck{}).
 		Build(r)
 	if err != nil {
 		return errors.Wrap(err, "error creating controller")
@@ -188,7 +188,7 @@ func (r *HealthCheckReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-func (r *HealthCheckReconciler) cleanMaps(healthCheck *libsveltosv1alpha1.HealthCheck) {
+func (r *HealthCheckReconciler) cleanMaps(healthCheck *libsveltosv1beta1.HealthCheck) {
 	r.Mux.Lock()
 	defer r.Mux.Unlock()
 
@@ -199,7 +199,7 @@ func (r *HealthCheckReconciler) cleanMaps(healthCheck *libsveltosv1alpha1.Health
 	}
 }
 
-func (r *HealthCheckReconciler) updateMaps(healthCheck *libsveltosv1alpha1.HealthCheck) {
+func (r *HealthCheckReconciler) updateMaps(healthCheck *libsveltosv1beta1.HealthCheck) {
 	policyRef := getKeyFromObject(r.Scheme, healthCheck)
 
 	r.Mux.Lock()
@@ -248,7 +248,7 @@ func (r *HealthCheckReconciler) react(gvk *schema.GroupVersionKind) {
 func (r *HealthCheckReconciler) canRemoveFinalizer(ctx context.Context,
 	healthCheckScope *scope.HealthCheckScope) (bool, error) {
 
-	healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
+	healthCheckReport := &libsveltosv1beta1.HealthCheckReport{}
 	err := r.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: healthCheckScope.Name()}, healthCheckReport)
 	if err != nil {
@@ -260,7 +260,7 @@ func (r *HealthCheckReconciler) canRemoveFinalizer(ctx context.Context,
 
 	if healthCheckReport.DeletionTimestamp.IsZero() ||
 		healthCheckReport.Status.Phase == nil ||
-		*healthCheckReport.Status.Phase != libsveltosv1alpha1.ReportProcessed {
+		*healthCheckReport.Status.Phase != libsveltosv1beta1.ReportProcessed {
 
 		return false, nil
 	}

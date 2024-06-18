@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
@@ -56,7 +56,7 @@ type ReloaderReconciler struct {
 	RunMode          Mode
 	ClusterNamespace string
 	ClusterName      string
-	ClusterType      libsveltosv1alpha1.ClusterType
+	ClusterType      libsveltosv1beta1.ClusterType
 }
 
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=reloaders,verbs=get;list;watch;patch
@@ -69,7 +69,7 @@ func (r *ReloaderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_
 	logger.V(logs.LogInfo).Info("Reconciling")
 
 	// Fecth the reloader instance
-	reloader := &libsveltosv1alpha1.Reloader{}
+	reloader := &libsveltosv1beta1.Reloader{}
 	err := r.Get(ctx, req.NamespacedName, reloader)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -136,8 +136,8 @@ func (r *ReloaderReconciler) reconcileDelete(reloaderScope *scope.ReloaderScope,
 	// are automatically deleted after being processed by management
 	// cluster.
 
-	if controllerutil.ContainsFinalizer(reloaderScope.Reloader, libsveltosv1alpha1.ReloaderFinalizer) {
-		controllerutil.RemoveFinalizer(reloaderScope.Reloader, libsveltosv1alpha1.ReloaderFinalizer)
+	if controllerutil.ContainsFinalizer(reloaderScope.Reloader, libsveltosv1beta1.ReloaderFinalizer) {
+		controllerutil.RemoveFinalizer(reloaderScope.Reloader, libsveltosv1beta1.ReloaderFinalizer)
 	}
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
@@ -150,8 +150,8 @@ func (r *ReloaderReconciler) reconcileNormal(ctx context.Context,
 
 	logger.V(logs.LogDebug).Info("reconcile")
 
-	if !controllerutil.ContainsFinalizer(reloaderScope.Reloader, libsveltosv1alpha1.ReloaderFinalizer) {
-		if err := addFinalizer(ctx, r.Client, reloaderScope.Reloader, libsveltosv1alpha1.ReloaderFinalizer,
+	if !controllerutil.ContainsFinalizer(reloaderScope.Reloader, libsveltosv1beta1.ReloaderFinalizer) {
+		if err := addFinalizer(ctx, r.Client, reloaderScope.Reloader, libsveltosv1beta1.ReloaderFinalizer,
 			logger); err != nil {
 			logger.V(logs.LogDebug).Info("failed to update finalizer")
 			return err
@@ -181,7 +181,7 @@ func (r *ReloaderReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// nil handler is used as we don't need to requeue Reloader.
 	_, err := ctrl.NewControllerManagedBy(mgr).
-		For(&libsveltosv1alpha1.Reloader{}).
+		For(&libsveltosv1beta1.Reloader{}).
 		Watches(&corev1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.nilHandler),
 			builder.WithPredicates(
@@ -211,7 +211,7 @@ func (r *ReloaderReconciler) nilHandler(
 	return nil
 }
 
-func (r *ReloaderReconciler) cleanMaps(reloader *libsveltosv1alpha1.Reloader) {
+func (r *ReloaderReconciler) cleanMaps(reloader *libsveltosv1beta1.Reloader) {
 	r.Mux.Lock()
 	defer r.Mux.Unlock()
 
@@ -222,7 +222,7 @@ func (r *ReloaderReconciler) cleanMaps(reloader *libsveltosv1alpha1.Reloader) {
 	}
 }
 
-func (r *ReloaderReconciler) updateMaps(reloader *libsveltosv1alpha1.Reloader) {
+func (r *ReloaderReconciler) updateMaps(reloader *libsveltosv1beta1.Reloader) {
 	currentGVKs := make(map[schema.GroupVersionKind]bool)
 
 	for i := range reloader.Spec.ReloaderInfo {

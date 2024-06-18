@@ -39,7 +39,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	libutils "github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
@@ -94,7 +94,7 @@ func (m *manager) evaluateClassifiers(ctx context.Context) {
 // matches specified Classifier instance.
 // Creates (or updates if already exists) a ClassifierReport.
 func (m *manager) evaluateClassifierInstance(ctx context.Context, classifierName string) error {
-	classifier := &libsveltosv1alpha1.Classifier{}
+	classifier := &libsveltosv1beta1.Classifier{}
 
 	logger := m.log.WithValues("classifier", classifierName)
 	logger.V(logs.LogDebug).Info("evaluating")
@@ -147,7 +147,7 @@ func (m *manager) evaluateClassifierInstance(ctx context.Context, classifierName
 // isVersionAMatch returns true if current cluster kubernetes version
 // is currently a match for Classif
 func (m *manager) isVersionAMatch(ctx context.Context,
-	classifier *libsveltosv1alpha1.Classifier) (bool, error) {
+	classifier *libsveltosv1beta1.Classifier) (bool, error) {
 
 	currentVersion, err := libutils.GetKubernetesVersion(ctx, m.config, m.log)
 	if err != nil {
@@ -177,17 +177,17 @@ func (m *manager) isVersionAMatch(ctx context.Context,
 
 		var c *semver.Constraints
 		switch kubernetesVersionConstraint.Comparison {
-		case string(libsveltosv1alpha1.ComparisonEqual):
+		case string(libsveltosv1beta1.ComparisonEqual):
 			c, err = semver.NewConstraint(fmt.Sprintf("= %s", kubernetesVersionConstraint.Version))
-		case string(libsveltosv1alpha1.ComparisonNotEqual):
+		case string(libsveltosv1beta1.ComparisonNotEqual):
 			c, err = semver.NewConstraint(fmt.Sprintf("!= %s", kubernetesVersionConstraint.Version))
-		case string(libsveltosv1alpha1.ComparisonGreaterThan):
+		case string(libsveltosv1beta1.ComparisonGreaterThan):
 			c, err = semver.NewConstraint(fmt.Sprintf("> %s", kubernetesVersionConstraint.Version))
-		case string(libsveltosv1alpha1.ComparisonGreaterThanOrEqualTo):
+		case string(libsveltosv1beta1.ComparisonGreaterThanOrEqualTo):
 			c, err = semver.NewConstraint(fmt.Sprintf(">= %s", kubernetesVersionConstraint.Version))
-		case string(libsveltosv1alpha1.ComparisonLessThan):
+		case string(libsveltosv1beta1.ComparisonLessThan):
 			c, err = semver.NewConstraint(fmt.Sprintf("< %s", kubernetesVersionConstraint.Version))
-		case string(libsveltosv1alpha1.ComparisonLessThanOrEqualTo):
+		case string(libsveltosv1beta1.ComparisonLessThanOrEqualTo):
 			c, err = semver.NewConstraint(fmt.Sprintf("<= %s", kubernetesVersionConstraint.Version))
 		}
 		if err != nil {
@@ -209,7 +209,7 @@ func (m *manager) isVersionAMatch(ctx context.Context,
 // and then passes all of these resources to the AggregatedClassification function for
 // further evaluation.
 func (m *manager) areResourcesAMatch(ctx context.Context,
-	classifier *libsveltosv1alpha1.Classifier) (bool, error) {
+	classifier *libsveltosv1beta1.Classifier) (bool, error) {
 
 	if classifier.Spec.DeployedResourceConstraint == nil {
 		return true, nil
@@ -250,7 +250,7 @@ func (m *manager) areResourcesAMatch(ctx context.Context,
 	return true, nil
 }
 
-func (m *manager) fetchClassifierDeployedResources(ctx context.Context, rs *libsveltosv1alpha1.ResourceSelector,
+func (m *manager) fetchClassifierDeployedResources(ctx context.Context, rs *libsveltosv1beta1.ResourceSelector,
 ) (*unstructured.UnstructuredList, error) {
 
 	gvk := schema.GroupVersionKind{
@@ -291,7 +291,7 @@ func (m *manager) fetchClassifierDeployedResources(ctx context.Context, rs *libs
 				labelFilter += ","
 			}
 			f := rs.LabelFilters[i]
-			if f.Operation == libsveltosv1alpha1.OperationEqual {
+			if f.Operation == libsveltosv1beta1.OperationEqual {
 				labelFilter += fmt.Sprintf("%s=%s", f.Key, f.Value)
 			} else {
 				labelFilter += fmt.Sprintf("%s!=%s", f.Key, f.Value)
@@ -316,7 +316,7 @@ func (m *manager) fetchClassifierDeployedResources(ctx context.Context, rs *libs
 	return list, nil
 }
 
-func (m *manager) getResourcesForResourceSelector(ctx context.Context, rs *libsveltosv1alpha1.ResourceSelector,
+func (m *manager) getResourcesForResourceSelector(ctx context.Context, rs *libsveltosv1beta1.ResourceSelector,
 	logger logr.Logger) ([]*unstructured.Unstructured, error) {
 
 	list, err := m.fetchClassifierDeployedResources(ctx, rs)
@@ -468,16 +468,16 @@ func (m *manager) isMatchForResourceSelectorScript(resource *unstructured.Unstru
 }
 
 // getClassifierReport returns ClassifierReport instance that needs to be created
-func (m *manager) getClassifierReport(classifierName string, isMatch bool) *libsveltosv1alpha1.ClassifierReport {
-	return &libsveltosv1alpha1.ClassifierReport{
+func (m *manager) getClassifierReport(classifierName string, isMatch bool) *libsveltosv1beta1.ClassifierReport {
+	return &libsveltosv1beta1.ClassifierReport{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: utils.ReportNamespace,
 			Name:      classifierName,
 			Labels: map[string]string{
-				libsveltosv1alpha1.ClassifierlNameLabel: classifierName,
+				libsveltosv1beta1.ClassifierlNameLabel: classifierName,
 			},
 		},
-		Spec: libsveltosv1alpha1.ClassifierReportSpec{
+		Spec: libsveltosv1beta1.ClassifierReportSpec{
 			ClassifierName: classifierName,
 			Match:          isMatch,
 		},
@@ -515,7 +515,7 @@ func (m *manager) getManamegentClusterClient(ctx context.Context, logger logr.Lo
 	}
 
 	s := runtime.NewScheme()
-	err = libsveltosv1alpha1.AddToScheme(s)
+	err = libsveltosv1beta1.AddToScheme(s)
 	if err != nil {
 		return nil, err
 	}
@@ -530,10 +530,10 @@ func (m *manager) getManamegentClusterClient(ctx context.Context, logger logr.Lo
 }
 
 // sendClassifierReport sends classifierReport to management cluster
-func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsveltosv1alpha1.Classifier) error {
+func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsveltosv1beta1.Classifier) error {
 	logger := m.log.WithValues("classifier", classifier.Name)
 
-	classifierReport := &libsveltosv1alpha1.ClassifierReport{}
+	classifierReport := &libsveltosv1beta1.ClassifierReport{}
 	err := m.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: classifier.Name}, classifierReport)
 	if err != nil {
@@ -549,11 +549,11 @@ func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsvelt
 
 	logger.V(logs.LogDebug).Info("send classifierReport to management cluster")
 
-	classifierReportName := libsveltosv1alpha1.GetClassifierReportName(classifier.Name,
+	classifierReportName := libsveltosv1beta1.GetClassifierReportName(classifier.Name,
 		m.clusterName, &m.clusterType)
 	classifierReportNamespace := m.clusterNamespace
 
-	currentClassifierReport := &libsveltosv1alpha1.ClassifierReport{}
+	currentClassifierReport := &libsveltosv1beta1.ClassifierReport{}
 
 	err = agentClient.Get(ctx,
 		types.NamespacedName{Namespace: classifierReportNamespace, Name: classifierReportName},
@@ -566,7 +566,7 @@ func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsvelt
 			currentClassifierReport.Spec.ClusterNamespace = m.clusterNamespace
 			currentClassifierReport.Spec.ClusterName = m.clusterName
 			currentClassifierReport.Spec.ClusterType = m.clusterType
-			currentClassifierReport.Labels = libsveltosv1alpha1.GetClassifierReportLabels(
+			currentClassifierReport.Labels = libsveltosv1beta1.GetClassifierReportLabels(
 				classifier.Name, m.clusterName, &m.clusterType,
 			)
 			return agentClient.Create(ctx, currentClassifierReport)
@@ -578,7 +578,7 @@ func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsvelt
 	currentClassifierReport.Name = classifierReportName
 	currentClassifierReport.Spec.ClusterType = m.clusterType
 	currentClassifierReport.Spec.Match = classifierReport.Spec.Match
-	currentClassifierReport.Labels = libsveltosv1alpha1.GetClassifierReportLabels(
+	currentClassifierReport.Labels = libsveltosv1beta1.GetClassifierReportLabels(
 		classifier.Name, m.clusterName, &m.clusterType,
 	)
 
@@ -586,12 +586,12 @@ func (m *manager) sendClassifierReport(ctx context.Context, classifier *libsvelt
 }
 
 // createClassifierReport creates ClassifierReport or updates it if already exists.
-func (m *manager) createClassifierReport(ctx context.Context, classifier *libsveltosv1alpha1.Classifier,
+func (m *manager) createClassifierReport(ctx context.Context, classifier *libsveltosv1beta1.Classifier,
 	isMatch bool) error {
 
 	logger := m.log.WithValues("classifier", classifier.Name)
 
-	classifierReport := &libsveltosv1alpha1.ClassifierReport{}
+	classifierReport := &libsveltosv1beta1.ClassifierReport{}
 	err := m.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: classifier.Name}, classifierReport)
 	if err == nil {
@@ -615,15 +615,15 @@ func (m *manager) createClassifierReport(ctx context.Context, classifier *libsve
 }
 
 // updateClassifierReport updates ClassifierReport
-func (m *manager) updateClassifierReport(ctx context.Context, classifier *libsveltosv1alpha1.Classifier,
-	isMatch bool, classifierReport *libsveltosv1alpha1.ClassifierReport) error {
+func (m *manager) updateClassifierReport(ctx context.Context, classifier *libsveltosv1beta1.Classifier,
+	isMatch bool, classifierReport *libsveltosv1beta1.ClassifierReport) error {
 
 	logger := m.log.WithValues("classifier", classifier.Name)
 	logger.V(logs.LogDebug).Info("updating ClassifierReport")
 	if classifierReport.Labels == nil {
 		classifierReport.Labels = map[string]string{}
 	}
-	classifierReport.Labels[libsveltosv1alpha1.ClassifierlNameLabel] = classifier.Name
+	classifierReport.Labels[libsveltosv1beta1.ClassifierlNameLabel] = classifier.Name
 	classifierReport.Spec.Match = isMatch
 
 	err := m.Update(ctx, classifierReport)
@@ -637,12 +637,12 @@ func (m *manager) updateClassifierReport(ctx context.Context, classifier *libsve
 
 // updateClassifierReportStatus updates ClassifierReport Status by marking Phase as ReportWaitingForDelivery
 func (m *manager) updateClassifierReportStatus(ctx context.Context,
-	classifierReport *libsveltosv1alpha1.ClassifierReport) error {
+	classifierReport *libsveltosv1beta1.ClassifierReport) error {
 
 	logger := m.log.WithValues("classifierReport", classifierReport.Name)
 	logger.V(logs.LogDebug).Info("updating ClassifierReport status")
 
-	phase := libsveltosv1alpha1.ReportWaitingForDelivery
+	phase := libsveltosv1beta1.ReportWaitingForDelivery
 	classifierReport.Status.Phase = &phase
 
 	return m.Status().Update(ctx, classifierReport)
@@ -651,7 +651,7 @@ func (m *manager) updateClassifierReportStatus(ctx context.Context,
 func (m *manager) cleanClassifierReport(ctx context.Context, classifierName string) error {
 	// Find classifierReport and delete it. In the management cluster classifierReport
 	// is removed when Classifier is removed
-	classifierReport := &libsveltosv1alpha1.ClassifierReport{}
+	classifierReport := &libsveltosv1beta1.ClassifierReport{}
 	err := m.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: classifierName}, classifierReport)
 	if err != nil {

@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
@@ -38,7 +38,7 @@ type ResourceResult struct {
 	Resource *unstructured.Unstructured `json:"resource"`
 
 	// Status is the current status of the resource
-	Status libsveltosv1alpha1.HealthStatus `json:"status"`
+	Status libsveltosv1beta1.HealthStatus `json:"status"`
 
 	// Message is an optional field.
 	// +optional
@@ -93,7 +93,7 @@ func (m *manager) evaluateHealthChecks(ctx context.Context) {
 // evaluateHealthCheckInstance evaluates healthCheck status.
 // Creates (or updates if already exists) a HealthCheckReport.
 func (m *manager) evaluateHealthCheckInstance(ctx context.Context, healthCheckName string) error {
-	healthCheck := &libsveltosv1alpha1.HealthCheck{}
+	healthCheck := &libsveltosv1beta1.HealthCheck{}
 
 	logger := m.log.WithValues("healthCheck", healthCheckName)
 	logger.V(logs.LogDebug).Info("evaluating")
@@ -110,7 +110,7 @@ func (m *manager) evaluateHealthCheckInstance(ctx context.Context, healthCheckNa
 		return m.cleanHealthCheckReport(ctx, healthCheckName)
 	}
 
-	var status []libsveltosv1alpha1.ResourceStatus
+	var status []libsveltosv1beta1.ResourceStatus
 	status, err = m.getHealthStatus(ctx, healthCheck)
 	if err != nil {
 		return err
@@ -134,12 +134,12 @@ func (m *manager) evaluateHealthCheckInstance(ctx context.Context, healthCheckNa
 }
 
 // createHealthCheckReport creates HealthCheckReport or updates it if already exists.
-func (m *manager) createHealthCheckReport(ctx context.Context, healthCheck *libsveltosv1alpha1.HealthCheck,
-	statuses []libsveltosv1alpha1.ResourceStatus) error {
+func (m *manager) createHealthCheckReport(ctx context.Context, healthCheck *libsveltosv1beta1.HealthCheck,
+	statuses []libsveltosv1beta1.ResourceStatus) error {
 
 	logger := m.log.WithValues("healthCheck", healthCheck.Name)
 
-	healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
+	healthCheckReport := &libsveltosv1beta1.HealthCheckReport{}
 	err := m.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: healthCheck.Name}, healthCheckReport)
 	if err == nil {
@@ -163,15 +163,15 @@ func (m *manager) createHealthCheckReport(ctx context.Context, healthCheck *libs
 }
 
 // updateHealthCheckReport updates HealthCheckReport
-func (m *manager) updateHealthCheckReport(ctx context.Context, healthCheck *libsveltosv1alpha1.HealthCheck,
-	status []libsveltosv1alpha1.ResourceStatus, healthCheckReport *libsveltosv1alpha1.HealthCheckReport) error {
+func (m *manager) updateHealthCheckReport(ctx context.Context, healthCheck *libsveltosv1beta1.HealthCheck,
+	status []libsveltosv1beta1.ResourceStatus, healthCheckReport *libsveltosv1beta1.HealthCheckReport) error {
 
 	logger := m.log.WithValues("healthCheck", healthCheck.Name)
 	logger.V(logs.LogDebug).Info("updating healthCheckReport")
 	if healthCheckReport.Labels == nil {
 		healthCheckReport.Labels = map[string]string{}
 	}
-	healthCheckReport.Labels[libsveltosv1alpha1.HealthCheckNameLabel] = healthCheck.Name
+	healthCheckReport.Labels[libsveltosv1beta1.HealthCheckNameLabel] = healthCheck.Name
 	healthCheckReport.Spec.ResourceStatuses = status
 
 	err := m.Update(ctx, healthCheckReport)
@@ -185,19 +185,19 @@ func (m *manager) updateHealthCheckReport(ctx context.Context, healthCheck *libs
 
 // updateHealthCheckReportStatus updates HealthCheckReport Status by marking Phase as ReportWaitingForDelivery
 func (m *manager) updateHealthCheckReportStatus(ctx context.Context,
-	healthCheckReport *libsveltosv1alpha1.HealthCheckReport) error {
+	healthCheckReport *libsveltosv1beta1.HealthCheckReport) error {
 
 	logger := m.log.WithValues("healthCheckReport", healthCheckReport.Name)
 	logger.V(logs.LogDebug).Info("updating healthCheckReport status")
 
-	phase := libsveltosv1alpha1.ReportWaitingForDelivery
+	phase := libsveltosv1beta1.ReportWaitingForDelivery
 	healthCheckReport.Status.Phase = &phase
 
 	return m.Status().Update(ctx, healthCheckReport)
 }
 
 func (m *manager) cleanHealthCheckReport(ctx context.Context, healthCheckName string) error {
-	healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
+	healthCheckReport := &libsveltosv1beta1.HealthCheckReport{}
 	err := m.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: healthCheckName}, healthCheckReport)
 	if err != nil {
@@ -214,7 +214,7 @@ func (m *manager) cleanHealthCheckReport(ctx context.Context, healthCheckName st
 	}
 
 	// reset status
-	phase := libsveltosv1alpha1.ReportWaitingForDelivery
+	phase := libsveltosv1beta1.ReportWaitingForDelivery
 	healthCheckReport.Status.Phase = &phase
 
 	err = m.Status().Update(ctx, healthCheckReport)
@@ -232,8 +232,8 @@ func (m *manager) cleanHealthCheckReport(ctx context.Context, healthCheckName st
 // getHealthStatus returns current health status.
 // fetch all matching resources based on ResourceSelectors.
 // For every resource matching ResourceSelectors, health is evaluated using EvaluateHealth
-func (m *manager) getHealthStatus(ctx context.Context, healthCheck *libsveltosv1alpha1.HealthCheck,
-) ([]libsveltosv1alpha1.ResourceStatus, error) {
+func (m *manager) getHealthStatus(ctx context.Context, healthCheck *libsveltosv1beta1.HealthCheck,
+) ([]libsveltosv1beta1.ResourceStatus, error) {
 
 	// use ResourceSelectors to fetch all resources to be considered.
 	resources, err := m.fetchHealthCheckResources(ctx, healthCheck)
@@ -256,7 +256,7 @@ func (m *manager) getHealthStatus(ctx context.Context, healthCheck *libsveltosv1
 		return nil, nil
 	}
 
-	resourceStatuses := make([]libsveltosv1alpha1.ResourceStatus, len(healthStatus.Resources))
+	resourceStatuses := make([]libsveltosv1beta1.ResourceStatus, len(healthStatus.Resources))
 	for i := range healthStatus.Resources {
 		if healthCheck.Spec.CollectResources {
 			tmpJson, err := healthStatus.Resources[i].Resource.MarshalJSON()
@@ -329,7 +329,7 @@ func (m *manager) getResourceHealthStatuses(resources []*unstructured.Unstructur
 }
 
 // fetchHealthCheckResources fetchs all resources matching an healthCheck
-func (m *manager) fetchHealthCheckResources(ctx context.Context, healthCheck *libsveltosv1alpha1.HealthCheck,
+func (m *manager) fetchHealthCheckResources(ctx context.Context, healthCheck *libsveltosv1beta1.HealthCheck,
 ) ([]*unstructured.Unstructured, error) {
 
 	list := []*unstructured.Unstructured{}
@@ -349,17 +349,17 @@ func (m *manager) fetchHealthCheckResources(ctx context.Context, healthCheck *li
 
 // getHealthCheckReport returns HealthCheckReport instance that needs to be created
 func (m *manager) getHealthCheckReportReport(healthCheckName string,
-	statuses []libsveltosv1alpha1.ResourceStatus) *libsveltosv1alpha1.HealthCheckReport {
+	statuses []libsveltosv1beta1.ResourceStatus) *libsveltosv1beta1.HealthCheckReport {
 
-	return &libsveltosv1alpha1.HealthCheckReport{
+	return &libsveltosv1beta1.HealthCheckReport{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: utils.ReportNamespace,
 			Name:      healthCheckName,
 			Labels: map[string]string{
-				libsveltosv1alpha1.HealthCheckNameLabel: healthCheckName,
+				libsveltosv1beta1.HealthCheckNameLabel: healthCheckName,
 			},
 		},
-		Spec: libsveltosv1alpha1.HealthCheckReportSpec{
+		Spec: libsveltosv1beta1.HealthCheckReportSpec{
 			HealthCheckName:  healthCheckName,
 			ResourceStatuses: statuses,
 		},
@@ -368,10 +368,10 @@ func (m *manager) getHealthCheckReportReport(healthCheckName string,
 
 // sendHealthCheckReport sends HealthCheckReport to management cluster. It also updates HealthCheckReport Status
 // to processed in the managed cluster.
-func (m *manager) sendHealthCheckReport(ctx context.Context, healthCheck *libsveltosv1alpha1.HealthCheck) error {
+func (m *manager) sendHealthCheckReport(ctx context.Context, healthCheck *libsveltosv1beta1.HealthCheck) error {
 	logger := m.log.WithValues("healthCheck", healthCheck.Name)
 
-	healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
+	healthCheckReport := &libsveltosv1beta1.HealthCheckReport{}
 	err := m.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: healthCheck.Name}, healthCheckReport)
 	if err != nil {
@@ -387,11 +387,11 @@ func (m *manager) sendHealthCheckReport(ctx context.Context, healthCheck *libsve
 
 	logger.V(logs.LogDebug).Info("send healthCheckReport to management cluster")
 
-	healthCheckReportName := libsveltosv1alpha1.GetHealthCheckReportName(healthCheck.Name,
+	healthCheckReportName := libsveltosv1beta1.GetHealthCheckReportName(healthCheck.Name,
 		m.clusterName, &m.clusterType)
 	healthCheckReportNamespace := m.clusterNamespace
 
-	currentHealthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
+	currentHealthCheckReport := &libsveltosv1beta1.HealthCheckReport{}
 
 	err = agentClient.Get(ctx,
 		types.NamespacedName{Namespace: healthCheckReportNamespace, Name: healthCheckReportName},
@@ -404,7 +404,7 @@ func (m *manager) sendHealthCheckReport(ctx context.Context, healthCheck *libsve
 			currentHealthCheckReport.Spec.ClusterNamespace = m.clusterNamespace
 			currentHealthCheckReport.Spec.ClusterName = m.clusterName
 			currentHealthCheckReport.Spec.ClusterType = m.clusterType
-			currentHealthCheckReport.Labels = libsveltosv1alpha1.GetHealthCheckReportLabels(
+			currentHealthCheckReport.Labels = libsveltosv1beta1.GetHealthCheckReportLabels(
 				healthCheck.Name, m.clusterName, &m.clusterType,
 			)
 			return agentClient.Create(ctx, currentHealthCheckReport)
@@ -416,7 +416,7 @@ func (m *manager) sendHealthCheckReport(ctx context.Context, healthCheck *libsve
 	currentHealthCheckReport.Name = healthCheckReportName
 	currentHealthCheckReport.Spec.ClusterType = m.clusterType
 	currentHealthCheckReport.Spec.ResourceStatuses = healthCheckReport.Spec.ResourceStatuses
-	currentHealthCheckReport.Labels = libsveltosv1alpha1.GetHealthCheckReportLabels(
+	currentHealthCheckReport.Labels = libsveltosv1beta1.GetHealthCheckReportLabels(
 		healthCheck.Name, m.clusterName, &m.clusterType,
 	)
 
@@ -425,7 +425,7 @@ func (m *manager) sendHealthCheckReport(ctx context.Context, healthCheck *libsve
 		return err
 	}
 
-	phase := libsveltosv1alpha1.ReportProcessed
+	phase := libsveltosv1beta1.ReportProcessed
 	healthCheckReport.Status.Phase = &phase
 	return m.Status().Update(ctx, healthCheckReport)
 }

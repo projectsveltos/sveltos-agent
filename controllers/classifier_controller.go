@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
@@ -51,7 +51,7 @@ type ClassifierReconciler struct {
 	RunMode          Mode
 	ClusterNamespace string
 	ClusterName      string
-	ClusterType      libsveltosv1alpha1.ClusterType
+	ClusterType      libsveltosv1beta1.ClusterType
 	// Used to update internal maps and sets
 	Mux sync.RWMutex
 	// key: GVK, Value: list of Classifiers based on that GVK
@@ -70,7 +70,7 @@ func (r *ClassifierReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	logger.V(logs.LogInfo).Info("Reconciling")
 
 	// Fecth the Classifier instance
-	classifier := &libsveltosv1alpha1.Classifier{}
+	classifier := &libsveltosv1beta1.Classifier{}
 	err := r.Get(ctx, req.NamespacedName, classifier)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -147,8 +147,8 @@ func (r *ClassifierReconciler) reconcileDelete(
 	manager := evaluation.GetManager()
 	manager.EvaluateClassifier(classifierScope.Name())
 
-	if controllerutil.ContainsFinalizer(classifierScope.Classifier, libsveltosv1alpha1.ClassifierFinalizer) {
-		controllerutil.RemoveFinalizer(classifierScope.Classifier, libsveltosv1alpha1.ClassifierFinalizer)
+	if controllerutil.ContainsFinalizer(classifierScope.Classifier, libsveltosv1beta1.ClassifierFinalizer) {
+		controllerutil.RemoveFinalizer(classifierScope.Classifier, libsveltosv1beta1.ClassifierFinalizer)
 	}
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
@@ -161,8 +161,8 @@ func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
 
 	logger.V(logs.LogDebug).Info("reconcile")
 
-	if !controllerutil.ContainsFinalizer(classifierScope.Classifier, libsveltosv1alpha1.ClassifierFinalizer) {
-		if err := addFinalizer(ctx, r.Client, classifierScope.Classifier, libsveltosv1alpha1.ClassifierFinalizer,
+	if !controllerutil.ContainsFinalizer(classifierScope.Classifier, libsveltosv1beta1.ClassifierFinalizer) {
+		if err := addFinalizer(ctx, r.Client, classifierScope.Classifier, libsveltosv1beta1.ClassifierFinalizer,
 			logger); err != nil {
 			logger.V(logs.LogDebug).Info("failed to update finalizer")
 			return err
@@ -183,7 +183,7 @@ func (r *ClassifierReconciler) reconcileNormal(ctx context.Context,
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClassifierReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	_, err := ctrl.NewControllerManagedBy(mgr).
-		For(&libsveltosv1alpha1.Classifier{}).
+		For(&libsveltosv1beta1.Classifier{}).
 		Build(r)
 	if err != nil {
 		return errors.Wrap(err, "error creating controller")
@@ -194,7 +194,7 @@ func (r *ClassifierReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-func (r *ClassifierReconciler) updateMaps(classifier *libsveltosv1alpha1.Classifier) {
+func (r *ClassifierReconciler) updateMaps(classifier *libsveltosv1beta1.Classifier) {
 	r.Mux.Lock()
 	defer r.Mux.Unlock()
 

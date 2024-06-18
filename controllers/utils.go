@@ -31,7 +31,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 )
 
@@ -49,7 +49,7 @@ func InitScheme() (*runtime.Scheme, error) {
 	if err := clientgoscheme.AddToScheme(s); err != nil {
 		return nil, err
 	}
-	if err := libsveltosv1alpha1.AddToScheme(s); err != nil {
+	if err := libsveltosv1beta1.AddToScheme(s); err != nil {
 		return nil, err
 	}
 	if err := apiextensionsv1.AddToScheme(s); err != nil {
@@ -152,7 +152,7 @@ func shouldIgnore(o client.Object) bool {
 		return true
 	}
 
-	if _, ok := annotation[libsveltosv1alpha1.DeployedBySveltosAnnotation]; !ok {
+	if _, ok := annotation[libsveltosv1beta1.DeployedBySveltosAnnotation]; !ok {
 		return true
 	}
 

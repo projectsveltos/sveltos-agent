@@ -1,5 +1,5 @@
 # All services offering https (port 443 or 8443) are a match
-apiVersion: lib.projectsveltos.io/v1alpha1
+apiVersion: lib.projectsveltos.io/v1beta1
 kind: EventSource
 metadata:
  name: https-service

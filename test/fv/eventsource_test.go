@@ -28,7 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
@@ -65,15 +65,15 @@ var _ = Describe("Events", func() {
 			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
 		}
 
-		eventSource := libsveltosv1alpha1.EventSource{
+		eventSource := libsveltosv1beta1.EventSource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namePrefix + randomString(),
 				Annotations: map[string]string{
 					"projectsveltos.io/deployed-by-sveltos": "ok",
 				},
 			},
-			Spec: libsveltosv1alpha1.EventSourceSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.EventSourceSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:    "apps",
 						Version:  "v1",
@@ -96,7 +96,7 @@ var _ = Describe("Events", func() {
 
 		By("Verifying EventReport is marked for deletion")
 		Eventually(func() bool {
-			eventReport := &libsveltosv1alpha1.EventReport{}
+			eventReport := &libsveltosv1beta1.EventReport{}
 			err := k8sClient.Get(context.TODO(),
 				types.NamespacedName{Namespace: utils.ReportNamespace, Name: eventSource.Name}, eventReport)
 			if err != nil {
@@ -115,7 +115,7 @@ var _ = Describe("Events", func() {
 
 func verifyEventReport(resourceKind, resourceNamespace, resourceName, eventSourceName string) {
 	Eventually(func() bool {
-		eventReport := &libsveltosv1alpha1.EventReport{}
+		eventReport := &libsveltosv1beta1.EventReport{}
 		err := k8sClient.Get(context.TODO(),
 			types.NamespacedName{Namespace: utils.ReportNamespace, Name: eventSourceName}, eventReport)
 		if err != nil {
