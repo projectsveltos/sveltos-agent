@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
@@ -97,16 +97,16 @@ status:
 )
 
 var _ = Describe("Manager: healthcheck evaluation", func() {
-	var eventSource *libsveltosv1alpha1.EventSource
+	var eventSource *libsveltosv1beta1.EventSource
 	var clusterNamespace string
 	var clusterName string
-	var clusterType libsveltosv1alpha1.ClusterType
+	var clusterType libsveltosv1beta1.ClusterType
 
 	BeforeEach(func() {
 		evaluation.Reset()
 		clusterNamespace = utils.ReportNamespace
 		clusterName = randomString()
-		clusterType = libsveltosv1alpha1.ClusterTypeCapi
+		clusterType = libsveltosv1beta1.ClusterTypeCapi
 	})
 
 	AfterEach(func() {
@@ -163,10 +163,10 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			randomString(): randomString(),
 			randomString(): randomString(),
 		}
-		labelFilters := make([]libsveltosv1alpha1.LabelFilter, 0)
+		labelFilters := make([]libsveltosv1beta1.LabelFilter, 0)
 		for k := range labels {
-			labelFilters = append(labelFilters, libsveltosv1alpha1.LabelFilter{
-				Key: k, Operation: libsveltosv1alpha1.OperationEqual, Value: labels[k],
+			labelFilters = append(labelFilters, libsveltosv1beta1.LabelFilter{
+				Key: k, Operation: libsveltosv1beta1.OperationEqual, Value: labels[k],
 			})
 		}
 
@@ -206,12 +206,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
-		eventSource = &libsveltosv1alpha1.EventSource{
+		eventSource = &libsveltosv1beta1.EventSource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.EventSourceSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.EventSourceSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:        "",
 						Version:      "v1",
@@ -273,12 +273,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		waitForObject(context.TODO(), testEnv.Client, healthyNonMatchingDepl)
 
 		By("Creating an EventSource matching the Deployments")
-		eventSource = &libsveltosv1alpha1.EventSource{
+		eventSource = &libsveltosv1beta1.EventSource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.EventSourceSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.EventSourceSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:     "apps",
 						Version:   "v1",
@@ -316,12 +316,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		namespace := randomString()
 
-		eventSource = &libsveltosv1alpha1.EventSource{
+		eventSource = &libsveltosv1beta1.EventSource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.EventSourceSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.EventSourceSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:     "apps",
 						Version:   "v1",
@@ -343,7 +343,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(evaluation.CreateEventReport(manager, context.TODO(), eventSource, matchingResources, nil)).To(Succeed())
 
 		Eventually(func() bool {
-			eventReport := &libsveltosv1alpha1.EventReport{}
+			eventReport := &libsveltosv1beta1.EventReport{}
 			err := testEnv.Get(context.TODO(),
 				types.NamespacedName{Namespace: utils.ReportNamespace, Name: eventSource.Name},
 				eventReport)
@@ -363,12 +363,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		namespace := randomString()
 
-		eventSource = &libsveltosv1alpha1.EventSource{
+		eventSource = &libsveltosv1beta1.EventSource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.EventSourceSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.EventSourceSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:     "apps",
 						Version:   "v1",
@@ -379,7 +379,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			},
 		}
 
-		eventReport := &libsveltosv1alpha1.EventReport{
+		eventReport := &libsveltosv1beta1.EventReport{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      eventSource.Name,
 				Namespace: utils.ReportNamespace,
@@ -399,7 +399,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(evaluation.CreateEventReport(manager, context.TODO(), eventSource, matchingResources, nil)).To(Succeed())
 
 		Eventually(func() bool {
-			eventReport := &libsveltosv1alpha1.EventReport{}
+			eventReport := &libsveltosv1beta1.EventReport{}
 			err := testEnv.Get(context.TODO(), types.NamespacedName{Namespace: utils.ReportNamespace, Name: eventSource.Name},
 				eventReport)
 			if err != nil {
@@ -411,12 +411,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("sendEventReport sends EventReport to management cluster", func() {
-		eventSource = &libsveltosv1alpha1.EventSource{
+		eventSource = &libsveltosv1beta1.EventSource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.EventSourceSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.EventSourceSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:   "",
 						Version: "v1",
@@ -428,16 +428,16 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), eventSource)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, eventSource)
 
-		phase := libsveltosv1alpha1.ReportDelivering
-		eventReport := &libsveltosv1alpha1.EventReport{
+		phase := libsveltosv1beta1.ReportDelivering
+		eventReport := &libsveltosv1beta1.EventReport{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: utils.ReportNamespace,
 				Name:      eventSource.Name,
 			},
-			Spec: libsveltosv1alpha1.EventReportSpec{
+			Spec: libsveltosv1beta1.EventReportSpec{
 				EventSourceName: eventSource.Name,
 			},
-			Status: libsveltosv1alpha1.EventReportStatus{
+			Status: libsveltosv1beta1.EventReportStatus{
 				Phase: &phase,
 			},
 		}
@@ -454,47 +454,47 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		// SendEventReport creates eventReport in manager.clusterNamespace
 
 		// Use Eventually so cache is in sync
-		eventReportName := libsveltosv1alpha1.GetEventReportName(eventSource.Name, clusterName, &clusterType)
+		eventReportName := libsveltosv1beta1.GetEventReportName(eventSource.Name, clusterName, &clusterType)
 		Eventually(func() error {
-			currentEventReport := &libsveltosv1alpha1.EventReport{}
+			currentEventReport := &libsveltosv1beta1.EventReport{}
 			return testEnv.Get(context.TODO(),
 				types.NamespacedName{Namespace: clusterNamespace, Name: eventReportName}, currentEventReport)
 		}, timeout, pollingInterval).Should(BeNil())
 
-		currentEventReport := &libsveltosv1alpha1.EventReport{}
+		currentEventReport := &libsveltosv1beta1.EventReport{}
 		Expect(testEnv.Get(context.TODO(),
 			types.NamespacedName{Namespace: clusterNamespace, Name: eventReportName}, currentEventReport)).To(Succeed())
 		Expect(currentEventReport.Spec.ClusterName).To(Equal(clusterName))
 		Expect(currentEventReport.Spec.ClusterNamespace).To(Equal(clusterNamespace))
 		Expect(currentEventReport.Spec.EventSourceName).To(Equal(eventSource.Name))
 		Expect(currentEventReport.Spec.ClusterType).To(Equal(clusterType))
-		v, ok := currentEventReport.Labels[libsveltosv1alpha1.EventReportClusterNameLabel]
+		v, ok := currentEventReport.Labels[libsveltosv1beta1.EventReportClusterNameLabel]
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(clusterName))
 
-		v, ok = currentEventReport.Labels[libsveltosv1alpha1.EventReportClusterTypeLabel]
+		v, ok = currentEventReport.Labels[libsveltosv1beta1.EventReportClusterTypeLabel]
 		Expect(ok).To(BeTrue())
-		Expect(v).To(Equal(strings.ToLower(string(libsveltosv1alpha1.ClusterTypeCapi))))
+		Expect(v).To(Equal(strings.ToLower(string(libsveltosv1beta1.ClusterTypeCapi))))
 
-		v, ok = currentEventReport.Labels[libsveltosv1alpha1.EventSourceNameLabel]
+		v, ok = currentEventReport.Labels[libsveltosv1beta1.EventSourceNameLabel]
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(eventSource.Name))
 	})
 
 	It("cleanEventReport marks eventReport as deleted", func() {
-		phase := libsveltosv1alpha1.ReportDelivering
-		eventReport := &libsveltosv1alpha1.EventReport{
+		phase := libsveltosv1beta1.ReportDelivering
+		eventReport := &libsveltosv1beta1.EventReport{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: utils.ReportNamespace,
 				Name:      eventSource.Name,
 				Finalizers: []string{
-					libsveltosv1alpha1.EventReportFinalizer,
+					libsveltosv1beta1.EventReportFinalizer,
 				},
 			},
-			Spec: libsveltosv1alpha1.EventReportSpec{
+			Spec: libsveltosv1beta1.EventReportSpec{
 				EventSourceName: eventSource.Name,
 			},
-			Status: libsveltosv1alpha1.EventReportStatus{
+			Status: libsveltosv1beta1.EventReportStatus{
 				Phase: &phase,
 			},
 		}
@@ -520,7 +520,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(err).To(BeNil())
 		Expect(eventReport.DeletionTimestamp.IsZero()).To(BeFalse())
 
-		phase = libsveltosv1alpha1.ReportWaitingForDelivery
+		phase = libsveltosv1beta1.ReportWaitingForDelivery
 		Expect(eventReport.Status.Phase).ToNot(BeNil())
 		Expect(*eventReport.Status.Phase).To(Equal(phase))
 	})
@@ -549,18 +549,18 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), depl2)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, depl2)
 
-		eventSource = &libsveltosv1alpha1.EventSource{
+		eventSource = &libsveltosv1beta1.EventSource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.EventSourceSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.EventSourceSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:   "apps",
 						Version: "v1",
 						Kind:    "Deployment",
-						LabelFilters: []libsveltosv1alpha1.LabelFilter{
-							{Key: key, Operation: libsveltosv1alpha1.OperationEqual, Value: value},
+						LabelFilters: []libsveltosv1beta1.LabelFilter{
+							{Key: key, Operation: libsveltosv1beta1.OperationEqual, Value: value},
 						},
 						Namespace: ns.Name,
 					},

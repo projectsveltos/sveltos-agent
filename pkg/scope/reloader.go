@@ -24,14 +24,14 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 )
 
 // ReloaderScopeParams defines the input parameters used to create a new Reloader Scope.
 type ReloaderScopeParams struct {
 	Client   client.Client
 	Logger   logr.Logger
-	Reloader *libsveltosv1alpha1.Reloader
+	Reloader *libsveltosv1beta1.Reloader
 }
 
 // NewReloaderScope creates a new Reloader Scope from the supplied parameters.
@@ -61,7 +61,7 @@ type ReloaderScope struct {
 	logr.Logger
 	client      client.Client
 	patchHelper *patch.Helper
-	Reloader    *libsveltosv1alpha1.Reloader
+	Reloader    *libsveltosv1beta1.Reloader
 }
 
 // PatchObject persists the feature configuration and status.

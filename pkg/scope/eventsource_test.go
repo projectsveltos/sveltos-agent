@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/sveltos-agent/pkg/scope"
 )
 
@@ -33,11 +33,11 @@ const (
 )
 
 var _ = Describe("EventSourceScope", func() {
-	var eventSource *libsveltosv1alpha1.EventSource
+	var eventSource *libsveltosv1beta1.EventSource
 	var c client.Client
 
 	BeforeEach(func() {
-		eventSource = &libsveltosv1alpha1.EventSource{
+		eventSource = &libsveltosv1beta1.EventSource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: eventSourceNamePrefix + randomString(),
 			},

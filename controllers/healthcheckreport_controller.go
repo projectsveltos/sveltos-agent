@@ -28,7 +28,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 )
 
@@ -47,7 +47,7 @@ func (r *HealthCheckReportReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	logger.V(logs.LogInfo).Info("Reconciling")
 
 	// Fecth the HealthCheckReport instance
-	healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
+	healthCheckReport := &libsveltosv1beta1.HealthCheckReport{}
 	err := r.Get(ctx, req.NamespacedName, healthCheckReport)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -66,16 +66,16 @@ func (r *HealthCheckReportReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	// Handle deleted healthCheck
 	if !healthCheckReport.DeletionTimestamp.IsZero() {
 		if healthCheckReport.Status.Phase != nil &&
-			*healthCheckReport.Status.Phase == libsveltosv1alpha1.ReportProcessed {
+			*healthCheckReport.Status.Phase == libsveltosv1beta1.ReportProcessed {
 
-			if controllerutil.ContainsFinalizer(healthCheckReport, libsveltosv1alpha1.HealthCheckReportFinalizer) {
-				err = removeFinalizer(ctx, r.Client, healthCheckReport, libsveltosv1alpha1.HealthCheckReportFinalizer,
+			if controllerutil.ContainsFinalizer(healthCheckReport, libsveltosv1beta1.HealthCheckReportFinalizer) {
+				err = removeFinalizer(ctx, r.Client, healthCheckReport, libsveltosv1beta1.HealthCheckReportFinalizer,
 					logger)
 			}
 		}
 	} else {
-		if !controllerutil.ContainsFinalizer(healthCheckReport, libsveltosv1alpha1.HealthCheckReportFinalizer) {
-			err = addFinalizer(ctx, r.Client, healthCheckReport, libsveltosv1alpha1.HealthCheckReportFinalizer,
+		if !controllerutil.ContainsFinalizer(healthCheckReport, libsveltosv1beta1.HealthCheckReportFinalizer) {
+			err = addFinalizer(ctx, r.Client, healthCheckReport, libsveltosv1beta1.HealthCheckReportFinalizer,
 				logger)
 		}
 	}
@@ -90,7 +90,7 @@ func (r *HealthCheckReportReconciler) Reconcile(ctx context.Context, req ctrl.Re
 // SetupWithManager sets up the controller with the Manager.
 func (r *HealthCheckReportReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	_, err := ctrl.NewControllerManagedBy(mgr).
-		For(&libsveltosv1alpha1.HealthCheckReport{}).
+		For(&libsveltosv1beta1.HealthCheckReport{}).
 		Build(r)
 	if err != nil {
 		return errors.Wrap(err, "error creating controller")

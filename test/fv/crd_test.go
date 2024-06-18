@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
@@ -78,25 +78,25 @@ var _ = Describe("Classification: crd", Serial, func() {
 			}
 		}, timeout, pollingInterval).Should(BeTrue())
 
-		classifier := libsveltosv1alpha1.Classifier{
+		classifier := libsveltosv1beta1.Classifier{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namePrefix + randomString(),
 				Annotations: map[string]string{
 					"projectsveltos.io/deployed-by-sveltos": "ok",
 				},
 			},
-			Spec: libsveltosv1alpha1.ClassifierSpec{
-				ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
+			Spec: libsveltosv1beta1.ClassifierSpec{
+				ClassifierLabels: []libsveltosv1beta1.ClassifierLabel{
 					{Key: randomString(), Value: randomString()},
 				},
-				DeployedResourceConstraint: &libsveltosv1alpha1.DeployedResourceConstraint{
-					ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+				DeployedResourceConstraint: &libsveltosv1beta1.DeployedResourceConstraint{
+					ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 						{
 							Group:   "monitoring.coreos.com",
 							Version: "v1",
 							Kind:    "ServiceMonitor",
-							LabelFilters: []libsveltosv1alpha1.LabelFilter{
-								{Key: key, Value: value, Operation: libsveltosv1alpha1.OperationEqual},
+							LabelFilters: []libsveltosv1beta1.LabelFilter{
+								{Key: key, Value: value, Operation: libsveltosv1beta1.OperationEqual},
 							},
 						},
 					},
@@ -109,7 +109,7 @@ var _ = Describe("Classification: crd", Serial, func() {
 
 		By("Verifying Cluster is currently not a match (ServiceMonitor CRD is not present in the cluster yet)")
 		Eventually(func() bool {
-			classifierReport := &libsveltosv1alpha1.ClassifierReport{}
+			classifierReport := &libsveltosv1beta1.ClassifierReport{}
 			err := k8sClient.Get(context.TODO(),
 				types.NamespacedName{Namespace: utils.ReportNamespace, Name: classifier.Name}, classifierReport)
 			return err == nil && !classifierReport.Spec.Match
@@ -149,20 +149,20 @@ var _ = Describe("Classification: crd", Serial, func() {
 
 		By("Verifying Cluster is a match")
 		Eventually(func() bool {
-			classifierReport := &libsveltosv1alpha1.ClassifierReport{}
+			classifierReport := &libsveltosv1beta1.ClassifierReport{}
 			err := k8sClient.Get(context.TODO(),
 				types.NamespacedName{Namespace: utils.ReportNamespace, Name: classifier.Name}, classifierReport)
 			return err == nil && classifierReport.Spec.Match
 		}, timeout, pollingInterval).Should(BeTrue())
 
 		By(fmt.Sprintf("Deleting Classifier %s", classifier.Name))
-		currentClassifier := &libsveltosv1alpha1.Classifier{}
+		currentClassifier := &libsveltosv1beta1.Classifier{}
 		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: classifier.Name}, currentClassifier)).To(Succeed())
 		Expect(k8sClient.Delete(context.TODO(), currentClassifier)).To(Succeed())
 
 		By("Verifying ClassifierReport is gone")
 		Eventually(func() bool {
-			classifierReport := &libsveltosv1alpha1.ClassifierReport{}
+			classifierReport := &libsveltosv1beta1.ClassifierReport{}
 			err := k8sClient.Get(context.TODO(),
 				types.NamespacedName{Namespace: utils.ReportNamespace, Name: classifier.Name}, classifierReport)
 			return err != nil && apierrors.IsNotFound(err)

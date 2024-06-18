@@ -15,7 +15,7 @@ import (
 	"k8s.io/klog/v2/textlogger"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
@@ -185,7 +185,7 @@ func verifyHealthCheck(dirName string) {
 
 	clusterNamespace := utils.ReportNamespace
 	clusterName := randomString()
-	clusterType := libsveltosv1alpha1.ClusterTypeCapi
+	clusterType := libsveltosv1beta1.ClusterTypeCapi
 
 	c := fake.NewClientBuilder().WithScheme(scheme).Build()
 	evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
@@ -205,7 +205,7 @@ func verifyHealthCheck(dirName string) {
 		result, err := evaluation.GetResourceHealthStatuses(manager, healthyResources, healthCheck.Spec.EvaluateHealth)
 		Expect(err).To(BeNil())
 		for i := range result.Resources {
-			Expect(result.Resources[i].Status).To(Equal(libsveltosv1alpha1.HealthStatusHealthy))
+			Expect(result.Resources[i].Status).To(Equal(libsveltosv1beta1.HealthStatusHealthy))
 		}
 	}
 
@@ -217,7 +217,7 @@ func verifyHealthCheck(dirName string) {
 		result, err := evaluation.GetResourceHealthStatuses(manager, progressingResources, healthCheck.Spec.EvaluateHealth)
 		Expect(err).To(BeNil())
 		for i := range result.Resources {
-			Expect(result.Resources[i].Status).To(Equal(libsveltosv1alpha1.HealthStatusProgressing))
+			Expect(result.Resources[i].Status).To(Equal(libsveltosv1beta1.HealthStatusProgressing))
 		}
 	}
 
@@ -229,7 +229,7 @@ func verifyHealthCheck(dirName string) {
 		result, err := evaluation.GetResourceHealthStatuses(manager, degradedResources, healthCheck.Spec.EvaluateHealth)
 		Expect(err).To(BeNil())
 		for i := range result.Resources {
-			Expect(result.Resources[i].Status).To(Equal(libsveltosv1alpha1.HealthStatusDegraded))
+			Expect(result.Resources[i].Status).To(Equal(libsveltosv1beta1.HealthStatusDegraded))
 		}
 	}
 
@@ -241,7 +241,7 @@ func verifyHealthCheck(dirName string) {
 		result, err := evaluation.GetResourceHealthStatuses(manager, suspendedResources, healthCheck.Spec.EvaluateHealth)
 		Expect(err).To(BeNil())
 		for i := range result.Resources {
-			Expect(result.Resources[i].Status).To(Equal(libsveltosv1alpha1.HealthStatusSuspended))
+			Expect(result.Resources[i].Status).To(Equal(libsveltosv1beta1.HealthStatusSuspended))
 		}
 	}
 }
@@ -259,7 +259,7 @@ func verifyClassifier(dirName string) {
 
 	clusterNamespace := utils.ReportNamespace
 	clusterName := randomString()
-	clusterType := libsveltosv1alpha1.ClusterTypeCapi
+	clusterType := libsveltosv1beta1.ClusterTypeCapi
 
 	c := fake.NewClientBuilder().WithScheme(scheme).Build()
 	evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
@@ -290,7 +290,7 @@ func verifyClassifier(dirName string) {
 	}
 }
 
-func getEventSource(dirName string) *libsveltosv1alpha1.EventSource {
+func getEventSource(dirName string) *libsveltosv1beta1.EventSource {
 	eventSourceFileName := filepath.Join(dirName, eventFileName)
 	content, err := os.ReadFile(eventSourceFileName)
 	Expect(err).To(BeNil())
@@ -298,14 +298,14 @@ func getEventSource(dirName string) *libsveltosv1alpha1.EventSource {
 	u, err := libsveltosutils.GetUnstructured(content)
 	Expect(err).To(BeNil())
 
-	var eventSource libsveltosv1alpha1.EventSource
+	var eventSource libsveltosv1beta1.EventSource
 	err = runtime.DefaultUnstructuredConverter.
 		FromUnstructured(u.UnstructuredContent(), &eventSource)
 	Expect(err).To(BeNil())
 	return &eventSource
 }
 
-func getHealthCheck(dirName string) *libsveltosv1alpha1.HealthCheck {
+func getHealthCheck(dirName string) *libsveltosv1beta1.HealthCheck {
 	healthCheckFileName := filepath.Join(dirName, healthCheckFileName)
 	content, err := os.ReadFile(healthCheckFileName)
 	Expect(err).To(BeNil())
@@ -313,14 +313,14 @@ func getHealthCheck(dirName string) *libsveltosv1alpha1.HealthCheck {
 	u, err := libsveltosutils.GetUnstructured(content)
 	Expect(err).To(BeNil())
 
-	var healthCheck libsveltosv1alpha1.HealthCheck
+	var healthCheck libsveltosv1beta1.HealthCheck
 	err = runtime.DefaultUnstructuredConverter.
 		FromUnstructured(u.UnstructuredContent(), &healthCheck)
 	Expect(err).To(BeNil())
 	return &healthCheck
 }
 
-func getClassifier(dirName string) *libsveltosv1alpha1.Classifier {
+func getClassifier(dirName string) *libsveltosv1beta1.Classifier {
 	classifierFileName := filepath.Join(dirName, classifierFileName)
 	content, err := os.ReadFile(classifierFileName)
 	Expect(err).To(BeNil())
@@ -328,7 +328,7 @@ func getClassifier(dirName string) *libsveltosv1alpha1.Classifier {
 	u, err := libsveltosutils.GetUnstructured(content)
 	Expect(err).To(BeNil())
 
-	var classifier libsveltosv1alpha1.Classifier
+	var classifier libsveltosv1beta1.Classifier
 	err = runtime.DefaultUnstructuredConverter.
 		FromUnstructured(u.UnstructuredContent(), &classifier)
 	Expect(err).To(BeNil())
@@ -358,7 +358,7 @@ func getResources(dirName, fileName string) []*unstructured.Unstructured {
 	return resources
 }
 
-func validateResourceSelectorLuaScripts(resourceSelectors []libsveltosv1alpha1.ResourceSelector,
+func validateResourceSelectorLuaScripts(resourceSelectors []libsveltosv1beta1.ResourceSelector,
 	resources []*unstructured.Unstructured, expectedMatch bool) {
 
 	for i := range resources {
@@ -367,12 +367,12 @@ func validateResourceSelectorLuaScripts(resourceSelectors []libsveltosv1alpha1.R
 	}
 }
 
-func validateResourceSelectorLuaScript(resourceSelectors []libsveltosv1alpha1.ResourceSelector,
+func validateResourceSelectorLuaScript(resourceSelectors []libsveltosv1beta1.ResourceSelector,
 	resource *unstructured.Unstructured, expectedMatch bool) {
 
 	clusterNamespace := utils.ReportNamespace
 	clusterName := randomString()
-	clusterType := libsveltosv1alpha1.ClusterTypeCapi
+	clusterType := libsveltosv1beta1.ClusterTypeCapi
 
 	l := textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
 	evaluation.InitializeManagerWithSkip(context.TODO(), l, nil, testEnv, clusterNamespace, clusterName, clusterType, 10)
@@ -394,7 +394,7 @@ func validateResourceSelectorLuaScript(resourceSelectors []libsveltosv1alpha1.Re
 	}
 }
 
-func validateAggregatedSelectionLuaScript(eventSource *libsveltosv1alpha1.EventSource,
+func validateAggregatedSelectionLuaScript(eventSource *libsveltosv1beta1.EventSource,
 	matchingResources []*unstructured.Unstructured, nonMatchingResources []*unstructured.Unstructured) {
 
 	if eventSource.Spec.AggregatedSelection == "" {
@@ -403,7 +403,7 @@ func validateAggregatedSelectionLuaScript(eventSource *libsveltosv1alpha1.EventS
 
 	clusterNamespace := utils.ReportNamespace
 	clusterName := randomString()
-	clusterType := libsveltosv1alpha1.ClusterTypeCapi
+	clusterType := libsveltosv1beta1.ClusterTypeCapi
 
 	l := textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
 	evaluation.InitializeManagerWithSkip(context.TODO(), l, nil, testEnv, clusterNamespace, clusterName, clusterType, 10)

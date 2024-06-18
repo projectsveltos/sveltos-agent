@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2/textlogger"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 	"github.com/projectsveltos/sveltos-agent/controllers"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
@@ -45,11 +45,11 @@ var _ = Describe("Controllers: reloader controller", func() {
 	BeforeEach(func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
 		evaluation.InitializeManager(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
-			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 3, false)
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1beta1.ClusterTypeCapi, 3, false)
 	})
 
 	AfterEach(func() {
-		reloaders := &libsveltosv1alpha1.ReloaderList{}
+		reloaders := &libsveltosv1beta1.ReloaderList{}
 		Expect(testEnv.List(context.TODO(), reloaders)).To(Succeed())
 
 		for i := range reloaders.Items {
@@ -62,8 +62,8 @@ var _ = Describe("Controllers: reloader controller", func() {
 	It("updateMaps updates map of Reloader using DeployedResourceConstraints verion as criteria", func() {
 		reloader := getReloader()
 
-		reloader.Spec = libsveltosv1alpha1.ReloaderSpec{
-			ReloaderInfo: []libsveltosv1alpha1.ReloaderInfo{
+		reloader.Spec = libsveltosv1beta1.ReloaderSpec{
+			ReloaderInfo: []libsveltosv1beta1.ReloaderInfo{
 				{
 					Namespace: randomString(),
 					Name:      randomString(),
@@ -168,13 +168,13 @@ var _ = Describe("Controllers: reloader controller", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		currentReloader := &libsveltosv1alpha1.Reloader{}
+		currentReloader := &libsveltosv1beta1.Reloader{}
 		err = c.Get(context.TODO(), reloaderName, currentReloader)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
 			controllerutil.ContainsFinalizer(
 				currentReloader,
-				libsveltosv1alpha1.ReloaderFinalizer,
+				libsveltosv1beta1.ReloaderFinalizer,
 			),
 		).Should(BeTrue())
 	})

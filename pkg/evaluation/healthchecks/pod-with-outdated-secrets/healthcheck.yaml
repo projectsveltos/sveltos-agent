@@ -1,4 +1,4 @@
-apiVersion: lib.projectsveltos.io/v1alpha1
+apiVersion: lib.projectsveltos.io/v1beta1
 kind: HealthCheck
 metadata:
     name: list-pods-with-outdated-secret-data

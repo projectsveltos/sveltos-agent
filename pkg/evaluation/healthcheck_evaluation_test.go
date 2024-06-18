@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
@@ -153,16 +153,16 @@ status:
 )
 
 var _ = Describe("Manager: healthcheck evaluation", func() {
-	var healthCheck *libsveltosv1alpha1.HealthCheck
+	var healthCheck *libsveltosv1beta1.HealthCheck
 	var clusterNamespace string
 	var clusterName string
-	var clusterType libsveltosv1alpha1.ClusterType
+	var clusterType libsveltosv1beta1.ClusterType
 
 	BeforeEach(func() {
 		evaluation.Reset()
 		clusterNamespace = utils.ReportNamespace
 		clusterName = randomString()
-		clusterType = libsveltosv1alpha1.ClusterTypeCapi
+		clusterType = libsveltosv1beta1.ClusterTypeCapi
 	})
 
 	AfterEach(func() {
@@ -189,7 +189,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(err).To(BeNil())
 		Expect(status).ToNot(BeNil())
 		Expect(len(status.Resources)).To(Equal(1))
-		Expect(status.Resources[0].Status).To(Equal(libsveltosv1alpha1.HealthStatusDegraded))
+		Expect(status.Resources[0].Status).To(Equal(libsveltosv1beta1.HealthStatusDegraded))
 	})
 
 	It("GetResourceHealthStatus: evaluates Deployment in HealthStatusHealthy state", func() {
@@ -217,7 +217,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(err).To(BeNil())
 		Expect(status).ToNot(BeNil())
 		Expect(len(status.Resources)).To(Equal(1))
-		Expect(status.Resources[0].Status).To(Equal(libsveltosv1alpha1.HealthStatusHealthy))
+		Expect(status.Resources[0].Status).To(Equal(libsveltosv1beta1.HealthStatusHealthy))
 	})
 
 	It("GetResourceHealthStatus: evaluates Deployment in HealthStatusProgressing state", func() {
@@ -245,7 +245,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(err).To(BeNil())
 		Expect(status).ToNot(BeNil())
 		Expect(len(status.Resources)).To(Equal(1))
-		Expect(status.Resources[0].Status).To(Equal(libsveltosv1alpha1.HealthStatusProgressing))
+		Expect(status.Resources[0].Status).To(Equal(libsveltosv1beta1.HealthStatusProgressing))
 		Expect(status.Resources[0].Message).To(Equal("expected replicas: 3 available: 1"))
 	})
 
@@ -257,10 +257,10 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			randomString(): randomString(),
 			randomString(): randomString(),
 		}
-		labelFilters := make([]libsveltosv1alpha1.LabelFilter, 0)
+		labelFilters := make([]libsveltosv1beta1.LabelFilter, 0)
 		for k := range labels {
-			labelFilters = append(labelFilters, libsveltosv1alpha1.LabelFilter{
-				Key: k, Operation: libsveltosv1alpha1.OperationEqual, Value: labels[k],
+			labelFilters = append(labelFilters, libsveltosv1beta1.LabelFilter{
+				Key: k, Operation: libsveltosv1beta1.OperationEqual, Value: labels[k],
 			})
 		}
 
@@ -303,12 +303,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
-		healthCheck = &libsveltosv1alpha1.HealthCheck{
+		healthCheck = &libsveltosv1beta1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.HealthCheckSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:        "",
 						Version:      "v1",
@@ -358,12 +358,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		waitForObject(context.TODO(), testEnv.Client, progressingDepl)
 
 		By("Creating an HealthCheck matching the Deployments")
-		healthCheck = &libsveltosv1alpha1.HealthCheck{
+		healthCheck = &libsveltosv1beta1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.HealthCheckSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:     "apps",
 						Version:   "v1",
@@ -410,12 +410,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		waitForObject(context.TODO(), testEnv.Client, progressingDepl)
 
 		By("Creating an HealthCheck matching the Deployments")
-		healthCheck = &libsveltosv1alpha1.HealthCheck{
+		healthCheck = &libsveltosv1beta1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.HealthCheckSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:     "apps",
 						Version:   "v1",
@@ -451,12 +451,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		namespace := randomString()
 
-		healthCheck = &libsveltosv1alpha1.HealthCheck{
+		healthCheck = &libsveltosv1beta1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.HealthCheckSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:     "apps",
 						Version:   "v1",
@@ -473,13 +473,13 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			APIVersion: "apps/v1",
 			Kind:       "Deployment",
 		}
-		statuses := []libsveltosv1alpha1.ResourceStatus{
-			{ObjectRef: *deplRef, HealthStatus: libsveltosv1alpha1.HealthStatusHealthy},
+		statuses := []libsveltosv1beta1.ResourceStatus{
+			{ObjectRef: *deplRef, HealthStatus: libsveltosv1beta1.HealthStatusHealthy},
 		}
 		Expect(evaluation.CreateHealthCheckReport(manager, context.TODO(), healthCheck, statuses)).To(Succeed())
 
 		Eventually(func() bool {
-			healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
+			healthCheckReport := &libsveltosv1beta1.HealthCheckReport{}
 			err := testEnv.Get(context.TODO(), types.NamespacedName{Namespace: utils.ReportNamespace, Name: healthCheck.Name},
 				healthCheckReport)
 			if err != nil {
@@ -498,12 +498,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		namespace := randomString()
 
-		healthCheck = &libsveltosv1alpha1.HealthCheck{
+		healthCheck = &libsveltosv1beta1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.HealthCheckSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:     "apps",
 						Version:   "v1",
@@ -514,7 +514,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			},
 		}
 
-		healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{
+		healthCheckReport := &libsveltosv1beta1.HealthCheckReport{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      healthCheck.Name,
 				Namespace: utils.ReportNamespace,
@@ -530,13 +530,13 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			APIVersion: "apps/v1",
 			Kind:       "Deployment",
 		}
-		statuses := []libsveltosv1alpha1.ResourceStatus{
-			{ObjectRef: *deplRef, HealthStatus: libsveltosv1alpha1.HealthStatusHealthy},
+		statuses := []libsveltosv1beta1.ResourceStatus{
+			{ObjectRef: *deplRef, HealthStatus: libsveltosv1beta1.HealthStatusHealthy},
 		}
 		Expect(evaluation.CreateHealthCheckReport(manager, context.TODO(), healthCheck, statuses)).To(Succeed())
 
 		Eventually(func() bool {
-			healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
+			healthCheckReport := &libsveltosv1beta1.HealthCheckReport{}
 			err := testEnv.Get(context.TODO(), types.NamespacedName{Namespace: utils.ReportNamespace, Name: healthCheck.Name},
 				healthCheckReport)
 			if err != nil {
@@ -548,12 +548,12 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("sendHealthCheckReport sends HealthCheckReport to management cluster", func() {
-		healthCheck = &libsveltosv1alpha1.HealthCheck{
+		healthCheck = &libsveltosv1beta1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.HealthCheckSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:   "",
 						Version: "v1",
@@ -567,16 +567,16 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), healthCheck)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, healthCheck)
 
-		phase := libsveltosv1alpha1.ReportDelivering
-		healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{
+		phase := libsveltosv1beta1.ReportDelivering
+		healthCheckReport := &libsveltosv1beta1.HealthCheckReport{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: utils.ReportNamespace,
 				Name:      healthCheck.Name,
 			},
-			Spec: libsveltosv1alpha1.HealthCheckReportSpec{
+			Spec: libsveltosv1beta1.HealthCheckReportSpec{
 				HealthCheckName: healthCheck.Name,
 			},
-			Status: libsveltosv1alpha1.HealthCheckReportStatus{
+			Status: libsveltosv1beta1.HealthCheckReportStatus{
 				Phase: &phase,
 			},
 		}
@@ -593,47 +593,47 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		// SendHealthCheckReport creates healthCheckReport in manager.clusterNamespace
 
 		// Use Eventually so cache is in sync
-		healthCheckReportName := libsveltosv1alpha1.GetHealthCheckReportName(healthCheck.Name, clusterName, &clusterType)
+		healthCheckReportName := libsveltosv1beta1.GetHealthCheckReportName(healthCheck.Name, clusterName, &clusterType)
 		Eventually(func() error {
-			currentHealthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
+			currentHealthCheckReport := &libsveltosv1beta1.HealthCheckReport{}
 			return testEnv.Get(context.TODO(),
 				types.NamespacedName{Namespace: clusterNamespace, Name: healthCheckReportName}, currentHealthCheckReport)
 		}, timeout, pollingInterval).Should(BeNil())
 
-		currentHealthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
+		currentHealthCheckReport := &libsveltosv1beta1.HealthCheckReport{}
 		Expect(testEnv.Get(context.TODO(),
 			types.NamespacedName{Namespace: clusterNamespace, Name: healthCheckReportName}, currentHealthCheckReport)).To(Succeed())
 		Expect(currentHealthCheckReport.Spec.ClusterName).To(Equal(clusterName))
 		Expect(currentHealthCheckReport.Spec.ClusterNamespace).To(Equal(clusterNamespace))
 		Expect(currentHealthCheckReport.Spec.HealthCheckName).To(Equal(healthCheck.Name))
 		Expect(currentHealthCheckReport.Spec.ClusterType).To(Equal(clusterType))
-		v, ok := currentHealthCheckReport.Labels[libsveltosv1alpha1.HealthCheckReportClusterNameLabel]
+		v, ok := currentHealthCheckReport.Labels[libsveltosv1beta1.HealthCheckReportClusterNameLabel]
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(clusterName))
 
-		v, ok = currentHealthCheckReport.Labels[libsveltosv1alpha1.HealthCheckReportClusterTypeLabel]
+		v, ok = currentHealthCheckReport.Labels[libsveltosv1beta1.HealthCheckReportClusterTypeLabel]
 		Expect(ok).To(BeTrue())
-		Expect(v).To(Equal(strings.ToLower(string(libsveltosv1alpha1.ClusterTypeCapi))))
+		Expect(v).To(Equal(strings.ToLower(string(libsveltosv1beta1.ClusterTypeCapi))))
 
-		v, ok = currentHealthCheckReport.Labels[libsveltosv1alpha1.HealthCheckNameLabel]
+		v, ok = currentHealthCheckReport.Labels[libsveltosv1beta1.HealthCheckNameLabel]
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(healthCheck.Name))
 	})
 
 	It("cleanHealthCheckReport marks healthCheckReport as deleted", func() {
-		phase := libsveltosv1alpha1.ReportDelivering
-		healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{
+		phase := libsveltosv1beta1.ReportDelivering
+		healthCheckReport := &libsveltosv1beta1.HealthCheckReport{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: utils.ReportNamespace,
 				Name:      healthCheck.Name,
 				Finalizers: []string{
-					libsveltosv1alpha1.HealthCheckReportFinalizer,
+					libsveltosv1beta1.HealthCheckReportFinalizer,
 				},
 			},
-			Spec: libsveltosv1alpha1.HealthCheckReportSpec{
+			Spec: libsveltosv1beta1.HealthCheckReportSpec{
 				HealthCheckName: healthCheck.Name,
 			},
-			Status: libsveltosv1alpha1.HealthCheckReportStatus{
+			Status: libsveltosv1beta1.HealthCheckReportStatus{
 				Phase: &phase,
 			},
 		}
@@ -657,7 +657,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(err).To(BeNil())
 		Expect(healthCheckReport.DeletionTimestamp.IsZero()).To(BeFalse())
 
-		phase = libsveltosv1alpha1.ReportWaitingForDelivery
+		phase = libsveltosv1beta1.ReportWaitingForDelivery
 		Expect(healthCheckReport.Status.Phase).ToNot(BeNil())
 		Expect(*healthCheckReport.Status.Phase).To(Equal(phase))
 	})

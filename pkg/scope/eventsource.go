@@ -24,14 +24,14 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 )
 
 // EventSourceScopeParams defines the input parameters used to create a new EventSource Scope.
 type EventSourceScopeParams struct {
 	Client      client.Client
 	Logger      logr.Logger
-	EventSource *libsveltosv1alpha1.EventSource
+	EventSource *libsveltosv1beta1.EventSource
 }
 
 // NewEventSourceScope creates a new EventSource Scope from the supplied parameters.
@@ -61,7 +61,7 @@ type EventSourceScope struct {
 	logr.Logger
 	client      client.Client
 	patchHelper *patch.Helper
-	EventSource *libsveltosv1alpha1.EventSource
+	EventSource *libsveltosv1beta1.EventSource
 }
 
 // PatchObject persists the feature configuration and status.
