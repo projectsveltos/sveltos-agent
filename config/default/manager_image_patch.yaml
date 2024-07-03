@@ -8,5 +8,5 @@ spec:
     spec:
       containers:
       # Change the value of image field below to your controller image URL
-      - image: projectsveltos/sveltos-agent:dev
+      - image: projectsveltos/sveltos-agent:v0.33.0
         name: manager
