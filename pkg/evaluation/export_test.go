@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 )
@@ -114,7 +114,7 @@ func GetUnknownResourcesToWatch() []schema.GroupVersionKind {
 }
 
 func InitializeManagerWithSkip(ctx context.Context, l logr.Logger, config *rest.Config, c client.Client,
-	clusterNamespace, clusterName string, cluserType libsveltosv1alpha1.ClusterType,
+	clusterNamespace, clusterName string, cluserType libsveltosv1beta1.ClusterType,
 	intervalInSecond uint) {
 
 	// Used only for testing purposes (so to avoid using testEnv when not required by test)

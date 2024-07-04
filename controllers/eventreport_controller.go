@@ -28,7 +28,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 )
 
@@ -47,7 +47,7 @@ func (r *EventReportReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	logger.V(logs.LogInfo).Info("Reconciling")
 
 	// Fecth the EventReport instance
-	eventReport := &libsveltosv1alpha1.EventReport{}
+	eventReport := &libsveltosv1beta1.EventReport{}
 	err := r.Get(ctx, req.NamespacedName, eventReport)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -70,16 +70,16 @@ func (r *EventReportReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// Handle deleted healthCheck
 	if !eventReport.DeletionTimestamp.IsZero() {
 		if eventReport.Status.Phase != nil &&
-			*eventReport.Status.Phase == libsveltosv1alpha1.ReportProcessed {
+			*eventReport.Status.Phase == libsveltosv1beta1.ReportProcessed {
 
-			if controllerutil.ContainsFinalizer(eventReport, libsveltosv1alpha1.EventReportFinalizer) {
-				err = removeFinalizer(ctx, r.Client, eventReport, libsveltosv1alpha1.EventReportFinalizer,
+			if controllerutil.ContainsFinalizer(eventReport, libsveltosv1beta1.EventReportFinalizer) {
+				err = removeFinalizer(ctx, r.Client, eventReport, libsveltosv1beta1.EventReportFinalizer,
 					logger)
 			}
 		}
 	} else {
-		if !controllerutil.ContainsFinalizer(eventReport, libsveltosv1alpha1.EventReportFinalizer) {
-			err = addFinalizer(ctx, r.Client, eventReport, libsveltosv1alpha1.EventReportFinalizer,
+		if !controllerutil.ContainsFinalizer(eventReport, libsveltosv1beta1.EventReportFinalizer) {
+			err = addFinalizer(ctx, r.Client, eventReport, libsveltosv1beta1.EventReportFinalizer,
 				logger)
 		}
 	}
@@ -94,7 +94,7 @@ func (r *EventReportReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 // SetupWithManager sets up the controller with the Manager.
 func (r *EventReportReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	_, err := ctrl.NewControllerManagedBy(mgr).
-		For(&libsveltosv1alpha1.EventReport{}).
+		For(&libsveltosv1beta1.EventReport{}).
 		Build(r)
 	if err != nil {
 		return errors.Wrap(err, "error creating controller")

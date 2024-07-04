@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2/textlogger"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 	"github.com/projectsveltos/sveltos-agent/controllers"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
@@ -40,11 +40,11 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 	BeforeEach(func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
 		evaluation.InitializeManager(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
-			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1alpha1.ClusterTypeCapi, 3, false)
+			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1beta1.ClusterTypeCapi, 3, false)
 	})
 
 	AfterEach(func() {
-		healthChecks := &libsveltosv1alpha1.HealthCheckList{}
+		healthChecks := &libsveltosv1beta1.HealthCheckList{}
 		Expect(testEnv.List(context.TODO(), healthChecks)).To(Succeed())
 
 		for i := range healthChecks.Items {

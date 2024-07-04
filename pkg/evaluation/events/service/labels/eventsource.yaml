@@ -1,5 +1,5 @@
 # Find all services with label sveltos: fv
-apiVersion: lib.projectsveltos.io/v1alpha1
+apiVersion: lib.projectsveltos.io/v1beta1
 kind: EventSource
 metadata:
  name: sveltos-service

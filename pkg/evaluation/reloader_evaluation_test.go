@@ -34,23 +34,23 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2/textlogger"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
 var _ = Describe("Manager: reloader evaluation", func() {
-	var reloader *libsveltosv1alpha1.Reloader
+	var reloader *libsveltosv1beta1.Reloader
 	var clusterNamespace string
 	var clusterName string
-	var clusterType libsveltosv1alpha1.ClusterType
+	var clusterType libsveltosv1beta1.ClusterType
 
 	BeforeEach(func() {
 		evaluation.Reset()
 		clusterNamespace = utils.ReportNamespace
 		clusterName = randomString()
-		clusterType = libsveltosv1alpha1.ClusterTypeCapi
+		clusterType = libsveltosv1beta1.ClusterTypeCapi
 	})
 
 	BeforeEach(func() {
@@ -94,12 +94,12 @@ var _ = Describe("Manager: reloader evaluation", func() {
 			},
 		}
 
-		reloader = &libsveltosv1alpha1.Reloader{
+		reloader = &libsveltosv1beta1.Reloader{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.ReloaderSpec{
-				ReloaderInfo: []libsveltosv1alpha1.ReloaderInfo{
+			Spec: libsveltosv1beta1.ReloaderSpec{
+				ReloaderInfo: []libsveltosv1beta1.ReloaderInfo{
 					{
 						Kind:      "Deployment",
 						Namespace: depl.Namespace,
@@ -175,12 +175,12 @@ var _ = Describe("Manager: reloader evaluation", func() {
 			},
 		}
 
-		reloader = &libsveltosv1alpha1.Reloader{
+		reloader = &libsveltosv1beta1.Reloader{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.ReloaderSpec{
-				ReloaderInfo: []libsveltosv1alpha1.ReloaderInfo{
+			Spec: libsveltosv1beta1.ReloaderSpec{
+				ReloaderInfo: []libsveltosv1beta1.ReloaderInfo{
 					{
 						Kind:      "StatefulSet",
 						Namespace: statefulSet.Namespace,
@@ -205,8 +205,8 @@ var _ = Describe("Manager: reloader evaluation", func() {
 		Expect(evaluation.EvaluateReloaderInstance(manager, context.TODO(), reloader.Name)).To(BeNil())
 
 		reloaderObjRef := corev1.ObjectReference{
-			Kind:       libsveltosv1alpha1.ReloaderKind,
-			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
+			Kind:       libsveltosv1beta1.ReloaderKind,
+			APIVersion: libsveltosv1beta1.GroupVersion.String(),
 			Name:       reloader.Name,
 		}
 
@@ -286,9 +286,9 @@ var _ = Describe("Manager: reloader evaluation", func() {
 		}
 
 		// Create an empty ReloaderReport
-		reloaderReport := &libsveltosv1alpha1.ReloaderReport{
+		reloaderReport := &libsveltosv1beta1.ReloaderReport{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: libsveltosv1alpha1.GetReloaderReportName(configMapRef.Kind,
+				Name: libsveltosv1beta1.GetReloaderReportName(configMapRef.Kind,
 					configMapRef.Namespace, configMapRef.Name, clusterName, &clusterType),
 				Namespace: utils.ReportNamespace,
 			},
@@ -313,21 +313,21 @@ var _ = Describe("Manager: reloader evaluation", func() {
 
 		Expect(evaluation.UpdateReloaderReport(manager, context.TODO(), configMapRef)).To(BeNil())
 
-		currentReloaderReport := &libsveltosv1alpha1.ReloaderReport{}
+		currentReloaderReport := &libsveltosv1beta1.ReloaderReport{}
 		Expect(c.Get(context.TODO(),
 			types.NamespacedName{Namespace: utils.ReportNamespace, Name: reloaderReport.Name},
 			currentReloaderReport)).To(Succeed())
 		Expect(len(currentReloaderReport.Spec.ResourcesToReload)).To(Equal(2))
 
 		Expect(currentReloaderReport.Spec.ResourcesToReload).To(
-			ContainElement(libsveltosv1alpha1.ReloaderInfo{
+			ContainElement(libsveltosv1beta1.ReloaderInfo{
 				Kind:      deplRef.Kind,
 				Namespace: deplRef.Namespace,
 				Name:      deplRef.Name,
 			}))
 
 		Expect(currentReloaderReport.Spec.ResourcesToReload).To(
-			ContainElement(libsveltosv1alpha1.ReloaderInfo{
+			ContainElement(libsveltosv1beta1.ReloaderInfo{
 				Kind:      statefulSetRef.Kind,
 				Namespace: statefulSetRef.Namespace,
 				Name:      statefulSetRef.Name,
@@ -350,10 +350,10 @@ var _ = Describe("Manager: reloader evaluation", func() {
 		}
 
 		// Create an empty ReloaderReport
-		reloaderReport := &libsveltosv1alpha1.ReloaderReport{
+		reloaderReport := &libsveltosv1beta1.ReloaderReport{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: utils.ReportNamespace,
-				Name: libsveltosv1alpha1.GetReloaderReportName(secretRef.Kind,
+				Name: libsveltosv1beta1.GetReloaderReportName(secretRef.Kind,
 					secretRef.Namespace, secretRef.Name, clusterName, &clusterType),
 			},
 		}
@@ -378,14 +378,14 @@ var _ = Describe("Manager: reloader evaluation", func() {
 		Expect(evaluation.EvaluateMountedResource(manager, context.TODO(),
 			secretRef.Kind, resourceInfo)).To(Succeed())
 
-		currentReloaderReport := &libsveltosv1alpha1.ReloaderReport{}
+		currentReloaderReport := &libsveltosv1beta1.ReloaderReport{}
 		Expect(c.Get(context.TODO(),
 			types.NamespacedName{Namespace: utils.ReportNamespace, Name: reloaderReport.Name},
 			currentReloaderReport)).To(Succeed())
 		Expect(len(currentReloaderReport.Spec.ResourcesToReload)).To(Equal(1))
 
 		Expect(currentReloaderReport.Spec.ResourcesToReload).To(
-			ContainElement(libsveltosv1alpha1.ReloaderInfo{
+			ContainElement(libsveltosv1beta1.ReloaderInfo{
 				Kind:      daemonSetRef.Kind,
 				Namespace: daemonSetRef.Namespace,
 				Name:      daemonSetRef.Name,
@@ -413,24 +413,24 @@ var _ = Describe("Manager: reloader evaluation", func() {
 		Expect(len(reloaderReport.Spec.ResourcesToReload)).To(BeZero())
 
 		Expect(reloaderReport.Labels).ToNot(BeNil())
-		v, ok := reloaderReport.Labels[libsveltosv1alpha1.ReloaderReportClusterNameLabel]
+		v, ok := reloaderReport.Labels[libsveltosv1beta1.ReloaderReportClusterNameLabel]
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(clusterName))
 
-		v, ok = reloaderReport.Labels[libsveltosv1alpha1.ReloaderReportClusterTypeLabel]
+		v, ok = reloaderReport.Labels[libsveltosv1beta1.ReloaderReportClusterTypeLabel]
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(strings.ToLower(string(clusterType))))
 
 		Expect(reloaderReport.Annotations).ToNot(BeNil())
-		v, ok = reloaderReport.Annotations[libsveltosv1alpha1.ReloaderReportResourceKindAnnotation]
+		v, ok = reloaderReport.Annotations[libsveltosv1beta1.ReloaderReportResourceKindAnnotation]
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(strings.ToLower(configMapRef.Kind)))
 
-		v, ok = reloaderReport.Annotations[libsveltosv1alpha1.ReloaderReportResourceNameAnnotation]
+		v, ok = reloaderReport.Annotations[libsveltosv1beta1.ReloaderReportResourceNameAnnotation]
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(configMapRef.Name))
 
-		v, ok = reloaderReport.Annotations[libsveltosv1alpha1.ReloaderReportResourceNamespaceAnnotation]
+		v, ok = reloaderReport.Annotations[libsveltosv1beta1.ReloaderReportResourceNamespaceAnnotation]
 		Expect(ok).To(BeTrue())
 		Expect(v).To(Equal(configMapRef.Namespace))
 	})
@@ -455,26 +455,26 @@ var _ = Describe("Manager: reloader evaluation", func() {
 			APIVersion: corev1.SchemeGroupVersion.String(),
 		}
 
-		name := libsveltosv1alpha1.GetReloaderReportName(configMapRef.Kind,
+		name := libsveltosv1beta1.GetReloaderReportName(configMapRef.Kind,
 			configMapRef.Namespace, configMapRef.Name, clusterName, &clusterType)
 
-		phase := libsveltosv1alpha1.ReportDelivering
-		reloaderReport := &libsveltosv1alpha1.ReloaderReport{
+		phase := libsveltosv1beta1.ReportDelivering
+		reloaderReport := &libsveltosv1beta1.ReloaderReport{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: utils.ReportNamespace,
 				Name:      name,
-				Labels: libsveltosv1alpha1.GetReloaderReportLabels(
+				Labels: libsveltosv1beta1.GetReloaderReportLabels(
 					clusterName, &clusterType),
-				Annotations: libsveltosv1alpha1.GetReloaderReportAnnotations(
+				Annotations: libsveltosv1beta1.GetReloaderReportAnnotations(
 					configMapRef.Kind, configMapRef.Namespace, configMapRef.Name),
 			},
-			Spec: libsveltosv1alpha1.ReloaderReportSpec{
-				ResourcesToReload: []libsveltosv1alpha1.ReloaderInfo{
+			Spec: libsveltosv1beta1.ReloaderReportSpec{
+				ResourcesToReload: []libsveltosv1beta1.ReloaderInfo{
 					{Kind: "Deployment", Namespace: randomString(), Name: randomString()},
 					{Kind: "DaemonSet", Namespace: randomString(), Name: randomString()},
 				},
 			},
-			Status: libsveltosv1alpha1.ReloaderReportStatus{
+			Status: libsveltosv1beta1.ReloaderReportStatus{
 				Phase: &phase,
 			},
 		}
@@ -495,13 +495,13 @@ var _ = Describe("Manager: reloader evaluation", func() {
 
 		// Verify ReloaderReport was created in the management cluster
 		Eventually(func() error {
-			mgmtReloaderReport := &libsveltosv1alpha1.ReloaderReport{}
+			mgmtReloaderReport := &libsveltosv1beta1.ReloaderReport{}
 			return testEnv.Get(context.TODO(),
 				types.NamespacedName{Namespace: ns.Name, Name: name},
 				mgmtReloaderReport)
 		}, timeout, pollingInterval).Should(BeNil())
 
-		mgmtReloaderReport := &libsveltosv1alpha1.ReloaderReport{}
+		mgmtReloaderReport := &libsveltosv1beta1.ReloaderReport{}
 		Expect(testEnv.Get(context.TODO(),
 			types.NamespacedName{Namespace: ns.Name, Name: name},
 			mgmtReloaderReport)).To(Succeed())
@@ -516,7 +516,7 @@ var _ = Describe("Manager: reloader evaluation", func() {
 		// After sending ReloaderReport to management cluster, it gets deleted in the
 		// managed cluster
 		Eventually(func() bool {
-			managedReloaderReport := &libsveltosv1alpha1.ReloaderReport{}
+			managedReloaderReport := &libsveltosv1beta1.ReloaderReport{}
 			err := testEnv.Get(context.TODO(),
 				types.NamespacedName{Namespace: utils.ReportNamespace, Name: name},
 				managedReloaderReport)

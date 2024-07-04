@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
@@ -138,15 +138,15 @@ var _ = Describe("Reloader", func() {
 			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
 		}
 
-		reloader := libsveltosv1alpha1.Reloader{
+		reloader := libsveltosv1beta1.Reloader{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namePrefix + randomString(),
 				Annotations: map[string]string{
 					"projectsveltos.io/deployed-by-sveltos": "ok",
 				},
 			},
-			Spec: libsveltosv1alpha1.ReloaderSpec{
-				ReloaderInfo: []libsveltosv1alpha1.ReloaderInfo{
+			Spec: libsveltosv1beta1.ReloaderSpec{
+				ReloaderInfo: []libsveltosv1beta1.ReloaderInfo{
 					{
 						Kind:      "Deployment",
 						Namespace: deployment.GetNamespace(),
@@ -169,7 +169,7 @@ var _ = Describe("Reloader", func() {
 		// This test removes all existing ReloadReports when started
 		By("Verifying ReloaderReport is not created yet")
 		Consistently(func() bool {
-			reloaderReports := libsveltosv1alpha1.ReloaderReportList{}
+			reloaderReports := libsveltosv1beta1.ReloaderReportList{}
 			err := k8sClient.List(context.TODO(), &reloaderReports)
 			if err != nil {
 				return false
@@ -198,7 +198,7 @@ var _ = Describe("Reloader", func() {
 		}
 		verifyReloaderReport(mountedResource, resourceToReload)
 
-		currentReloader := &libsveltosv1alpha1.Reloader{}
+		currentReloader := &libsveltosv1beta1.Reloader{}
 		Expect(k8sClient.Get(context.TODO(),
 			types.NamespacedName{Namespace: utils.ReportNamespace, Name: reloader.Name},
 			currentReloader)).To(Succeed())
@@ -208,7 +208,7 @@ var _ = Describe("Reloader", func() {
 
 func verifyReloaderReport(mountedResource, resourceToReload *corev1.ObjectReference) {
 	Eventually(func() bool {
-		reloaderReports := libsveltosv1alpha1.ReloaderReportList{}
+		reloaderReports := libsveltosv1beta1.ReloaderReportList{}
 		err := k8sClient.List(context.TODO(), &reloaderReports)
 		if err != nil {
 			return false
@@ -238,24 +238,24 @@ func verifyReloaderReport(mountedResource, resourceToReload *corev1.ObjectRefere
 // getReloaderReportForMountedResource returns the ReloaderReport created for
 // a given mounted resource (either ConfigMap or Secret)
 func getReloaderReportForMountedResource(mountedResource *corev1.ObjectReference,
-	reloaderReports *libsveltosv1alpha1.ReloaderReportList) *libsveltosv1alpha1.ReloaderReport {
+	reloaderReports *libsveltosv1beta1.ReloaderReportList) *libsveltosv1beta1.ReloaderReport {
 
 	for i := range reloaderReports.Items {
 		rr := &reloaderReports.Items[i]
 		if rr.Annotations == nil {
 			continue
 		}
-		kind, ok := rr.Annotations[libsveltosv1alpha1.ReloaderReportResourceKindAnnotation]
+		kind, ok := rr.Annotations[libsveltosv1beta1.ReloaderReportResourceKindAnnotation]
 		if !ok {
 			continue
 		}
 		var namespace string
-		namespace, ok = rr.Annotations[libsveltosv1alpha1.ReloaderReportResourceNamespaceAnnotation]
+		namespace, ok = rr.Annotations[libsveltosv1beta1.ReloaderReportResourceNamespaceAnnotation]
 		if !ok {
 			continue
 		}
 		var name string
-		name, ok = rr.Annotations[libsveltosv1alpha1.ReloaderReportResourceNameAnnotation]
+		name, ok = rr.Annotations[libsveltosv1beta1.ReloaderReportResourceNameAnnotation]
 		if !ok {
 			continue
 		}

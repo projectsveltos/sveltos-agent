@@ -36,7 +36,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	"github.com/projectsveltos/libsveltos/lib/roles"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
@@ -95,7 +95,7 @@ func (m *manager) evaluateEventSources(ctx context.Context) {
 // evaluateEventSourceInstance evaluates event status.
 // Creates (or updates if already exists) a EventReport.
 func (m *manager) evaluateEventSourceInstance(ctx context.Context, eventName string) error {
-	event := &libsveltosv1alpha1.EventSource{}
+	event := &libsveltosv1beta1.EventSource{}
 
 	logger := m.log.WithValues("event", eventName)
 	logger.V(logs.LogDebug).Info("evaluating")
@@ -151,12 +151,12 @@ func (m *manager) evaluateEventSourceInstance(ctx context.Context, eventName str
 }
 
 // createEventReport creates EventReport or updates it if already exists.
-func (m *manager) createEventReport(ctx context.Context, event *libsveltosv1alpha1.EventSource,
+func (m *manager) createEventReport(ctx context.Context, event *libsveltosv1beta1.EventSource,
 	matchinResources []corev1.ObjectReference, jsonResources []byte) error {
 
 	logger := m.log.WithValues("event", event.Name)
 
-	eventReport := &libsveltosv1alpha1.EventReport{}
+	eventReport := &libsveltosv1beta1.EventReport{}
 	err := m.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: event.Name}, eventReport)
 	if err == nil {
@@ -180,16 +180,16 @@ func (m *manager) createEventReport(ctx context.Context, event *libsveltosv1alph
 }
 
 // updateEventReport updates EventReport
-func (m *manager) updateEventReport(ctx context.Context, event *libsveltosv1alpha1.EventSource,
+func (m *manager) updateEventReport(ctx context.Context, event *libsveltosv1beta1.EventSource,
 	matchinResources []corev1.ObjectReference, jsonResources []byte,
-	eventReport *libsveltosv1alpha1.EventReport) error {
+	eventReport *libsveltosv1beta1.EventReport) error {
 
 	logger := m.log.WithValues("event", event.Name)
 	logger.V(logs.LogDebug).Info("updating eventReport")
 	if eventReport.Labels == nil {
 		eventReport.Labels = map[string]string{}
 	}
-	eventReport.Labels[libsveltosv1alpha1.EventSourceNameLabel] = event.Name
+	eventReport.Labels[libsveltosv1beta1.EventSourceNameLabel] = event.Name
 	eventReport.Spec.MatchingResources = matchinResources
 	eventReport.Spec.Resources = jsonResources
 
@@ -204,19 +204,19 @@ func (m *manager) updateEventReport(ctx context.Context, event *libsveltosv1alph
 
 // updateEventReportStatus updates EventReport Status by marking Phase as ReportWaitingForDelivery
 func (m *manager) updateEventReportStatus(ctx context.Context,
-	eventReport *libsveltosv1alpha1.EventReport) error {
+	eventReport *libsveltosv1beta1.EventReport) error {
 
 	logger := m.log.WithValues("eventReport", eventReport.Name)
 	logger.V(logs.LogDebug).Info("updating eventReport status")
 
-	phase := libsveltosv1alpha1.ReportWaitingForDelivery
+	phase := libsveltosv1beta1.ReportWaitingForDelivery
 	eventReport.Status.Phase = &phase
 
 	return m.Status().Update(ctx, eventReport)
 }
 
 func (m *manager) cleanEventReport(ctx context.Context, eventName string) error {
-	eventReport := &libsveltosv1alpha1.EventReport{}
+	eventReport := &libsveltosv1beta1.EventReport{}
 	err := m.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: eventName}, eventReport)
 	if err != nil {
@@ -233,7 +233,7 @@ func (m *manager) cleanEventReport(ctx context.Context, eventName string) error 
 	}
 
 	// reset status
-	phase := libsveltosv1alpha1.ReportWaitingForDelivery
+	phase := libsveltosv1beta1.ReportWaitingForDelivery
 	eventReport.Status.Phase = &phase
 
 	err = m.Status().Update(ctx, eventReport)
@@ -248,7 +248,7 @@ func (m *manager) cleanEventReport(ctx context.Context, eventName string) error 
 }
 
 // getEventMatchingResources returns resources matching EventSource.
-func (m *manager) getEventMatchingResources(ctx context.Context, event *libsveltosv1alpha1.EventSource,
+func (m *manager) getEventMatchingResources(ctx context.Context, event *libsveltosv1beta1.EventSource,
 	logger logr.Logger) ([]corev1.ObjectReference, []unstructured.Unstructured, error) {
 
 	resources, err := m.fetchResourcesMatchingEventSource(ctx, event, logger)
@@ -340,7 +340,7 @@ func (m *manager) isMatchForEventSource(resource *unstructured.Unstructured, scr
 
 // fetchResourcesMatchingEventSource fetchs all resources matching an event
 func (m *manager) fetchResourcesMatchingEventSource(ctx context.Context,
-	event *libsveltosv1alpha1.EventSource, logger logr.Logger) ([]*unstructured.Unstructured, error) {
+	event *libsveltosv1beta1.EventSource, logger logr.Logger) ([]*unstructured.Unstructured, error) {
 
 	saNamespace, saName := m.getServiceAccountInfo(event)
 	list := []*unstructured.Unstructured{}
@@ -432,7 +432,7 @@ func (m *manager) aggregatedSelection(luaScript string, resources []*unstructure
 
 // fetchResourcesMatchingResourceSelector fetchs all resources matching an event
 func (m *manager) fetchResourcesMatchingResourceSelector(ctx context.Context,
-	resourceSelector *libsveltosv1alpha1.ResourceSelector, saNamespace, saName string,
+	resourceSelector *libsveltosv1beta1.ResourceSelector, saNamespace, saName string,
 	logger logr.Logger) ([]*unstructured.Unstructured, error) {
 
 	gvk := schema.GroupVersionKind{
@@ -471,7 +471,7 @@ func (m *manager) fetchResourcesMatchingResourceSelector(ctx context.Context,
 				labelFilter += ","
 			}
 			f := resourceSelector.LabelFilters[i]
-			if f.Operation == libsveltosv1alpha1.OperationEqual {
+			if f.Operation == libsveltosv1beta1.OperationEqual {
 				labelFilter += fmt.Sprintf("%s=%s", f.Key, f.Value)
 			} else {
 				labelFilter += fmt.Sprintf("%s!=%s", f.Key, f.Value)
@@ -525,17 +525,17 @@ func (m *manager) fetchResourcesMatchingResourceSelector(ctx context.Context,
 
 // getEventReport returns EventReport instance that needs to be created
 func (m *manager) getEventReport(eventName string, matchingResources []corev1.ObjectReference,
-	jsonResources []byte) *libsveltosv1alpha1.EventReport {
+	jsonResources []byte) *libsveltosv1beta1.EventReport {
 
-	return &libsveltosv1alpha1.EventReport{
+	return &libsveltosv1beta1.EventReport{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: utils.ReportNamespace,
 			Name:      eventName,
 			Labels: map[string]string{
-				libsveltosv1alpha1.EventSourceNameLabel: eventName,
+				libsveltosv1beta1.EventSourceNameLabel: eventName,
 			},
 		},
-		Spec: libsveltosv1alpha1.EventReportSpec{
+		Spec: libsveltosv1beta1.EventReportSpec{
 			EventSourceName:   eventName,
 			MatchingResources: matchingResources,
 			Resources:         jsonResources,
@@ -561,10 +561,10 @@ func (m *manager) marshalSliceOfUnstructured(collectedResources []unstructured.U
 
 // sendEventReport sends EventReport to management cluster. It also updates EventReport Status
 // to processed in the managed cluster.
-func (m *manager) sendEventReport(ctx context.Context, event *libsveltosv1alpha1.EventSource) error {
+func (m *manager) sendEventReport(ctx context.Context, event *libsveltosv1beta1.EventSource) error {
 	logger := m.log.WithValues("event", event.Name)
 
-	eventReport := &libsveltosv1alpha1.EventReport{}
+	eventReport := &libsveltosv1beta1.EventReport{}
 	err := m.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: event.Name}, eventReport)
 	if err != nil {
@@ -580,11 +580,11 @@ func (m *manager) sendEventReport(ctx context.Context, event *libsveltosv1alpha1
 
 	logger.V(logs.LogDebug).Info("send eventReport to management cluster")
 
-	eventReportName := libsveltosv1alpha1.GetEventReportName(event.Name,
+	eventReportName := libsveltosv1beta1.GetEventReportName(event.Name,
 		m.clusterName, &m.clusterType)
 	eventReportNamespace := m.clusterNamespace
 
-	currentEventReport := &libsveltosv1alpha1.EventReport{}
+	currentEventReport := &libsveltosv1beta1.EventReport{}
 
 	err = agentClient.Get(ctx,
 		types.NamespacedName{Namespace: eventReportNamespace, Name: eventReportName},
@@ -597,7 +597,7 @@ func (m *manager) sendEventReport(ctx context.Context, event *libsveltosv1alpha1
 			currentEventReport.Spec.ClusterNamespace = m.clusterNamespace
 			currentEventReport.Spec.ClusterName = m.clusterName
 			currentEventReport.Spec.ClusterType = m.clusterType
-			currentEventReport.Labels = libsveltosv1alpha1.GetEventReportLabels(
+			currentEventReport.Labels = libsveltosv1beta1.GetEventReportLabels(
 				event.Name, m.clusterName, &m.clusterType,
 			)
 			return agentClient.Create(ctx, currentEventReport)
@@ -609,7 +609,7 @@ func (m *manager) sendEventReport(ctx context.Context, event *libsveltosv1alpha1
 	currentEventReport.Name = eventReportName
 	currentEventReport.Spec.ClusterType = m.clusterType
 	currentEventReport.Spec.MatchingResources = eventReport.Spec.MatchingResources
-	currentEventReport.Labels = libsveltosv1alpha1.GetEventReportLabels(
+	currentEventReport.Labels = libsveltosv1beta1.GetEventReportLabels(
 		event.Name, m.clusterName, &m.clusterType,
 	)
 
@@ -618,7 +618,7 @@ func (m *manager) sendEventReport(ctx context.Context, event *libsveltosv1alpha1
 		return err
 	}
 
-	phase := libsveltosv1alpha1.ReportProcessed
+	phase := libsveltosv1beta1.ReportProcessed
 	eventReport.Status.Phase = &phase
 	return m.Status().Update(ctx, eventReport)
 }

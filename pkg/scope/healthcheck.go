@@ -24,14 +24,14 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 )
 
 // HealthCheckScopeParams defines the input parameters used to create a new HealthCheck Scope.
 type HealthCheckScopeParams struct {
 	Client      client.Client
 	Logger      logr.Logger
-	HealthCheck *libsveltosv1alpha1.HealthCheck
+	HealthCheck *libsveltosv1beta1.HealthCheck
 }
 
 // NewHealthCheckScope creates a new HealthCheck Scope from the supplied parameters.
@@ -61,7 +61,7 @@ type HealthCheckScope struct {
 	logr.Logger
 	client      client.Client
 	patchHelper *patch.Helper
-	HealthCheck *libsveltosv1alpha1.HealthCheck
+	HealthCheck *libsveltosv1beta1.HealthCheck
 }
 
 // PatchObject persists the feature configuration and status.

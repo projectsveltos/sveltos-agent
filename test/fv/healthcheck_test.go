@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
@@ -120,15 +120,15 @@ var _ = Describe("Classification", func() {
 			Expect(apierrors.IsAlreadyExists(err)).To(BeTrue())
 		}
 
-		healthCheck := libsveltosv1alpha1.HealthCheck{
+		healthCheck := libsveltosv1beta1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namePrefix + randomString(),
 				Annotations: map[string]string{
 					"projectsveltos.io/deployed-by-sveltos": "ok",
 				},
 			},
-			Spec: libsveltosv1alpha1.HealthCheckSpec{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			Spec: libsveltosv1beta1.HealthCheckSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:   "apps",
 						Version: "v1",
@@ -143,7 +143,7 @@ var _ = Describe("Classification", func() {
 		Expect(k8sClient.Create(context.TODO(), &healthCheck)).To(Succeed())
 
 		By("Verifying HealthCheckReport has match for nginx Deployment in Healthy state")
-		verifyHealthCheckReport(u.GetNamespace(), u.GetName(), healthCheck.Name, libsveltosv1alpha1.HealthStatusHealthy)
+		verifyHealthCheckReport(u.GetNamespace(), u.GetName(), healthCheck.Name, libsveltosv1beta1.HealthStatusHealthy)
 
 		By("Pause nginx namespace")
 		currentDeployment := &appsv1.Deployment{}
@@ -153,7 +153,7 @@ var _ = Describe("Classification", func() {
 		Expect(k8sClient.Update(context.TODO(), currentDeployment)).To(Succeed())
 
 		By("Verifying HealthCheckReport has match for nginx Deployment in Suspended state")
-		verifyHealthCheckReport(u.GetNamespace(), u.GetName(), healthCheck.Name, libsveltosv1alpha1.HealthStatusSuspended)
+		verifyHealthCheckReport(u.GetNamespace(), u.GetName(), healthCheck.Name, libsveltosv1beta1.HealthStatusSuspended)
 
 		By("UnPause nginx namespace")
 		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: u.GetNamespace(), Name: u.GetName()},
@@ -162,7 +162,7 @@ var _ = Describe("Classification", func() {
 		Expect(k8sClient.Update(context.TODO(), currentDeployment)).To(Succeed())
 
 		By("Verifying HealthCheckReport has match for nginx Deployment in Healthy state")
-		verifyHealthCheckReport(u.GetNamespace(), u.GetName(), healthCheck.Name, libsveltosv1alpha1.HealthStatusHealthy)
+		verifyHealthCheckReport(u.GetNamespace(), u.GetName(), healthCheck.Name, libsveltosv1beta1.HealthStatusHealthy)
 
 		By(fmt.Sprintf("Deleting HealthCheck %s", healthCheck.Name))
 		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: healthCheck.Name}, &healthCheck))
@@ -170,7 +170,7 @@ var _ = Describe("Classification", func() {
 
 		By("Verifying HealthCheckReport is marked for deletion")
 		Eventually(func() bool {
-			healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
+			healthCheckReport := &libsveltosv1beta1.HealthCheckReport{}
 			err := k8sClient.Get(context.TODO(),
 				types.NamespacedName{Namespace: utils.ReportNamespace, Name: healthCheck.Name}, healthCheckReport)
 			if err != nil {
@@ -187,10 +187,10 @@ var _ = Describe("Classification", func() {
 })
 
 func verifyHealthCheckReport(deplNamespace, deplName, healthCheckName string,
-	healthStatus libsveltosv1alpha1.HealthStatus) {
+	healthStatus libsveltosv1beta1.HealthStatus) {
 
 	Eventually(func() bool {
-		healthCheckReport := &libsveltosv1alpha1.HealthCheckReport{}
+		healthCheckReport := &libsveltosv1beta1.HealthCheckReport{}
 		err := k8sClient.Get(context.TODO(),
 			types.NamespacedName{Namespace: utils.ReportNamespace, Name: healthCheckName}, healthCheckReport)
 		if err != nil {

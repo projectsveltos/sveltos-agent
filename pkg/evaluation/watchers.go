@@ -38,7 +38,7 @@ import (
 
 	"github.com/go-logr/logr"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/libsveltos/lib/logsettings"
 )
 
@@ -114,7 +114,7 @@ func (m *manager) buildList(ctx context.Context) (map[schema.GroupVersionKind]bo
 func (m *manager) buildListForClassifiers(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
 	resources := make(map[schema.GroupVersionKind]bool)
 
-	classifiers := &libsveltosv1alpha1.ClassifierList{}
+	classifiers := &libsveltosv1beta1.ClassifierList{}
 	err := m.List(ctx, classifiers)
 	if err != nil {
 		if meta.IsNoMatchError(err) {
@@ -137,7 +137,7 @@ func (m *manager) buildListForClassifiers(ctx context.Context) (map[schema.Group
 func (m *manager) buildListForHealthChecks(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
 	resources := make(map[schema.GroupVersionKind]bool)
 
-	healthChecks := &libsveltosv1alpha1.HealthCheckList{}
+	healthChecks := &libsveltosv1beta1.HealthCheckList{}
 	err := m.List(ctx, healthChecks)
 	if err != nil {
 		if meta.IsNoMatchError(err) {
@@ -160,7 +160,7 @@ func (m *manager) buildListForHealthChecks(ctx context.Context) (map[schema.Grou
 func (m *manager) buildListForEventSources(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
 	resources := make(map[schema.GroupVersionKind]bool)
 
-	eventSources := &libsveltosv1alpha1.EventSourceList{}
+	eventSources := &libsveltosv1beta1.EventSourceList{}
 	err := m.List(ctx, eventSources)
 	if err != nil {
 		if meta.IsNoMatchError(err) {
@@ -183,7 +183,7 @@ func (m *manager) buildListForEventSources(ctx context.Context) (map[schema.Grou
 func (m *manager) buildListForReloaders(ctx context.Context) (map[schema.GroupVersionKind]bool, error) {
 	resources := make(map[schema.GroupVersionKind]bool)
 
-	reloaders := &libsveltosv1alpha1.ReloaderList{}
+	reloaders := &libsveltosv1beta1.ReloaderList{}
 	err := m.List(ctx, reloaders)
 	if err != nil {
 		if meta.IsNoMatchError(err) {
@@ -203,7 +203,7 @@ func (m *manager) buildListForReloaders(ctx context.Context) (map[schema.GroupVe
 	return resources, nil
 }
 
-func (m *manager) addGVKsForClassifier(classifier *libsveltosv1alpha1.Classifier,
+func (m *manager) addGVKsForClassifier(classifier *libsveltosv1beta1.Classifier,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
 	if classifier.Spec.DeployedResourceConstraint == nil {
@@ -223,7 +223,7 @@ func (m *manager) addGVKsForClassifier(classifier *libsveltosv1alpha1.Classifier
 	return resources
 }
 
-func (m *manager) addGVKsForHealthCheck(healthCheck *libsveltosv1alpha1.HealthCheck,
+func (m *manager) addGVKsForHealthCheck(healthCheck *libsveltosv1beta1.HealthCheck,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
 	for i := range healthCheck.Spec.ResourceSelectors {
@@ -237,7 +237,7 @@ func (m *manager) addGVKsForHealthCheck(healthCheck *libsveltosv1alpha1.HealthCh
 	return resources
 }
 
-func (m *manager) addGVKsForEventSource(eventSource *libsveltosv1alpha1.EventSource,
+func (m *manager) addGVKsForEventSource(eventSource *libsveltosv1beta1.EventSource,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
 	for i := range eventSource.Spec.ResourceSelectors {
@@ -251,7 +251,7 @@ func (m *manager) addGVKsForEventSource(eventSource *libsveltosv1alpha1.EventSou
 	return resources
 }
 
-func (m *manager) addGVKsForReloader(reloader *libsveltosv1alpha1.Reloader,
+func (m *manager) addGVKsForReloader(reloader *libsveltosv1beta1.Reloader,
 	resources map[schema.GroupVersionKind]bool) map[schema.GroupVersionKind]bool {
 
 	for i := range reloader.Spec.ReloaderInfo {

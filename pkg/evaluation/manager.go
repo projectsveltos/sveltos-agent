@@ -33,7 +33,7 @@ import (
 	"k8s.io/klog/v2/textlogger"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/libsveltos/lib/crd"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 )
@@ -54,7 +54,7 @@ type manager struct {
 	sendReport       bool
 	clusterNamespace string
 	clusterName      string
-	clusterType      libsveltosv1alpha1.ClusterType
+	clusterType      libsveltosv1beta1.ClusterType
 
 	watchMu *sync.Mutex
 	// rebuildResourceToWatch indicates (value different from zero) that list
@@ -101,7 +101,7 @@ type manager struct {
 
 // InitializeManager initializes a manager implementing the ClassifierInterface
 func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, c client.Client,
-	clusterNamespace, clusterName string, cluserType libsveltosv1alpha1.ClusterType,
+	clusterNamespace, clusterName string, cluserType libsveltosv1beta1.ClusterType,
 	intervalInSecond uint, sendReport bool) {
 
 	if managerInstance == nil {
@@ -222,7 +222,7 @@ func (m *manager) EvaluateReloader(reloaderName string) {
 
 	logger.V(logs.LogDebug).Info("queue reloader for evaluation")
 
-	m.reloaderJobQueue[fmt.Sprintf("%s:%s", libsveltosv1alpha1.ReloaderKind, reloaderName)] = true
+	m.reloaderJobQueue[fmt.Sprintf("%s:%s", libsveltosv1beta1.ReloaderKind, reloaderName)] = true
 }
 
 // EvaluateConfigMap queues a ConfigMap instance for evaluation
@@ -277,8 +277,8 @@ func restartIfNeeded(gvk *schema.GroupVersionKind) {
 func (m *manager) getKubeconfig(ctx context.Context) ([]byte, error) {
 	secret := &corev1.Secret{}
 	key := client.ObjectKey{
-		Namespace: libsveltosv1alpha1.ClassifierSecretNamespace,
-		Name:      libsveltosv1alpha1.ClassifierSecretName,
+		Namespace: libsveltosv1beta1.ClassifierSecretNamespace,
+		Name:      libsveltosv1beta1.ClassifierSecretName,
 	}
 
 	if err := m.Get(ctx, key, secret); err != nil {
@@ -301,6 +301,6 @@ func (m *manager) getServiceAccountInfo(obj client.Object) (namespace, name stri
 		return "", ""
 	}
 
-	return labels[libsveltosv1alpha1.ServiceAccountNamespaceLabel],
-		labels[libsveltosv1alpha1.ServiceAccountNameLabel]
+	return labels[libsveltosv1beta1.ServiceAccountNamespaceLabel],
+		labels[libsveltosv1beta1.ServiceAccountNameLabel]
 }

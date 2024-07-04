@@ -12,27 +12,27 @@ resources:
   domain: projectsveltos.io
   group: lib
   kind: Classifier
-  version: v1alpha1
+  version: v1beta1
 - controller: true
   domain: projectsveltos.io
   group: lib
   kind: HealthCheck
-  version: v1alpha1
+  version: v1beta1
 - controller: true
   domain: projectsveltos.io
   group: lib
   kind: HealthCheckReport
-  version: v1alpha1
+  version: v1beta1
 - controller: true
   domain: projectsveltos.io
   group: lib
   kind: EventSource
-  version: v1alpha1
+  version: v1beta1
 - controller: true
   domain: projectsveltos.io
   group: lib
   kind: EventReport
-  version: v1alpha1
+  version: v1beta1
 - controller: true
   kind: Node
   domain: ""
@@ -41,7 +41,7 @@ resources:
   domain: projectsveltos.io
   group: lib
   kind: Reloader
-  version: v1alpha1
+  version: v1beta1
 - controller: true
   domain: ""
   kind: ConfigMap

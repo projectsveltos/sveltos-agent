@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/libsveltos/lib/crd"
 	"github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/internal/test/helpers"
@@ -92,8 +92,8 @@ var _ = BeforeSuite(func() {
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: libsveltosv1alpha1.ClassifierSecretNamespace,
-			Name:      libsveltosv1alpha1.ClassifierSecretName,
+			Namespace: libsveltosv1beta1.ClassifierSecretNamespace,
+			Name:      libsveltosv1beta1.ClassifierSecretName,
 		},
 		Data: map[string][]byte{
 			"data": testEnv.Kubeconfig,
@@ -144,7 +144,7 @@ var _ = BeforeSuite(func() {
 	waitForObject(ctx, testEnv.Client, reloaderReportRD)
 
 	// add an extra second sleep. Otherwise randomly ut fails with
-	// no matches for kind "EventSource" in version "lib.projectsveltos.io/v1alpha1"
+	// no matches for kind "EventSource" in version "lib.projectsveltos.io/v1beta1"
 	time.Sleep(time.Second)
 
 	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
@@ -166,7 +166,7 @@ func randomString() string {
 
 func setupScheme() (*runtime.Scheme, error) {
 	s := runtime.NewScheme()
-	if err := libsveltosv1alpha1.AddToScheme(s); err != nil {
+	if err := libsveltosv1beta1.AddToScheme(s); err != nil {
 		return nil, err
 	}
 	if err := clientgoscheme.AddToScheme(s); err != nil {
@@ -178,21 +178,21 @@ func setupScheme() (*runtime.Scheme, error) {
 	return s, nil
 }
 
-func getClassifierWithKubernetesConstraints(k8sVersion string, comparison libsveltosv1alpha1.KubernetesComparison,
-) *libsveltosv1alpha1.Classifier {
+func getClassifierWithKubernetesConstraints(k8sVersion string, comparison libsveltosv1beta1.KubernetesComparison,
+) *libsveltosv1beta1.Classifier {
 
-	return &libsveltosv1alpha1.Classifier{
+	return &libsveltosv1beta1.Classifier{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: randomString(),
 		},
-		Spec: libsveltosv1alpha1.ClassifierSpec{
-			KubernetesVersionConstraints: []libsveltosv1alpha1.KubernetesVersionConstraint{
+		Spec: libsveltosv1beta1.ClassifierSpec{
+			KubernetesVersionConstraints: []libsveltosv1beta1.KubernetesVersionConstraint{
 				{
 					Comparison: string(comparison),
 					Version:    k8sVersion,
 				},
 			},
-			ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
+			ClassifierLabels: []libsveltosv1beta1.ClassifierLabel{
 				{Key: randomString(), Value: randomString()},
 			},
 		},

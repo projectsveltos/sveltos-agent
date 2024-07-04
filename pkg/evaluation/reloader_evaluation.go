@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
@@ -177,13 +177,13 @@ func (m *manager) updateReloaderReport(ctx context.Context, mountedResource *cor
 	}
 
 	if reloaderReport.Spec.ResourcesToReload == nil {
-		reloaderReport.Spec.ResourcesToReload = make([]libsveltosv1alpha1.ReloaderInfo, 0)
+		reloaderReport.Spec.ResourcesToReload = make([]libsveltosv1beta1.ReloaderInfo, 0)
 	}
 
 	resources := v.Items()
 	for i := range resources {
 		reloaderReport.Spec.ResourcesToReload = append(reloaderReport.Spec.ResourcesToReload,
-			libsveltosv1alpha1.ReloaderInfo{
+			libsveltosv1beta1.ReloaderInfo{
 				Kind:      resources[i].Kind,
 				Namespace: resources[i].Namespace,
 				Name:      resources[i].Name,
@@ -201,12 +201,12 @@ func (m *manager) updateReloaderReport(ctx context.Context, mountedResource *cor
 
 // updateHealthCheckReportStatus updates HealthCheckReport Status by marking Phase as ReportWaitingForDelivery
 func (m *manager) updateReloaderReportStatus(ctx context.Context,
-	reloaderReport *libsveltosv1alpha1.ReloaderReport) error {
+	reloaderReport *libsveltosv1beta1.ReloaderReport) error {
 
 	logger := m.log.WithValues("reloaderReport", reloaderReport.Name)
 	logger.V(logs.LogDebug).Info("updating reloaderReport status")
 
-	phase := libsveltosv1alpha1.ReportWaitingForDelivery
+	phase := libsveltosv1beta1.ReportWaitingForDelivery
 	reloaderReport.Status.Phase = &phase
 
 	return m.Status().Update(ctx, reloaderReport)
@@ -214,12 +214,12 @@ func (m *manager) updateReloaderReportStatus(ctx context.Context,
 
 // getReloaderReport gets ReloaderReport. It creates one if does not exist already
 func (m *manager) getReloaderReport(ctx context.Context, mountedResource *corev1.ObjectReference,
-) (*libsveltosv1alpha1.ReloaderReport, error) {
+) (*libsveltosv1beta1.ReloaderReport, error) {
 
-	reloaderReport := &libsveltosv1alpha1.ReloaderReport{}
+	reloaderReport := &libsveltosv1beta1.ReloaderReport{}
 
 	// There is one ReloaderReport per mounted resource
-	name := libsveltosv1alpha1.GetReloaderReportName(mountedResource.Kind, mountedResource.Namespace,
+	name := libsveltosv1beta1.GetReloaderReportName(mountedResource.Kind, mountedResource.Namespace,
 		mountedResource.Name, m.clusterName, &m.clusterType)
 
 	err := m.Client.Get(ctx,
@@ -236,22 +236,22 @@ func (m *manager) getReloaderReport(ctx context.Context, mountedResource *corev1
 
 // createReloaderReport creates ReloaderReport
 func (m *manager) createReloaderReport(ctx context.Context, mountedResource *corev1.ObjectReference,
-) (*libsveltosv1alpha1.ReloaderReport, error) {
+) (*libsveltosv1beta1.ReloaderReport, error) {
 
-	name := libsveltosv1alpha1.GetReloaderReportName(mountedResource.Kind, mountedResource.Namespace,
+	name := libsveltosv1beta1.GetReloaderReportName(mountedResource.Kind, mountedResource.Namespace,
 		mountedResource.Name, m.clusterName, &m.clusterType)
-	reloaderReport := &libsveltosv1alpha1.ReloaderReport{
+	reloaderReport := &libsveltosv1beta1.ReloaderReport{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: utils.ReportNamespace,
-			Labels: libsveltosv1alpha1.GetReloaderReportLabels(
+			Labels: libsveltosv1beta1.GetReloaderReportLabels(
 				m.clusterName, &m.clusterType),
-			Annotations: libsveltosv1alpha1.GetReloaderReportAnnotations(
+			Annotations: libsveltosv1beta1.GetReloaderReportAnnotations(
 				mountedResource.Kind, mountedResource.Namespace, mountedResource.Name,
 			),
 		},
-		Spec: libsveltosv1alpha1.ReloaderReportSpec{
-			ResourcesToReload: make([]libsveltosv1alpha1.ReloaderInfo, 0),
+		Spec: libsveltosv1beta1.ReloaderReportSpec{
+			ResourcesToReload: make([]libsveltosv1beta1.ReloaderInfo, 0),
 		},
 	}
 
@@ -264,11 +264,11 @@ func (m *manager) createReloaderReport(ctx context.Context, mountedResource *cor
 func (m *manager) sendReloaderReportToMgtmCluster(ctx context.Context, mountedResource *corev1.ObjectReference) error {
 	logger := m.log.WithValues("reloaderReport", mountedResource.Name)
 
-	name := libsveltosv1alpha1.GetReloaderReportName(mountedResource.Kind, mountedResource.Namespace,
+	name := libsveltosv1beta1.GetReloaderReportName(mountedResource.Kind, mountedResource.Namespace,
 		mountedResource.Name, m.clusterName, &m.clusterType)
 
 	// Get reloaderReport in the managed cluster
-	reloaderReport := &libsveltosv1alpha1.ReloaderReport{}
+	reloaderReport := &libsveltosv1beta1.ReloaderReport{}
 	err := m.Get(ctx,
 		types.NamespacedName{Namespace: utils.ReportNamespace, Name: name}, reloaderReport)
 	if err != nil {
@@ -288,19 +288,19 @@ func (m *manager) sendReloaderReportToMgtmCluster(ctx context.Context, mountedRe
 	return m.deleteReloaderReport(ctx, reloaderReport)
 }
 
-func (m *manager) deleteReloaderReport(ctx context.Context, reloaderReport *libsveltosv1alpha1.ReloaderReport) error {
+func (m *manager) deleteReloaderReport(ctx context.Context, reloaderReport *libsveltosv1beta1.ReloaderReport) error {
 	return m.Client.Delete(ctx, reloaderReport)
 }
 
 // createOrUpdateReloaderReport creates or updates ReloaderReport in the management cluster
 func (m *manager) createOrUpdateReloaderReportInMgtmtCluster(ctx context.Context,
-	reloaderReport *libsveltosv1alpha1.ReloaderReport) error {
+	reloaderReport *libsveltosv1beta1.ReloaderReport) error {
 
 	agentClient, err := m.getManamegentClusterClient(ctx, m.log)
 	if err != nil {
 		return err
 	}
-	currentReloaderReport := &libsveltosv1alpha1.ReloaderReport{}
+	currentReloaderReport := &libsveltosv1beta1.ReloaderReport{}
 
 	namespace := m.clusterNamespace
 
@@ -337,7 +337,7 @@ func (m *manager) createOrUpdateReloaderReportInMgtmtCluster(ctx context.Context
 // - Updates volumeMap => for each mounted ConfigMap/Secret list of Deployments/StatefulSets/DaemonSets
 // currently mounting it
 func (m *manager) evaluateReloaderInstance(ctx context.Context, reloaderName string) error {
-	reloader := &libsveltosv1alpha1.Reloader{}
+	reloader := &libsveltosv1beta1.Reloader{}
 
 	logger := m.log.WithValues("reloader", reloaderName)
 	logger.V(logs.LogDebug).Info("evaluating")
@@ -412,13 +412,13 @@ func (m *manager) evaluateReloaderInstance(ctx context.Context, reloaderName str
 
 func getReloaderObjectReference(reloaderName string) *corev1.ObjectReference {
 	return &corev1.ObjectReference{
-		Kind:       libsveltosv1alpha1.ReloaderKind,
-		APIVersion: libsveltosv1alpha1.GroupVersion.String(),
+		Kind:       libsveltosv1beta1.ReloaderKind,
+		APIVersion: libsveltosv1beta1.GroupVersion.String(),
 		Name:       reloaderName,
 	}
 }
 
-func getObjectRef(reloaderInfo *libsveltosv1alpha1.ReloaderInfo) corev1.ObjectReference {
+func getObjectRef(reloaderInfo *libsveltosv1beta1.ReloaderInfo) corev1.ObjectReference {
 	return corev1.ObjectReference{
 		Kind:       reloaderInfo.Kind,
 		Namespace:  reloaderInfo.Namespace,
@@ -428,7 +428,7 @@ func getObjectRef(reloaderInfo *libsveltosv1alpha1.ReloaderInfo) corev1.ObjectRe
 }
 
 func (m *manager) updateVolumeMap(ctx context.Context,
-	reloaderInfo *libsveltosv1alpha1.ReloaderInfo) error {
+	reloaderInfo *libsveltosv1beta1.ReloaderInfo) error {
 
 	volumes, err := m.getResourceVolumeMounts(ctx, reloaderInfo)
 	if err != nil {
@@ -451,7 +451,7 @@ func (m *manager) updateVolumeMap(ctx context.Context,
 }
 
 func (m *manager) getResourceVolumeMounts(ctx context.Context,
-	reloaderInfo *libsveltosv1alpha1.ReloaderInfo,
+	reloaderInfo *libsveltosv1beta1.ReloaderInfo,
 ) ([]corev1.ObjectReference, error) {
 
 	switch reloaderInfo.Kind {
@@ -495,7 +495,7 @@ func (m *manager) getVolumes(resource client.Object, mountedVolumes []corev1.Vol
 // getStatufulSetVolumeMounts returns list of ConfigMaps/Secrets mounted by
 // a StatefulSet
 func (m *manager) getStatufulSetVolumeMounts(ctx context.Context,
-	reloaderInfo *libsveltosv1alpha1.ReloaderInfo,
+	reloaderInfo *libsveltosv1beta1.ReloaderInfo,
 ) ([]corev1.ObjectReference, error) {
 
 	statufulSet := &appsv1.StatefulSet{}
@@ -511,7 +511,7 @@ func (m *manager) getStatufulSetVolumeMounts(ctx context.Context,
 // getDeploymentVolumeMounts returns list of ConfigMaps/Secrets mounted by
 // a Deployment
 func (m *manager) getDeploymentVolumeMounts(ctx context.Context,
-	reloaderInfo *libsveltosv1alpha1.ReloaderInfo,
+	reloaderInfo *libsveltosv1beta1.ReloaderInfo,
 ) ([]corev1.ObjectReference, error) {
 
 	depl := &appsv1.Deployment{}
@@ -527,7 +527,7 @@ func (m *manager) getDeploymentVolumeMounts(ctx context.Context,
 // getDaemonSetVolumeMounts returns list of ConfigMaps/Secrets mounted by
 // a DaemonSet
 func (m *manager) getDaemonSetVolumeMounts(ctx context.Context,
-	reloaderInfo *libsveltosv1alpha1.ReloaderInfo,
+	reloaderInfo *libsveltosv1beta1.ReloaderInfo,
 ) ([]corev1.ObjectReference, error) {
 
 	daemonSet := &appsv1.DaemonSet{}

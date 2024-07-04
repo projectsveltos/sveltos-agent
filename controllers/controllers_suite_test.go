@@ -38,7 +38,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/libsveltos/lib/crd"
 	"github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/internal/test/helpers"
@@ -132,7 +132,7 @@ var _ = BeforeSuite(func() {
 	Expect(waitForObject(ctx, testEnv.Client, reloaderCRD)).To(Succeed())
 
 	// add an extra second sleep. Otherwise randomly ut fails with
-	// no matches for kind "EventSource" in version "lib.projectsveltos.io/v1alpha1"
+	// no matches for kind "EventSource" in version "lib.projectsveltos.io/v1beta1"
 	time.Sleep(time.Second)
 
 	if synced := testEnv.GetCache().WaitForCacheSync(ctx); !synced {
@@ -154,7 +154,7 @@ func randomString() string {
 
 func setupScheme() (*runtime.Scheme, error) {
 	s := runtime.NewScheme()
-	if err := libsveltosv1alpha1.AddToScheme(s); err != nil {
+	if err := libsveltosv1beta1.AddToScheme(s); err != nil {
 		return nil, err
 	}
 	if err := clientgoscheme.AddToScheme(s); err != nil {
@@ -188,18 +188,18 @@ func waitForObject(ctx context.Context, c client.Client, obj client.Object) erro
 	return nil
 }
 
-func getClassifierWithKubernetesConstraints() *libsveltosv1alpha1.Classifier {
-	return &libsveltosv1alpha1.Classifier{
+func getClassifierWithKubernetesConstraints() *libsveltosv1beta1.Classifier {
+	return &libsveltosv1beta1.Classifier{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: randomString(),
 		},
-		Spec: libsveltosv1alpha1.ClassifierSpec{
-			ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
+		Spec: libsveltosv1beta1.ClassifierSpec{
+			ClassifierLabels: []libsveltosv1beta1.ClassifierLabel{
 				{Key: randomString(), Value: randomString()},
 			},
-			KubernetesVersionConstraints: []libsveltosv1alpha1.KubernetesVersionConstraint{
+			KubernetesVersionConstraints: []libsveltosv1beta1.KubernetesVersionConstraint{
 				{
-					Comparison: string(libsveltosv1alpha1.OperationEqual),
+					Comparison: string(libsveltosv1beta1.OperationEqual),
 					Version:    "v1.25.2",
 				},
 			},
@@ -207,25 +207,25 @@ func getClassifierWithKubernetesConstraints() *libsveltosv1alpha1.Classifier {
 	}
 }
 
-func getClassifierWithResourceConstraints() *libsveltosv1alpha1.Classifier {
-	return &libsveltosv1alpha1.Classifier{
+func getClassifierWithResourceConstraints() *libsveltosv1beta1.Classifier {
+	return &libsveltosv1beta1.Classifier{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: randomString(),
 		},
-		Spec: libsveltosv1alpha1.ClassifierSpec{
-			ClassifierLabels: []libsveltosv1alpha1.ClassifierLabel{
+		Spec: libsveltosv1beta1.ClassifierSpec{
+			ClassifierLabels: []libsveltosv1beta1.ClassifierLabel{
 				{Key: randomString(), Value: randomString()},
 			},
-			DeployedResourceConstraint: &libsveltosv1alpha1.DeployedResourceConstraint{
-				ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+			DeployedResourceConstraint: &libsveltosv1beta1.DeployedResourceConstraint{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 					{
 						Group:   randomString(),
 						Version: randomString(),
 						Kind:    randomString(),
-						LabelFilters: []libsveltosv1alpha1.LabelFilter{
+						LabelFilters: []libsveltosv1beta1.LabelFilter{
 							{
 								Key:       randomString(),
-								Operation: libsveltosv1alpha1.OperationEqual,
+								Operation: libsveltosv1beta1.OperationEqual,
 								Value:     randomString(),
 							},
 						},
@@ -236,13 +236,13 @@ func getClassifierWithResourceConstraints() *libsveltosv1alpha1.Classifier {
 	}
 }
 
-func getHealthCheck() *libsveltosv1alpha1.HealthCheck {
-	return &libsveltosv1alpha1.HealthCheck{
+func getHealthCheck() *libsveltosv1beta1.HealthCheck {
+	return &libsveltosv1beta1.HealthCheck{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: randomString(),
 		},
-		Spec: libsveltosv1alpha1.HealthCheckSpec{
-			ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+		Spec: libsveltosv1beta1.HealthCheckSpec{
+			ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 				{
 					Group:   randomString(),
 					Version: randomString(),
@@ -254,13 +254,13 @@ func getHealthCheck() *libsveltosv1alpha1.HealthCheck {
 	}
 }
 
-func getEventSource() *libsveltosv1alpha1.EventSource {
-	return &libsveltosv1alpha1.EventSource{
+func getEventSource() *libsveltosv1beta1.EventSource {
+	return &libsveltosv1beta1.EventSource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: randomString(),
 		},
-		Spec: libsveltosv1alpha1.EventSourceSpec{
-			ResourceSelectors: []libsveltosv1alpha1.ResourceSelector{
+		Spec: libsveltosv1beta1.EventSourceSpec{
+			ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
 				{
 					Group:   randomString(),
 					Version: randomString(),
@@ -271,12 +271,12 @@ func getEventSource() *libsveltosv1alpha1.EventSource {
 	}
 }
 
-func getReloader() *libsveltosv1alpha1.Reloader {
-	return &libsveltosv1alpha1.Reloader{
+func getReloader() *libsveltosv1beta1.Reloader {
+	return &libsveltosv1beta1.Reloader{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: randomString(),
 			Annotations: map[string]string{
-				libsveltosv1alpha1.DeployedBySveltosAnnotation: "ok",
+				libsveltosv1beta1.DeployedBySveltosAnnotation: "ok",
 			},
 		},
 	}

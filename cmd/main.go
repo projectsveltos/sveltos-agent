@@ -49,7 +49,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/libsveltos/lib/clusterproxy"
 	"github.com/projectsveltos/libsveltos/lib/logsettings"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
@@ -112,7 +112,7 @@ func main() {
 	restConfig.Burst = restConfigBurst
 
 	logsettings.RegisterForLogSettings(ctx,
-		libsveltosv1alpha1.ComponentClassifierAgent, ctrl.Log.WithName("log-setter"),
+		libsveltosv1beta1.ComponentClassifierAgent, ctrl.Log.WithName("log-setter"),
 		restConfig)
 
 	ctrlOptions := ctrl.Options{
@@ -143,7 +143,7 @@ func main() {
 
 	const intervalInSecond = 3
 	evaluation.InitializeManager(ctx, mgr.GetLogger(),
-		mgr.GetConfig(), mgr.GetClient(), clusterNamespace, clusterName, libsveltosv1alpha1.ClusterType(clusterType),
+		mgr.GetConfig(), mgr.GetClient(), clusterNamespace, clusterName, libsveltosv1beta1.ClusterType(clusterType),
 		intervalInSecond, doSendReports)
 
 	go startControllers(ctx, mgr, sendReports)
@@ -267,7 +267,7 @@ func startClassifierReconciler(ctx context.Context, mgr manager.Manager, sendRep
 				VersionClassifiers: libsveltosset.Set{},
 				ClusterNamespace:   clusterNamespace,
 				ClusterName:        clusterName,
-				ClusterType:        libsveltosv1alpha1.ClusterType(clusterType),
+				ClusterType:        libsveltosv1beta1.ClusterType(clusterType),
 			}).SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "Classifier")
 				os.Exit(1)
@@ -295,7 +295,7 @@ func startHealthCheckReconciler(ctx context.Context, mgr manager.Manager, sendRe
 				GVKHealthChecks:  make(map[schema.GroupVersionKind]*libsveltosset.Set),
 				ClusterNamespace: clusterNamespace,
 				ClusterName:      clusterName,
-				ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
+				ClusterType:      libsveltosv1beta1.ClusterType(clusterType),
 			}).SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "HealthCheck")
 				os.Exit(1)
@@ -332,7 +332,7 @@ func startEventSourceReconciler(ctx context.Context, mgr manager.Manager, sendRe
 				GVKEventSources:  make(map[schema.GroupVersionKind]*libsveltosset.Set),
 				ClusterNamespace: clusterNamespace,
 				ClusterName:      clusterName,
-				ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
+				ClusterType:      libsveltosv1beta1.ClusterType(clusterType),
 			}).SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "EventSource")
 				os.Exit(1)
@@ -369,7 +369,7 @@ func startReloaderReconciler(ctx context.Context, mgr manager.Manager, sendRepor
 				GVKReloaders:     make(map[schema.GroupVersionKind]*libsveltosset.Set),
 				ClusterNamespace: clusterNamespace,
 				ClusterName:      clusterName,
-				ClusterType:      libsveltosv1alpha1.ClusterType(clusterType),
+				ClusterType:      libsveltosv1beta1.ClusterType(clusterType),
 			}).SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "Reloader")
 				os.Exit(1)
@@ -417,7 +417,7 @@ func getManagedClusterRestConfig(ctx context.Context, cfg *rest.Config, logger l
 	if err := clusterv1.AddToScheme(s); err != nil {
 		panic(1)
 	}
-	if err := libsveltosv1alpha1.AddToScheme(s); err != nil {
+	if err := libsveltosv1beta1.AddToScheme(s); err != nil {
 		panic(1)
 	}
 
@@ -431,7 +431,7 @@ func getManagedClusterRestConfig(ctx context.Context, cfg *rest.Config, logger l
 	// It access the managed cluster from here.
 	var currentCfg *rest.Config
 	currentCfg, err = clusterproxy.GetKubernetesRestConfig(ctx, c, clusterNamespace, clusterName, "", "",
-		libsveltosv1alpha1.ClusterType(clusterType),
+		libsveltosv1beta1.ClusterType(clusterType),
 		textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 	if err != nil {
 		logger.V(logsettings.LogInfo).Info(fmt.Sprintf("failed to get secret: %v", err))

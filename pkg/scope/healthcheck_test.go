@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
+	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/sveltos-agent/pkg/scope"
 )
 
@@ -33,11 +33,11 @@ const (
 )
 
 var _ = Describe("HealthCheckScope", func() {
-	var healthCheck *libsveltosv1alpha1.HealthCheck
+	var healthCheck *libsveltosv1beta1.HealthCheck
 	var c client.Client
 
 	BeforeEach(func() {
-		healthCheck = &libsveltosv1alpha1.HealthCheck{
+		healthCheck = &libsveltosv1beta1.HealthCheck{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: healthCheckNamePrefix + randomString(),
 			},
