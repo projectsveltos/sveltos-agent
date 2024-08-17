@@ -357,7 +357,7 @@ func (m *manager) getInstalledResources() (map[schema.GroupVersionKind]bool, err
 			group := resource.Group
 			version := resource.Version
 			groupVersionInfo := strings.Split(resourceList[i].GroupVersion, "/")
-			//nolint: gomnd // groupVersion is group/version
+			//nolint: mnd // groupVersion is group/version
 			if len(groupVersionInfo) == 2 {
 				group = groupVersionInfo[0]
 				version = groupVersionInfo[1]
