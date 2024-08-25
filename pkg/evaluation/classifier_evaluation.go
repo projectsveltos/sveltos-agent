@@ -308,6 +308,13 @@ func (m *manager) fetchClassifierDeployedResources(ctx context.Context, rs *libs
 		options.FieldSelector += fmt.Sprintf("metadata.namespace=%s", rs.Namespace)
 	}
 
+	if rs.Name != "" {
+		if options.FieldSelector != "" {
+			options.FieldSelector += ","
+		}
+		options.FieldSelector += fmt.Sprintf("metadata.name=%s", rs.Name)
+	}
+
 	list, err := d.Resource(resourceId).List(ctx, options)
 	if err != nil {
 		return nil, err

@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -101,12 +102,14 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	var clusterNamespace string
 	var clusterName string
 	var clusterType libsveltosv1beta1.ClusterType
+	var logger logr.Logger
 
 	BeforeEach(func() {
 		evaluation.Reset()
 		clusterNamespace = utils.ReportNamespace
 		clusterName = randomString()
 		clusterType = libsveltosv1beta1.ClusterTypeCapi
+		logger = textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
 	})
 
 	AfterEach(func() {
@@ -119,7 +122,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("isMatchForEventSource: evaluates deployment as match", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+		evaluation.InitializeManagerWithSkip(context.TODO(), logger,
 			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -131,13 +134,13 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		var isMatch bool
 		isMatch, err = evaluation.IsMatchForEventSource(manager, depl, degradedDeploymentLuaScript,
-			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
+			logger)
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeTrue())
 	})
 
 	It("isMatchForEventSource: evaluates deployment as non match", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+		evaluation.InitializeManagerWithSkip(context.TODO(), logger,
 			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -150,7 +153,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		var isMatch bool
 		isMatch, err = evaluation.IsMatchForEventSource(manager, depl, degradedDeploymentLuaScript,
-			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
+			logger)
 		Expect(err).To(BeNil())
 		Expect(isMatch).To(BeFalse()) // Not a match because availableReplicas = replicas
 	})
@@ -203,7 +206,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			waitForObject(context.TODO(), testEnv.Client, service)
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+		evaluation.InitializeManagerWithSkip(context.TODO(), logger,
 			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		eventSource = &libsveltosv1beta1.EventSource{
@@ -226,7 +229,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
 		deployments, err := evaluation.FetchResourcesMatchingEventSource(manager, context.TODO(), eventSource,
-			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
+			logger)
 		Expect(err).To(BeNil())
 		Expect(len(deployments)).To(Equal(matchingServices))
 
@@ -291,7 +294,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			},
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+		evaluation.InitializeManagerWithSkip(context.TODO(), logger,
 			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -299,7 +302,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 
 		matchingResources, collectedResources, err :=
 			evaluation.GetEventMatchingResources(manager, context.TODO(), eventSource,
-				textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
+				logger)
 		Expect(err).To(BeNil())
 		Expect(len(matchingResources)).To(Equal(1))
 		Expect(matchingResources[0].Name).To(Equal(progressingDepl.Name))
@@ -307,8 +310,59 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(len(collectedResources)).To(Equal(1))
 	})
 
+	It("fetchResourcesMatchingResourceSelector selects a specific resource", func() {
+		evaluation.InitializeManagerWithSkip(context.TODO(), logger,
+			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
+
+		manager := evaluation.GetManager()
+		Expect(manager).ToNot(BeNil())
+
+		namespace := randomString()
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: namespace,
+			},
+		}
+		Expect(testEnv.Create(context.TODO(), ns)).To(Succeed())
+		waitForObject(context.TODO(), testEnv, ns)
+
+		serviceAccount := &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      randomString(),
+			},
+		}
+		Expect(testEnv.Create(context.TODO(), serviceAccount)).To(Succeed())
+		waitForObject(context.TODO(), testEnv, serviceAccount)
+
+		eventSource = &libsveltosv1beta1.EventSource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: randomString(),
+			},
+			Spec: libsveltosv1beta1.EventSourceSpec{
+				ResourceSelectors: []libsveltosv1beta1.ResourceSelector{
+					{
+						Group:     "",
+						Version:   "v1",
+						Kind:      "ServiceAccount",
+						Namespace: namespace,
+						Name:      serviceAccount.Name,
+					},
+				},
+			},
+		}
+
+		resources, err := evaluation.FetchResourcesMatchingResourceSelector(manager,
+			context.TODO(), &eventSource.Spec.ResourceSelectors[0],
+			"", "", logger)
+		Expect(err).To(BeNil())
+		Expect(len(resources)).To(Equal(1))
+		Expect(resources[0].GetNamespace()).To(Equal(serviceAccount.Namespace))
+		Expect(resources[0].GetName()).To(Equal(serviceAccount.Name))
+	})
+
 	It("createEventReport creates eventReport", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+		evaluation.InitializeManagerWithSkip(context.TODO(), logger,
 			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -355,7 +409,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 	})
 
 	It("createEventReport updates eventReport", func() {
-		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+		evaluation.InitializeManagerWithSkip(context.TODO(), logger,
 			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -445,7 +499,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(testEnv.Create(context.TODO(), eventReport)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, eventReport)
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+		evaluation.InitializeManagerWithSkip(context.TODO(), logger,
 			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 		manager := evaluation.GetManager()
 
@@ -506,7 +560,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(initObjects...).
 			WithObjects(initObjects...).Build()
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+		evaluation.InitializeManagerWithSkip(context.TODO(), logger,
 			nil, c, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
@@ -569,14 +623,14 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			},
 		}
 
-		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
+		evaluation.InitializeManagerWithSkip(context.TODO(), logger,
 			testEnv.Config, testEnv.Client, clusterNamespace, clusterName, clusterType, 10)
 
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
 
 		_, collectedRespurce, err := evaluation.GetEventMatchingResources(manager, context.TODO(), eventSource,
-			textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
+			logger)
 		Expect(err).To(BeNil())
 		Expect(collectedRespurce).ToNot(BeNil())
 		Expect(len(collectedRespurce)).To(Equal(2))
