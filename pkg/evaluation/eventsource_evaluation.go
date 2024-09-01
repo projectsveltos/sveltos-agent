@@ -485,6 +485,13 @@ func (m *manager) fetchResourcesMatchingResourceSelector(ctx context.Context,
 		options.FieldSelector += fmt.Sprintf("metadata.namespace=%s", resourceSelector.Namespace)
 	}
 
+	if resourceSelector.Name != "" {
+		if options.FieldSelector != "" {
+			options.FieldSelector += ","
+		}
+		options.FieldSelector += fmt.Sprintf("metadata.name=%s", resourceSelector.Name)
+	}
+
 	currentConfig := rest.CopyConfig(m.config)
 	if saName != "" {
 		saNameInManagedCluster := roles.GetServiceAccountNameInManagedCluster(saNamespace, saName)
