@@ -36,7 +36,7 @@ ARCH ?= amd64
 OS ?= $(shell uname -s | tr A-Z a-z)
 K8S_LATEST_VER ?= $(shell curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
 export CONTROLLER_IMG ?= $(REGISTRY)/$(IMAGE_NAME)
-TAG ?= main
+TAG ?= dev
 
 GOLANGCI_LINT_VERSION := "v1.59.0"
 CLUSTERCTL_VERSION := "v1.8.1"
@@ -128,6 +128,7 @@ help: ## Display this help.
 manifests: $(CONTROLLER_GEN) $(KUSTOMIZE) $(ENVSUBST) ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	MANIFEST_IMG=$(CONTROLLER_IMG) MANIFEST_TAG=$(TAG) $(MAKE) set-manifest-image
+	VERSION=$(TAG) $(MAKE) set-version
 	$(KUSTOMIZE) build config/default | $(ENVSUBST) > manifest/manifest.yaml
 
 .PHONY: generate
@@ -204,6 +205,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 docker-build: ## Build docker image with the manager.
 	docker build --load --build-arg BUILDOS=linux --build-arg TARGETARCH=amd64 -t $(CONTROLLER_IMG):$(TAG) .
 	MANIFEST_IMG=$(CONTROLLER_IMG) MANIFEST_TAG=$(TAG) $(MAKE) set-manifest-image
+	VERSION=$(TAG) $(MAKE) set-version
 	$(MAKE) set-manifest-pull-policy
 
 .PHONY: docker-buildx
@@ -236,19 +238,26 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 deploy: manifests $(CONTROLLER_GEN) $(KUSTOMIZE) ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	MANIFEST_IMG=$(CONTROLLER_IMG) MANIFEST_TAG=$(TAG) $(MAKE) set-manifest-image
+	VERSION=$(TAG) $(MAKE) set-version
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 .PHONY: undeploy
 undeploy: $(CONTROLLER_GEN) $(KUSTOMIZE) ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	MANIFEST_IMG=$(CONTROLLER_IMG) MANIFEST_TAG=$(TAG) $(MAKE) set-manifest-image
+	VERSION=$(TAG) $(MAKE) set-version
 	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##
 set-manifest-image:
 	$(info Updating kustomize image patch file for manager resource)
-	sed -i'' -e 's@image: .*@image: '"docker.io/${MANIFEST_IMG}:$(MANIFEST_TAG)"'@' ./config/default/manager_image_patch.yaml
-	sed -i'' -e 's@image: .*@image: '"docker.io/${MANIFEST_IMG}:$(MANIFEST_TAG)"'@' ./manifest/mgmt_cluster_manifest.yaml
+	sed -i'' -e 's@image: .*@image: '"docker.io/$(MANIFEST_IMG):$(MANIFEST_TAG)"'@' ./config/default/manager_image_patch.yaml
+	sed -i'' -e 's@image: .*@image: '"docker.io/$(MANIFEST_IMG):$(MANIFEST_TAG)"'@' ./manifest/mgmt_cluster_manifest.yaml
+
+set-version:
+	$(info Updating version ${VERSION})
+	sed -i'' -e 's@--version=.*@--version='$(VERSION)'"@'  ./config/default/manager_auth_proxy_patch.yaml
+	sed -i'' -e 's@- --version=.*@- --version='"$(VERSION)"'@'  ./manifest/mgmt_cluster_manifest.yaml
 
 set-manifest-pull-policy:
 	$(info Updating kustomize pull policy file for manager resource)

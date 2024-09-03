@@ -86,7 +86,8 @@ var _ = Describe("Controllers: node controller", func() {
 		Expect(testEnv.Status().Update(watcherCtx, &currentNode)).To(Succeed())
 
 		evaluation.InitializeManager(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
-			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1beta1.ClusterTypeCapi, 3, false)
+			testEnv.Config, testEnv.Client, randomString(), randomString(), randomString(),
+			libsveltosv1beta1.ClusterTypeCapi, 3, false)
 
 		reconciler := &controllers.NodeReconciler{
 			Client: testEnv.Client,

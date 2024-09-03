@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -66,8 +67,13 @@ func initializeReloaderMaps() {
 }
 
 // evaluateReloaders evaluates all reloaders awaiting evaluation
-func (m *manager) evaluateReloaders(ctx context.Context) {
+func (m *manager) evaluateReloaders(ctx context.Context, wg *sync.WaitGroup) {
+	var once sync.Once
+
 	for {
+		// Sleep before next evaluation
+		time.Sleep(m.interval)
+
 		m.log.V(logs.LogDebug).Info("Evaluating Reloaders")
 		m.mu.Lock()
 		// Copy queue content. That is only operation that
@@ -117,8 +123,9 @@ func (m *manager) evaluateReloaders(ctx context.Context) {
 			m.EvaluateReloader(failedEvaluations[i])
 		}
 
-		// Sleep before next evaluation
-		time.Sleep(m.interval)
+		once.Do(func() {
+			wg.Done()
+		})
 	}
 }
 

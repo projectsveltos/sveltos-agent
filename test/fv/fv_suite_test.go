@@ -17,6 +17,7 @@ limitations under the License.
 package fv_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -26,8 +27,11 @@ import (
 
 	"github.com/TwiN/go-color"
 	ginkgotypes "github.com/onsi/ginkgo/v2/types"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -90,6 +94,21 @@ var _ = BeforeSuite(func() {
 	var err error
 	k8sClient, err = client.New(restConfig, client.Options{Scheme: scheme})
 	Expect(err).NotTo(HaveOccurred())
+
+	By("Verifying ConfigMap with version for compatibility checks is created")
+	Eventually(func() bool {
+		cm := &corev1.ConfigMap{}
+		err := k8sClient.Get(context.TODO(),
+			types.NamespacedName{Namespace: "projectsveltos", Name: "sveltos-agent-version"},
+			cm)
+		if err != nil {
+			return apierrors.IsNotFound(err)
+		}
+		if cm.Data == nil {
+			return false
+		}
+		return cm.Data["sveltos-agent-version"] != ""
+	}, timeout, pollingInterval).Should(BeTrue())
 })
 
 func randomString() string {
