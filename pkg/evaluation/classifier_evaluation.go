@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
@@ -51,8 +52,13 @@ type aggregatedClassification struct {
 }
 
 // evaluateClassifiers evaluates all classifiers awaiting evaluation
-func (m *manager) evaluateClassifiers(ctx context.Context) {
+func (m *manager) evaluateClassifiers(ctx context.Context, wg *sync.WaitGroup) {
+	var once sync.Once
+
 	for {
+		// Sleep before next evaluation
+		time.Sleep(m.interval)
+
 		m.log.V(logs.LogDebug).Info("Evaluating Classifiers")
 		m.mu.Lock()
 		// Copy queue content. That is only operation that
@@ -85,8 +91,9 @@ func (m *manager) evaluateClassifiers(ctx context.Context) {
 			m.EvaluateClassifier(failedEvaluations[i])
 		}
 
-		// Sleep before next evaluation
-		time.Sleep(m.interval)
+		once.Do(func() {
+			wg.Done()
+		})
 	}
 }
 

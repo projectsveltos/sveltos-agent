@@ -40,7 +40,8 @@ var _ = Describe("Controllers: healthCheck controller", func() {
 	BeforeEach(func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
 		evaluation.InitializeManager(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
-			testEnv.Config, testEnv.Client, randomString(), randomString(), libsveltosv1beta1.ClusterTypeCapi, 3, false)
+			testEnv.Config, testEnv.Client, randomString(), randomString(), randomString(),
+			libsveltosv1beta1.ClusterTypeCapi, 3, false)
 	})
 
 	AfterEach(func() {
