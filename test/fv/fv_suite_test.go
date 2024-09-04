@@ -107,7 +107,7 @@ var _ = BeforeSuite(func() {
 		if cm.Data == nil {
 			return false
 		}
-		return cm.Data["sveltos-agent-version"] != ""
+		return cm.Data["version"] != ""
 	}, timeout, pollingInterval).Should(BeTrue())
 })
 
