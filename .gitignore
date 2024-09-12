@@ -29,6 +29,7 @@ bin/manager
 manager_image_patch.yaml-e
 manager_pull_policy.yaml-e
 mgmt_cluster_manifest.yaml-e
+manager_auth_proxy_patch.yaml-e
 
 version.txt
 

@@ -79,6 +79,7 @@ var (
 	webhookPort         int
 	syncPeriod          time.Duration
 	healthAddr          string
+	version             string
 )
 
 // Add RBAC for the authorized diagnostics endpoint.
@@ -143,8 +144,8 @@ func main() {
 
 	const intervalInSecond = 3
 	evaluation.InitializeManager(ctx, mgr.GetLogger(),
-		mgr.GetConfig(), mgr.GetClient(), clusterNamespace, clusterName, libsveltosv1beta1.ClusterType(clusterType),
-		intervalInSecond, doSendReports)
+		mgr.GetConfig(), mgr.GetClient(), clusterNamespace, clusterName, version,
+		libsveltosv1beta1.ClusterType(clusterType), intervalInSecond, doSendReports)
 
 	go startControllers(ctx, mgr, sendReports)
 	//+kubebuilder:scaffold:builder
@@ -201,6 +202,13 @@ func initFlags(fs *pflag.FlagSet) {
 		"cluster-type",
 		"",
 		"cluster type",
+	)
+
+	flag.StringVar(
+		&version,
+		"version",
+		"",
+		"indicates sveltos-agent version",
 	)
 
 	fs.StringVar(&healthAddr, "health-addr", ":9440",

@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	lua "github.com/yuin/gopher-lua"
@@ -51,8 +52,13 @@ type healthStatus struct {
 }
 
 // evaluateHealthChecks evaluates all healthchecks awaiting evaluation
-func (m *manager) evaluateHealthChecks(ctx context.Context) {
+func (m *manager) evaluateHealthChecks(ctx context.Context, wg *sync.WaitGroup) {
+	var once sync.Once
+
 	for {
+		// Sleep before next evaluation
+		time.Sleep(m.interval)
+
 		m.log.V(logs.LogDebug).Info("Evaluating HealthChecks")
 		m.mu.Lock()
 		// Copy queue content. That is only operation that
@@ -85,8 +91,9 @@ func (m *manager) evaluateHealthChecks(ctx context.Context) {
 			m.EvaluateHealthCheck(failedEvaluations[i])
 		}
 
-		// Sleep before next evaluation
-		time.Sleep(m.interval)
+		once.Do(func() {
+			wg.Done()
+		})
 	}
 }
 

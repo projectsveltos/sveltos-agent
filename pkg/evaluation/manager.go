@@ -36,6 +36,7 @@ import (
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/libsveltos/lib/crd"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
+	"github.com/projectsveltos/libsveltos/lib/sveltos_upgrade"
 )
 
 var (
@@ -101,7 +102,7 @@ type manager struct {
 
 // InitializeManager initializes a manager implementing the ClassifierInterface
 func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, c client.Client,
-	clusterNamespace, clusterName string, cluserType libsveltosv1beta1.ClusterType,
+	clusterNamespace, clusterName, version string, cluserType libsveltosv1beta1.ClusterType,
 	intervalInSecond uint, sendReport bool) {
 
 	if managerInstance == nil {
@@ -132,11 +133,19 @@ func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, 
 
 			initializeReloaderMaps()
 
-			go managerInstance.evaluateClassifiers(ctx)
-			go managerInstance.evaluateHealthChecks(ctx)
-			go managerInstance.evaluateEventSources(ctx)
-			go managerInstance.evaluateReloaders(ctx)
+			var wg sync.WaitGroup
+
+			go managerInstance.evaluateClassifiers(ctx, &wg)
+			wg.Add(1)
+			go managerInstance.evaluateHealthChecks(ctx, &wg)
+			wg.Add(1)
+			go managerInstance.evaluateEventSources(ctx, &wg)
+			wg.Add(1)
+			go managerInstance.evaluateReloaders(ctx, &wg)
+			wg.Add(1)
+
 			go managerInstance.buildResourceToWatch(ctx)
+			go managerInstance.storeVersionForCompatibilityChecks(ctx, version, &wg)
 			// Start a watcher for CustomResourceDefinition
 			go crd.WatchCustomResourceDefinition(ctx, managerInstance.config,
 				restartIfNeeded, managerInstance.log)
@@ -303,4 +312,18 @@ func (m *manager) getServiceAccountInfo(obj client.Object) (namespace, name stri
 
 	return labels[libsveltosv1beta1.ServiceAccountNamespaceLabel],
 		labels[libsveltosv1beta1.ServiceAccountNameLabel]
+}
+
+func (m *manager) storeVersionForCompatibilityChecks(ctx context.Context, version string, wg *sync.WaitGroup) {
+	wg.Wait() // Wait for sveltos-agent to evaluate classifers, healthChecks, eventoSources and reloaders once
+
+	m.log.V(logs.LogInfo).Info(fmt.Sprintf("store version %s for compatibility checks", version))
+	for {
+		err := sveltos_upgrade.StoreSveltosAgentVersion(ctx, m.Client, version)
+		if err == nil {
+			break
+		}
+		m.log.V(logs.LogInfo).Info(fmt.Sprintf("failed to store version %s for compatibility checks: %v", version, err))
+		time.Sleep(time.Second)
+	}
 }

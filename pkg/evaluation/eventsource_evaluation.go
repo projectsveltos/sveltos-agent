@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -53,8 +54,13 @@ type aggregatedStatus struct {
 }
 
 // evaluateEventSources evaluates all healthchecks awaiting evaluation
-func (m *manager) evaluateEventSources(ctx context.Context) {
+func (m *manager) evaluateEventSources(ctx context.Context, wg *sync.WaitGroup) {
+	var once sync.Once
+
 	for {
+		// Sleep before next evaluation
+		time.Sleep(m.interval)
+
 		m.log.V(logs.LogDebug).Info("Evaluating EventSources")
 		m.mu.Lock()
 		// Copy queue content. That is only operation that
@@ -87,8 +93,9 @@ func (m *manager) evaluateEventSources(ctx context.Context) {
 			m.EvaluateEventSource(failedEvaluations[i])
 		}
 
-		// Sleep before next evaluation
-		time.Sleep(m.interval)
+		once.Do(func() {
+			wg.Done()
+		})
 	}
 }
 
@@ -112,15 +119,15 @@ func (m *manager) evaluateEventSourceInstance(ctx context.Context, eventName str
 		return m.cleanEventReport(ctx, eventName)
 	}
 
-	var matchinResources []corev1.ObjectReference
+	var matchingResources []corev1.ObjectReference
 	var collectedResources []unstructured.Unstructured
-	matchinResources, collectedResources, err = m.getEventMatchingResources(ctx, event, logger)
+	matchingResources, collectedResources, err = m.getEventMatchingResources(ctx, event, logger)
 	if err != nil {
 		return err
 	}
 
-	if collectedResources == nil || matchinResources == nil {
-		err = m.createEventReport(ctx, event, matchinResources, nil)
+	if collectedResources == nil || matchingResources == nil {
+		err = m.createEventReport(ctx, event, matchingResources, nil)
 		if err != nil {
 			logger.Error(err, "failed to create/update EventReport")
 			return err
@@ -132,7 +139,7 @@ func (m *manager) evaluateEventSourceInstance(ctx context.Context, eventName str
 			return err
 		}
 
-		err = m.createEventReport(ctx, event, matchinResources, jsonResources)
+		err = m.createEventReport(ctx, event, matchingResources, jsonResources)
 		if err != nil {
 			logger.Error(err, "failed to create/update EventReport")
 			return err

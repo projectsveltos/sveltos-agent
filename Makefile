@@ -39,7 +39,7 @@ export CONTROLLER_IMG ?= $(REGISTRY)/$(IMAGE_NAME)
 TAG ?= main
 
 GOLANGCI_LINT_VERSION := "v1.59.0"
-CLUSTERCTL_VERSION := "v1.8.1"
+CLUSTERCTL_VERSION := "v1.8.3"
 
 ## Tool Binaries
 CONTROLLER_GEN := $(TOOLS_BIN_DIR)/controller-gen
@@ -247,8 +247,10 @@ undeploy: $(CONTROLLER_GEN) $(KUSTOMIZE) ## Undeploy controller from the K8s clu
 ##
 set-manifest-image:
 	$(info Updating kustomize image patch file for manager resource)
-	sed -i'' -e 's@image: .*@image: '"docker.io/${MANIFEST_IMG}:$(MANIFEST_TAG)"'@' ./config/default/manager_image_patch.yaml
-	sed -i'' -e 's@image: .*@image: '"docker.io/${MANIFEST_IMG}:$(MANIFEST_TAG)"'@' ./manifest/mgmt_cluster_manifest.yaml
+	sed -i'' -e 's@image: .*@image: '"docker.io/$(MANIFEST_IMG):$(MANIFEST_TAG)"'@' ./config/default/manager_image_patch.yaml
+	sed -i'' -e 's@image: .*@image: '"docker.io/$(MANIFEST_IMG):$(MANIFEST_TAG)"'@' ./manifest/mgmt_cluster_manifest.yaml
+	sed -i'' -e 's@--version=.*@--version=$(TAG)"@' ./config/default/manager_auth_proxy_patch.yaml
+	sed -i'' -e 's@--version=.*@--version=$(TAG)@' ./manifest/mgmt_cluster_manifest.yaml
 
 set-manifest-pull-policy:
 	$(info Updating kustomize pull policy file for manager resource)
