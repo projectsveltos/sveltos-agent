@@ -16,6 +16,6 @@ spec:
         - "--cluster-namespace="
         - "--cluster-name="
         - "--cluster-type="
-        - "--version=v0.38.3"
+        - "--version=v0.38.4"
         - "--current-cluster=managed-cluster"
         - "--run-mode=do-not-send-reports"
