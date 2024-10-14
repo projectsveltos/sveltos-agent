@@ -142,7 +142,7 @@ func main() {
 		doSendReports = false
 	}
 
-	const intervalInSecond = 3
+	const intervalInSecond = int64(3)
 	evaluation.InitializeManager(ctx, mgr.GetLogger(),
 		mgr.GetConfig(), mgr.GetClient(), clusterNamespace, clusterName, version,
 		libsveltosv1beta1.ClusterType(clusterType), intervalInSecond, doSendReports)

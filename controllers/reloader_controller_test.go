@@ -46,7 +46,7 @@ var _ = Describe("Controllers: reloader controller", func() {
 		watcherCtx, cancel = context.WithCancel(context.Background())
 		evaluation.InitializeManager(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 			testEnv.Config, testEnv.Client, randomString(), randomString(), randomString(),
-			libsveltosv1beta1.ClusterTypeCapi, 3, false)
+			libsveltosv1beta1.ClusterTypeCapi, int64(3), false)
 	})
 
 	AfterEach(func() {
