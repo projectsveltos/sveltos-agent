@@ -116,7 +116,7 @@ func GetUnknownResourcesToWatch() []schema.GroupVersionKind {
 
 func InitializeManagerWithSkip(ctx context.Context, l logr.Logger, config *rest.Config, c client.Client,
 	clusterNamespace, clusterName string, cluserType libsveltosv1beta1.ClusterType,
-	intervalInSecond uint) {
+	intervalInSecond int64) {
 
 	// Used only for testing purposes (so to avoid using testEnv when not required by test)
 	if managerInstance == nil {

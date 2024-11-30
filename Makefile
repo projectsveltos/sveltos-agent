@@ -38,8 +38,8 @@ K8S_LATEST_VER ?= $(shell curl -s https://storage.googleapis.com/kubernetes-rele
 export CONTROLLER_IMG ?= $(REGISTRY)/$(IMAGE_NAME)
 TAG ?= main
 
-GOLANGCI_LINT_VERSION := "v1.59.0"
-CLUSTERCTL_VERSION := "v1.8.3"
+GOLANGCI_LINT_VERSION := "v1.61.0"
+CLUSTERCTL_VERSION := "v1.8.5"
 
 ## Tool Binaries
 CONTROLLER_GEN := $(TOOLS_BIN_DIR)/controller-gen
@@ -158,7 +158,7 @@ endif
 # K8S_VERSION for the Kind cluster can be set as environment variable. If not defined,
 # this default value is used
 ifndef K8S_VERSION
-K8S_VERSION := v1.31.0
+K8S_VERSION := v1.31.2
 endif
 
 KIND_CONFIG ?= kind-cluster.yaml

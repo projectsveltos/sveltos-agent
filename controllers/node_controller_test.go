@@ -87,7 +87,7 @@ var _ = Describe("Controllers: node controller", func() {
 
 		evaluation.InitializeManager(watcherCtx, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),
 			testEnv.Config, testEnv.Client, randomString(), randomString(), randomString(),
-			libsveltosv1beta1.ClusterTypeCapi, 3, false)
+			libsveltosv1beta1.ClusterTypeCapi, int64(3), false)
 
 		reconciler := &controllers.NodeReconciler{
 			Client: testEnv.Client,

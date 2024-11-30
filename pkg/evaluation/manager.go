@@ -103,7 +103,7 @@ type manager struct {
 // InitializeManager initializes a manager implementing the ClassifierInterface
 func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, c client.Client,
 	clusterNamespace, clusterName, version string, cluserType libsveltosv1beta1.ClusterType,
-	intervalInSecond uint, sendReport bool) {
+	intervalInSecond int64, sendReport bool) {
 
 	if managerInstance == nil {
 		getManagerLock.Lock()
