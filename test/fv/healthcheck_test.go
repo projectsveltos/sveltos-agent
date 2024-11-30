@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
-	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
@@ -113,7 +113,7 @@ var _ = Describe("Classification", func() {
 	It("Evaluate healthCheck", Label("FV"), func() {
 		By("Creating a nginx deployment")
 		deploymentName := nginxPrefix + randomString()
-		u, err := libsveltosutils.GetUnstructured([]byte(fmt.Sprintf(nginxDeployment, deploymentName, "default")))
+		u, err := k8s_utils.GetUnstructured([]byte(fmt.Sprintf(nginxDeployment, deploymentName, "default")))
 		Expect(err).To(BeNil())
 		err = k8sClient.Create(context.TODO(), u)
 		if err != nil {

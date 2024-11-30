@@ -32,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
-	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
@@ -122,7 +122,7 @@ var _ = Describe("Reloader", func() {
 		Expect(k8sClient.Create(context.TODO(), ns)).To(Succeed())
 
 		By("Creating a ConfigMap")
-		configMap, err := libsveltosutils.GetUnstructured([]byte(fmt.Sprintf(mountedConfigMap, ns.Name)))
+		configMap, err := k8s_utils.GetUnstructured([]byte(fmt.Sprintf(mountedConfigMap, ns.Name)))
 		Expect(err).To(BeNil())
 		err = k8sClient.Create(context.TODO(), configMap)
 		if err != nil {
@@ -131,7 +131,7 @@ var _ = Describe("Reloader", func() {
 
 		By("Creating a deployment mounting a ConfigMap")
 		var deployment *unstructured.Unstructured
-		deployment, err = libsveltosutils.GetUnstructured([]byte(fmt.Sprintf(deploymentWithConfigMap, ns.Name)))
+		deployment, err = k8s_utils.GetUnstructured([]byte(fmt.Sprintf(deploymentWithConfigMap, ns.Name)))
 		Expect(err).To(BeNil())
 		err = k8sClient.Create(context.TODO(), deployment)
 		if err != nil {

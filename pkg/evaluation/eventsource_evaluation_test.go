@@ -36,7 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
-	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
@@ -129,7 +129,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(manager).ToNot(BeNil())
 
 		replicas := 3
-		depl, err := libsveltosutils.GetUnstructured([]byte(fmt.Sprintf(deploymentTemplate, replicas, 1, 1, 1)))
+		depl, err := k8s_utils.GetUnstructured([]byte(fmt.Sprintf(deploymentTemplate, replicas, 1, 1, 1)))
 		Expect(err).To(BeNil())
 
 		var isMatch bool
@@ -147,7 +147,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		Expect(manager).ToNot(BeNil())
 
 		replicas := 3
-		depl, err := libsveltosutils.GetUnstructured([]byte(fmt.Sprintf(deploymentTemplate, replicas,
+		depl, err := k8s_utils.GetUnstructured([]byte(fmt.Sprintf(deploymentTemplate, replicas,
 			replicas, replicas, replicas)))
 		Expect(err).To(BeNil())
 
@@ -650,7 +650,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			}
 
 			var policy *unstructured.Unstructured
-			policy, err = libsveltosutils.GetUnstructured([]byte(elements[i]))
+			policy, err = k8s_utils.GetUnstructured([]byte(elements[i]))
 			Expect(err).To(BeNil())
 
 			if policy.GetNamespace() == depl1.Namespace && policy.GetName() == depl1.Name {

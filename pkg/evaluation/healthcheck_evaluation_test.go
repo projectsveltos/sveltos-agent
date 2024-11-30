@@ -36,7 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
-	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
@@ -181,7 +181,7 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		manager := evaluation.GetManager()
 		Expect(manager).ToNot(BeNil())
 
-		cluster, err := libsveltosutils.GetUnstructured([]byte(cluster_degraded))
+		cluster, err := k8s_utils.GetUnstructured([]byte(cluster_degraded))
 		Expect(err).To(BeNil())
 
 		var status *evaluation.HealthStatus
