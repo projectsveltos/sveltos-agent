@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
-	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
@@ -295,7 +295,7 @@ func getEventSource(dirName string) *libsveltosv1beta1.EventSource {
 	content, err := os.ReadFile(eventSourceFileName)
 	Expect(err).To(BeNil())
 
-	u, err := libsveltosutils.GetUnstructured(content)
+	u, err := k8s_utils.GetUnstructured(content)
 	Expect(err).To(BeNil())
 
 	var eventSource libsveltosv1beta1.EventSource
@@ -310,7 +310,7 @@ func getHealthCheck(dirName string) *libsveltosv1beta1.HealthCheck {
 	content, err := os.ReadFile(healthCheckFileName)
 	Expect(err).To(BeNil())
 
-	u, err := libsveltosutils.GetUnstructured(content)
+	u, err := k8s_utils.GetUnstructured(content)
 	Expect(err).To(BeNil())
 
 	var healthCheck libsveltosv1beta1.HealthCheck
@@ -325,7 +325,7 @@ func getClassifier(dirName string) *libsveltosv1beta1.Classifier {
 	content, err := os.ReadFile(classifierFileName)
 	Expect(err).To(BeNil())
 
-	u, err := libsveltosutils.GetUnstructured(content)
+	u, err := k8s_utils.GetUnstructured(content)
 	Expect(err).To(BeNil())
 
 	var classifier libsveltosv1beta1.Classifier
@@ -350,7 +350,7 @@ func getResources(dirName, fileName string) []*unstructured.Unstructured {
 	resources := make([]*unstructured.Unstructured, 0)
 	elements := strings.Split(string(content), "---")
 	for i := range elements {
-		u, err := libsveltosutils.GetUnstructured([]byte(elements[i]))
+		u, err := k8s_utils.GetUnstructured([]byte(elements[i]))
 		Expect(err).To(BeNil())
 		resources = append(resources, u)
 	}

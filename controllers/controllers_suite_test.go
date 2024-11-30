@@ -40,7 +40,7 @@ import (
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/libsveltos/lib/crd"
-	"github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 	"github.com/projectsveltos/sveltos-agent/internal/test/helpers"
 )
 
@@ -96,37 +96,37 @@ var _ = BeforeSuite(func() {
 		}
 	}()
 
-	classifierCRD, err := utils.GetUnstructured(crd.GetClassifierCRDYAML())
+	classifierCRD, err := k8s_utils.GetUnstructured(crd.GetClassifierCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, classifierCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, classifierCRD)).To(Succeed())
 
-	classifierReportCRD, err := utils.GetUnstructured(crd.GetClassifierReportCRDYAML())
+	classifierReportCRD, err := k8s_utils.GetUnstructured(crd.GetClassifierReportCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, classifierReportCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, classifierReportCRD)).To(Succeed())
 
-	healthCheckCRD, err := utils.GetUnstructured(crd.GetHealthCheckCRDYAML())
+	healthCheckCRD, err := k8s_utils.GetUnstructured(crd.GetHealthCheckCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, healthCheckCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, healthCheckCRD)).To(Succeed())
 
-	healthCheckReportRD, err := utils.GetUnstructured(crd.GetHealthCheckReportCRDYAML())
+	healthCheckReportRD, err := k8s_utils.GetUnstructured(crd.GetHealthCheckReportCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, healthCheckReportRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, healthCheckReportRD)).To(Succeed())
 
-	eventSourceCRD, err := utils.GetUnstructured(crd.GetEventSourceCRDYAML())
+	eventSourceCRD, err := k8s_utils.GetUnstructured(crd.GetEventSourceCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, eventSourceCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, eventSourceCRD)).To(Succeed())
 
-	eventReportCRD, err := utils.GetUnstructured(crd.GetEventReportCRDYAML())
+	eventReportCRD, err := k8s_utils.GetUnstructured(crd.GetEventReportCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, eventReportCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, eventReportCRD)).To(Succeed())
 
-	reloaderCRD, err := utils.GetUnstructured(crd.GetReloaderCRDYAML())
+	reloaderCRD, err := k8s_utils.GetUnstructured(crd.GetReloaderCRDYAML())
 	Expect(err).To(BeNil())
 	Expect(testEnv.Create(ctx, reloaderCRD)).To(Succeed())
 	Expect(waitForObject(ctx, testEnv.Client, reloaderCRD)).To(Succeed())

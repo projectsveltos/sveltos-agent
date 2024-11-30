@@ -41,8 +41,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
-	libutils "github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
@@ -156,7 +156,7 @@ func (m *manager) evaluateClassifierInstance(ctx context.Context, classifierName
 func (m *manager) isVersionAMatch(ctx context.Context,
 	classifier *libsveltosv1beta1.Classifier) (bool, error) {
 
-	currentVersion, err := libutils.GetKubernetesVersion(ctx, m.config, m.log)
+	currentVersion, err := k8s_utils.GetKubernetesVersion(ctx, m.config, m.log)
 	if err != nil {
 		m.log.Error(err, "failed to get cluster kubernetes version")
 		return false, err

@@ -31,8 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
-	"github.com/projectsveltos/libsveltos/lib/utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 )
 
@@ -68,7 +68,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	logger = logger.WithValues("node", node.Name)
 
-	version, err := utils.GetKubernetesVersion(ctx, r.Config, logger)
+	version, err := k8s_utils.GetKubernetesVersion(ctx, r.Config, logger)
 	if err != nil {
 		return reconcile.Result{}, nil
 	}
