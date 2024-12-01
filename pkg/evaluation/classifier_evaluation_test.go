@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
-	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/evaluation"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
@@ -470,7 +470,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 		count := 3
 		for i := 0; i < count; i++ {
 			pod := fmt.Sprintf(podTemplate, namespace, randomString())
-			u, err := libsveltosutils.GetUnstructured([]byte(pod))
+			u, err := k8s_utils.GetUnstructured([]byte(pod))
 			Expect(err).To(BeNil())
 			Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
 			waitForObject(context.TODO(), testEnv.Client, u)
@@ -490,7 +490,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 
 		// Add one more pod so now the number of pod
 		pod := fmt.Sprintf(podTemplate, namespace, randomString())
-		u, err := libsveltosutils.GetUnstructured([]byte(pod))
+		u, err := k8s_utils.GetUnstructured([]byte(pod))
 		Expect(err).To(BeNil())
 		Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
 		waitForObject(context.TODO(), testEnv.Client, u)
@@ -546,7 +546,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
 
 		// Create pod (labels are currently not a match for classifier)
 		pod := fmt.Sprintf(podTemplate, namespace, randomString())
-		u, err := libsveltosutils.GetUnstructured([]byte(pod))
+		u, err := k8s_utils.GetUnstructured([]byte(pod))
 		u.SetLabels(map[string]string{key1: value1})
 		Expect(err).To(BeNil())
 		Expect(testEnv.Create(context.TODO(), u)).To(Succeed())
@@ -601,7 +601,7 @@ var _ = Describe("Manager: classifier evaluation", func() {
       end`
 
 		namespace := randomString()
-		u, err := libsveltosutils.GetUnstructured([]byte(fmt.Sprintf(podTemplate, namespace, randomString())))
+		u, err := k8s_utils.GetUnstructured([]byte(fmt.Sprintf(podTemplate, namespace, randomString())))
 		Expect(err).To(BeNil())
 
 		evaluation.InitializeManagerWithSkip(context.TODO(), textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))),

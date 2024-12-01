@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
-	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
@@ -58,7 +58,7 @@ var _ = Describe("Events", func() {
 	It("Evaluate eventSource", Label("FV"), func() {
 		By("Creating a nginx deployment")
 		deploymentName := nginxPrefix + randomString()
-		u, err := libsveltosutils.GetUnstructured([]byte(fmt.Sprintf(nginxDeployment, deploymentName, randomString())))
+		u, err := k8s_utils.GetUnstructured([]byte(fmt.Sprintf(nginxDeployment, deploymentName, randomString())))
 		Expect(err).To(BeNil())
 		err = k8sClient.Create(context.TODO(), u)
 		if err != nil {

@@ -33,7 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
-	libsveltosutils "github.com/projectsveltos/libsveltos/lib/utils"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
@@ -117,7 +117,7 @@ var _ = Describe("Classification: crd", Serial, func() {
 
 		By("Posting ServiceMonitor CRD")
 		var crd *unstructured.Unstructured
-		crd, err := libsveltosutils.GetUnstructured([]byte(serviceMonitorCRD))
+		crd, err := k8s_utils.GetUnstructured([]byte(serviceMonitorCRD))
 		Expect(err).To(BeNil())
 		err = k8sClient.Create(context.TODO(), crd)
 		if err != nil {
@@ -143,7 +143,7 @@ var _ = Describe("Classification: crd", Serial, func() {
 
 		tmpServiceMonitorYAML := fmt.Sprintf(serviceMonitorInstance, tmpNs.Name, key, value)
 		var tmpServiceMonitor *unstructured.Unstructured
-		tmpServiceMonitor, err = libsveltosutils.GetUnstructured([]byte(tmpServiceMonitorYAML))
+		tmpServiceMonitor, err = k8s_utils.GetUnstructured([]byte(tmpServiceMonitorYAML))
 		Expect(err).To(BeNil())
 		Expect(k8sClient.Create(context.TODO(), tmpServiceMonitor)).To(Succeed())
 
