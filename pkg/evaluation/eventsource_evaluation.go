@@ -39,6 +39,7 @@ import (
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
+	sveltoslua "github.com/projectsveltos/libsveltos/lib/lua"
 	"github.com/projectsveltos/libsveltos/lib/roles"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
@@ -297,7 +298,7 @@ func (m *manager) isMatchForEventSource(resource *unstructured.Unstructured, scr
 	l := lua.NewState()
 	defer l.Close()
 
-	obj := mapToTable(resource.UnstructuredContent())
+	obj := sveltoslua.MapToTable(resource.UnstructuredContent())
 
 	if err := l.DoString(script); err != nil {
 		m.log.V(logs.LogInfo).Info(fmt.Sprintf("doString failed: %v", err))
@@ -318,11 +319,11 @@ func (m *manager) isMatchForEventSource(resource *unstructured.Unstructured, scr
 	lv := l.Get(-1)
 	tbl, ok := lv.(*lua.LTable)
 	if !ok {
-		logger.V(logs.LogInfo).Info(luaTableError)
-		return false, fmt.Errorf("%s", luaTableError)
+		logger.V(logs.LogInfo).Info(sveltoslua.LuaTableError)
+		return false, fmt.Errorf("%s", sveltoslua.LuaTableError)
 	}
 
-	goResult := toGoValue(tbl)
+	goResult := sveltoslua.ToGoValue(tbl)
 	resultJson, err := json.Marshal(goResult)
 	if err != nil {
 		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to marshal result: %v", err))
@@ -388,7 +389,7 @@ func (m *manager) aggregatedSelection(luaScript string, resources []*unstructure
 	// Create an argument table
 	argTable := l.NewTable()
 	for _, resource := range resources {
-		obj := mapToTable(resource.UnstructuredContent())
+		obj := sveltoslua.MapToTable(resource.UnstructuredContent())
 		argTable.Append(obj)
 	}
 
@@ -406,11 +407,11 @@ func (m *manager) aggregatedSelection(luaScript string, resources []*unstructure
 	lv := l.Get(-1)
 	tbl, ok := lv.(*lua.LTable)
 	if !ok {
-		logger.V(logs.LogInfo).Info(luaTableError)
-		return nil, fmt.Errorf("%s", luaTableError)
+		logger.V(logs.LogInfo).Info(sveltoslua.LuaTableError)
+		return nil, fmt.Errorf("%s", sveltoslua.LuaTableError)
 	}
 
-	goResult := toGoValue(tbl)
+	goResult := sveltoslua.ToGoValue(tbl)
 	resultJson, err := json.Marshal(goResult)
 	if err != nil {
 		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to marshal result: %v", err))
