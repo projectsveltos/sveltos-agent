@@ -31,6 +31,7 @@ import (
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
+	sveltoslua "github.com/projectsveltos/libsveltos/lib/lua"
 	"github.com/projectsveltos/sveltos-agent/pkg/utils"
 )
 
@@ -291,7 +292,7 @@ func (m *manager) getResourceHealthStatuses(resources []*unstructured.Unstructur
 	// Create an argument table
 	argTable := l.NewTable()
 	for i := range resources {
-		obj := mapToTable(resources[i].UnstructuredContent())
+		obj := sveltoslua.MapToTable(resources[i].UnstructuredContent())
 		argTable.Append(obj)
 	}
 
@@ -314,11 +315,11 @@ func (m *manager) getResourceHealthStatuses(resources []*unstructured.Unstructur
 	lv := l.Get(-1)
 	tbl, ok := lv.(*lua.LTable)
 	if !ok {
-		m.log.V(logs.LogInfo).Info(luaTableError)
-		return nil, fmt.Errorf("%s", luaTableError)
+		m.log.V(logs.LogInfo).Info(sveltoslua.LuaTableError)
+		return nil, fmt.Errorf("%s", sveltoslua.LuaTableError)
 	}
 
-	goResult := toGoValue(tbl)
+	goResult := sveltoslua.ToGoValue(tbl)
 	resultJson, err := json.Marshal(goResult)
 	if err != nil {
 		m.log.V(logs.LogInfo).Info(fmt.Sprintf("failed to marshal result: %v", err))
