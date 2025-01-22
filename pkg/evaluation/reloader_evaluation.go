@@ -71,61 +71,67 @@ func (m *manager) evaluateReloaders(ctx context.Context, wg *sync.WaitGroup) {
 	var once sync.Once
 
 	for {
-		// Sleep before next evaluation
-		time.Sleep(m.interval)
+		select {
+		case <-ctx.Done():
+			m.log.V(logs.LogInfo).Info("Context canceled. Exiting evaluation.")
+			return // Exit the goroutine
+		default:
+			// Sleep before next evaluation
+			time.Sleep(m.interval)
 
-		m.log.V(logs.LogDebug).Info("Evaluating Reloaders")
-		m.mu.Lock()
-		// Copy queue content. That is only operation that
-		// needs to be done in a mutex protect section
-		jobQueueCopy := make([]string, len(m.reloaderJobQueue))
-		i := 0
-		for k := range m.reloaderJobQueue {
-			jobQueueCopy[i] = k
-			i++
-		}
-		// Reset current queue
-		m.reloaderJobQueue = make(map[string]bool)
-		m.mu.Unlock()
+			m.log.V(logs.LogDebug).Info("Evaluating Reloaders")
+			m.mu.Lock()
+			// Copy queue content. That is only operation that
+			// needs to be done in a mutex protect section
+			jobQueueCopy := make([]string, len(m.reloaderJobQueue))
+			i := 0
+			for k := range m.reloaderJobQueue {
+				jobQueueCopy[i] = k
+				i++
+			}
+			// Reset current queue
+			m.reloaderJobQueue = make(map[string]bool)
+			m.mu.Unlock()
 
-		failedEvaluations := make([]string, 0)
+			failedEvaluations := make([]string, 0)
 
-		// format is
-		// - kind:name for Reloader
-		// - kind:namespace/name for ConfigMap/Secret
+			// format is
+			// - kind:name for Reloader
+			// - kind:namespace/name for ConfigMap/Secret
 
-		for i := range jobQueueCopy {
-			var err error
-			parts := strings.Split(jobQueueCopy[i], ":")
-			if len(parts) != partNumber {
-				m.log.V(logs.LogInfo).Info(fmt.Sprintf("incorrect format %s", jobQueueCopy[i]))
-				continue
+			for i := range jobQueueCopy {
+				var err error
+				parts := strings.Split(jobQueueCopy[i], ":")
+				if len(parts) != partNumber {
+					m.log.V(logs.LogInfo).Info(fmt.Sprintf("incorrect format %s", jobQueueCopy[i]))
+					continue
+				}
+
+				if strings.Contains(parts[1], "/") {
+					m.log.V(logs.LogDebug).Info(fmt.Sprintf("Evaluating %s %s", parts[0], parts[1]))
+					err = m.evaluateMountedResource(ctx, parts[0], parts[1])
+				} else {
+					m.log.V(logs.LogDebug).Info(fmt.Sprintf("Evaluating Reloader %s", parts[1]))
+					err = m.evaluateReloaderInstance(ctx, parts[1])
+				}
+
+				if err != nil {
+					m.log.V(logs.LogInfo).Error(err,
+						fmt.Sprintf("failed to evaluate %s", jobQueueCopy[i]))
+					failedEvaluations = append(failedEvaluations, jobQueueCopy[i])
+				}
 			}
 
-			if strings.Contains(parts[1], "/") {
-				m.log.V(logs.LogDebug).Info(fmt.Sprintf("Evaluating %s %s", parts[0], parts[1]))
-				err = m.evaluateMountedResource(ctx, parts[0], parts[1])
-			} else {
-				m.log.V(logs.LogDebug).Info(fmt.Sprintf("Evaluating Reloader %s", parts[1]))
-				err = m.evaluateReloaderInstance(ctx, parts[1])
+			// Re-queue all Reloaders whose evaluation failed
+			for i := range failedEvaluations {
+				m.log.V(logs.LogDebug).Info(fmt.Sprintf("requeuing Reloader %s for evaluation", failedEvaluations[i]))
+				m.EvaluateReloader(failedEvaluations[i])
 			}
 
-			if err != nil {
-				m.log.V(logs.LogInfo).Error(err,
-					fmt.Sprintf("failed to evaluate %s", jobQueueCopy[i]))
-				failedEvaluations = append(failedEvaluations, jobQueueCopy[i])
-			}
+			once.Do(func() {
+				wg.Done()
+			})
 		}
-
-		// Re-queue all Reloaders whose evaluation failed
-		for i := range failedEvaluations {
-			m.log.V(logs.LogDebug).Info(fmt.Sprintf("requeuing Reloader %s for evaluation", failedEvaluations[i]))
-			m.EvaluateReloader(failedEvaluations[i])
-		}
-
-		once.Do(func() {
-			wg.Done()
-		})
 	}
 }
 

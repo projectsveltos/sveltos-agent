@@ -40,41 +40,48 @@ import (
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/libsveltos/lib/logsettings"
+	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 )
 
 func (m *manager) buildResourceToWatch(ctx context.Context) {
 	for {
-		request := atomic.LoadUint32(&m.rebuildResourceToWatch)
-		if request != 0 {
-			atomic.StoreUint32(&m.rebuildResourceToWatch, 0)
-			gvksMap, err := m.buildList(ctx)
-			if err != nil {
-				m.log.Error(err, "failed to rebuild list of resources to watch")
-				atomic.StoreUint32(&m.rebuildResourceToWatch, 1)
-				continue
-			}
-
-			tmpResourceToWatch := m.buildSortedList(gvksMap)
-
-			m.mu.Lock()
-			if reflect.DeepEqual(tmpResourceToWatch, m.resourcesToWatch) {
-				m.log.V(logsettings.LogInfo).Info("list of resources to watch has not changed")
-			} else {
-				m.log.V(logsettings.LogInfo).Info("list of resources to watch has changed")
-				// Updates watchers
-				err = m.updateWatchers(ctx, tmpResourceToWatch)
+		select {
+		case <-ctx.Done():
+			m.log.V(logs.LogInfo).Info("Context canceled. Exiting watcher.")
+			return // Exit the goroutine
+		default:
+			request := atomic.LoadUint32(&m.rebuildResourceToWatch)
+			if request != 0 {
+				atomic.StoreUint32(&m.rebuildResourceToWatch, 0)
+				gvksMap, err := m.buildList(ctx)
 				if err != nil {
-					m.log.Error(err, "failed to update watchers")
+					m.log.Error(err, "failed to rebuild list of resources to watch")
 					atomic.StoreUint32(&m.rebuildResourceToWatch, 1)
-				} else {
-					copy(m.resourcesToWatch, tmpResourceToWatch)
+					continue
 				}
-			}
-			m.mu.Unlock()
-		}
 
-		// Sleep before next evaluation
-		time.Sleep(m.interval)
+				tmpResourceToWatch := m.buildSortedList(gvksMap)
+
+				m.mu.Lock()
+				if reflect.DeepEqual(tmpResourceToWatch, m.resourcesToWatch) {
+					m.log.V(logsettings.LogInfo).Info("list of resources to watch has not changed")
+				} else {
+					m.log.V(logsettings.LogInfo).Info("list of resources to watch has changed")
+					// Updates watchers
+					err = m.updateWatchers(ctx, tmpResourceToWatch)
+					if err != nil {
+						m.log.Error(err, "failed to update watchers")
+						atomic.StoreUint32(&m.rebuildResourceToWatch, 1)
+					} else {
+						copy(m.resourcesToWatch, tmpResourceToWatch)
+					}
+				}
+				m.mu.Unlock()
+			}
+
+			// Sleep before next evaluation
+			time.Sleep(m.interval)
+		}
 	}
 }
 

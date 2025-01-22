@@ -39,10 +39,12 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/textlogger"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
@@ -51,6 +53,7 @@ import (
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	"github.com/projectsveltos/libsveltos/lib/clusterproxy"
+	"github.com/projectsveltos/libsveltos/lib/k8s_utils"
 	"github.com/projectsveltos/libsveltos/lib/logsettings"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
@@ -102,60 +105,80 @@ func main() {
 	ctrl.SetLogger(klog.Background())
 
 	ctx := ctrl.SetupSignalHandler()
+	registerForLogSettings(ctx, ctrl.Log.WithName("log-setter"))
 
-	restConfig := ctrl.GetConfigOrDie()
-	if deployedCluster != managedCluster {
-		// if sveltos-agent is running in the management cluster, get the kubeconfig
-		// of the managed cluster
-		restConfig = getManagedClusterRestConfig(ctx, restConfig, ctrl.Log.WithName("get-kubeconfig"))
-	}
-	restConfig.QPS = restConfigQPS
-	restConfig.Burst = restConfigBurst
+	// If the agent is running in the management cluster, the token to access the managed
+	// cluster can expire and be renewed. In such a case, it is needed to create a new manager,
+	// start again all controllers and the evaluation manager.
+	// A context with a Done channel is created and if we detect the token has expired (by
+	// getting unathorized errors), the context channel is closed which terminates the manager
+	// and the evaluation manager.
+	for {
+		ctxWithCancel, cancel := context.WithCancel(ctx)
+		restConfig := ctrl.GetConfigOrDie()
+		if deployedCluster != managedCluster {
+			// if sveltos-agent is running in the management cluster, get the kubeconfig
+			// of the managed cluster
+			restConfig = getManagedClusterRestConfig(ctxWithCancel, restConfig, ctrl.Log.WithName("get-kubeconfig"))
+		}
+		restConfig.QPS = restConfigQPS
+		restConfig.Burst = restConfigBurst
 
-	logsettings.RegisterForLogSettings(ctx,
-		libsveltosv1beta1.ComponentClassifierAgent, ctrl.Log.WithName("log-setter"),
-		restConfig)
+		ctrlOptions := ctrl.Options{
+			Scheme:                 scheme,
+			Metrics:                getDiagnosticsOptions(),
+			HealthProbeBindAddress: healthAddr,
+			WebhookServer: webhook.NewServer(
+				webhook.Options{
+					Port: webhookPort,
+				}),
+			Cache: cache.Options{
+				SyncPeriod: &syncPeriod,
+			},
+			Controller: config.Controller{
+				// This is needed to avoid the controller with name xyz already exists
+				SkipNameValidation: ptr.To(true),
+			},
+		}
 
-	ctrlOptions := ctrl.Options{
-		Scheme:                 scheme,
-		Metrics:                getDiagnosticsOptions(),
-		HealthProbeBindAddress: healthAddr,
-		WebhookServer: webhook.NewServer(
-			webhook.Options{
-				Port: webhookPort,
-			}),
-		Cache: cache.Options{
-			SyncPeriod: &syncPeriod,
-		},
-	}
+		mgr, err := ctrl.NewManager(restConfig, ctrlOptions)
+		if err != nil {
+			setupLog.Error(err, "unable to start manager")
+			os.Exit(1)
+		}
 
-	mgr, err := ctrl.NewManager(restConfig, ctrlOptions)
-	if err != nil {
-		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
-	}
+		doSendReports := true
+		sendReports := controllers.SendReports // do not send reports
+		if runMode == noReports {
+			sendReports = controllers.DoNotSendReports
+			doSendReports = false
+		}
 
-	doSendReports := true
-	sendReports := controllers.SendReports // do not send reports
-	if runMode == noReports {
-		sendReports = controllers.DoNotSendReports
-		doSendReports = false
-	}
+		const intervalInSecond = int64(3)
+		evaluation.InitializeManager(ctxWithCancel, mgr.GetLogger(),
+			mgr.GetConfig(), mgr.GetClient(), clusterNamespace, clusterName, version,
+			libsveltosv1beta1.ClusterType(clusterType), intervalInSecond, doSendReports)
 
-	const intervalInSecond = int64(3)
-	evaluation.InitializeManager(ctx, mgr.GetLogger(),
-		mgr.GetConfig(), mgr.GetClient(), clusterNamespace, clusterName, version,
-		libsveltosv1beta1.ClusterType(clusterType), intervalInSecond, doSendReports)
+		go startControllers(ctxWithCancel, mgr, sendReports)
 
-	go startControllers(ctx, mgr, sendReports)
-	//+kubebuilder:scaffold:builder
+		//+kubebuilder:scaffold:builder
 
-	setupChecks(mgr)
+		if deployedCluster != managedCluster {
+			// if sveltos-agent is running in the management cluster, get the kubeconfig
+			// of the managed cluster
+			go restartIfNeeded(ctxWithCancel, cancel, restConfig, ctrl.Log.WithName("restarter"))
+		}
 
-	setupLog.Info("starting manager")
-	if err := mgr.Start(ctx); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+		setupChecks(mgr)
+
+		setupLog.Info("starting manager")
+		if err := mgr.Start(ctxWithCancel); err != nil {
+			setupLog.Error(err, "problem running manager")
+			os.Exit(1)
+		}
+
+		evaluationMgr := evaluation.GetManager()
+		evaluationMgr.Reset()
 	}
 }
 
@@ -179,7 +202,7 @@ func initFlags(fs *pflag.FlagSet) {
 		&deployedCluster,
 		"current-cluster",
 		managedCluster,
-		"Indicate whether drift-detection-manager was deployed in the managed or the management cluster. "+
+		"Indicate whether sveltos-agent was deployed in the managed or the management cluster. "+
 			"Possible options are managed-cluster or management-cluster.",
 	)
 
@@ -255,18 +278,19 @@ func startClassifierReconciler(ctx context.Context, mgr manager.Manager, sendRep
 
 		if isPresent {
 			setupLog.V(logs.LogInfo).Info("start classifier/node controller")
-			if err = (&controllers.NodeReconciler{
+			nodeReconciler := &controllers.NodeReconciler{
 				Client: mgr.GetClient(),
 				Scheme: mgr.GetScheme(),
 				Config: mgr.GetConfig(),
-			}).SetupWithManager(mgr); err != nil {
+			}
+			if err := nodeReconciler.SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "Node")
 				os.Exit(1)
 			}
 
 			// Do not change order. ClassifierReconciler initializes classification manager.
 			// NodeReconciler uses classification manager.
-			if err = (&controllers.ClassifierReconciler{
+			classifierReconciler := &controllers.ClassifierReconciler{
 				Client:             mgr.GetClient(),
 				Scheme:             mgr.GetScheme(),
 				RunMode:            sendReports,
@@ -276,7 +300,8 @@ func startClassifierReconciler(ctx context.Context, mgr manager.Manager, sendRep
 				ClusterNamespace:   clusterNamespace,
 				ClusterName:        clusterName,
 				ClusterType:        libsveltosv1beta1.ClusterType(clusterType),
-			}).SetupWithManager(mgr); err != nil {
+			}
+			if err := classifierReconciler.SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "Classifier")
 				os.Exit(1)
 			}
@@ -295,7 +320,7 @@ func startHealthCheckReconciler(ctx context.Context, mgr manager.Manager, sendRe
 
 		if isPresent {
 			setupLog.V(logs.LogInfo).Info("start healthCheck/healthCheckReport controllers")
-			if err = (&controllers.HealthCheckReconciler{
+			healthCheckReconciler := &controllers.HealthCheckReconciler{
 				Client:           mgr.GetClient(),
 				Scheme:           mgr.GetScheme(),
 				RunMode:          sendReports,
@@ -304,15 +329,17 @@ func startHealthCheckReconciler(ctx context.Context, mgr manager.Manager, sendRe
 				ClusterNamespace: clusterNamespace,
 				ClusterName:      clusterName,
 				ClusterType:      libsveltosv1beta1.ClusterType(clusterType),
-			}).SetupWithManager(mgr); err != nil {
+			}
+			if err := healthCheckReconciler.SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "HealthCheck")
 				os.Exit(1)
 			}
 
-			if err = (&controllers.HealthCheckReportReconciler{
+			healthCheckReportReconciler := &controllers.HealthCheckReportReconciler{
 				Client: mgr.GetClient(),
 				Scheme: mgr.GetScheme(),
-			}).SetupWithManager(mgr); err != nil {
+			}
+			if err := healthCheckReportReconciler.SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "HealthCheckReport")
 				os.Exit(1)
 			}
@@ -332,7 +359,7 @@ func startEventSourceReconciler(ctx context.Context, mgr manager.Manager, sendRe
 
 		if isPresent {
 			setupLog.V(logs.LogInfo).Info("start eventSource/eventReport controllers")
-			if err = (&controllers.EventSourceReconciler{
+			eventSourceReconciler := &controllers.EventSourceReconciler{
 				Client:           mgr.GetClient(),
 				Scheme:           mgr.GetScheme(),
 				RunMode:          sendReports,
@@ -341,15 +368,17 @@ func startEventSourceReconciler(ctx context.Context, mgr manager.Manager, sendRe
 				ClusterNamespace: clusterNamespace,
 				ClusterName:      clusterName,
 				ClusterType:      libsveltosv1beta1.ClusterType(clusterType),
-			}).SetupWithManager(mgr); err != nil {
+			}
+			if err := eventSourceReconciler.SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "EventSource")
 				os.Exit(1)
 			}
 
-			if err = (&controllers.EventReportReconciler{
+			eventReportReconciler := &controllers.EventReportReconciler{
 				Client: mgr.GetClient(),
 				Scheme: mgr.GetScheme(),
-			}).SetupWithManager(mgr); err != nil {
+			}
+			if err := eventReportReconciler.SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "EventReport")
 				os.Exit(1)
 			}
@@ -369,7 +398,7 @@ func startReloaderReconciler(ctx context.Context, mgr manager.Manager, sendRepor
 
 		if isPresent {
 			setupLog.V(logs.LogInfo).Info("start reloader controllers")
-			if err = (&controllers.ReloaderReconciler{
+			reloaderReconciler := &controllers.ReloaderReconciler{
 				Client:           mgr.GetClient(),
 				Scheme:           mgr.GetScheme(),
 				RunMode:          sendReports,
@@ -378,7 +407,8 @@ func startReloaderReconciler(ctx context.Context, mgr manager.Manager, sendRepor
 				ClusterNamespace: clusterNamespace,
 				ClusterName:      clusterName,
 				ClusterType:      libsveltosv1beta1.ClusterType(clusterType),
-			}).SetupWithManager(mgr); err != nil {
+			}
+			if err := reloaderReconciler.SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "Reloader")
 				os.Exit(1)
 			}
@@ -416,7 +446,7 @@ func getManagedClusterRestConfig(ctx context.Context, cfg *rest.Config, logger l
 	logger = logger.WithValues("cluster", fmt.Sprintf("%s:%s/%s", clusterType, clusterNamespace, clusterName))
 	logger.V(logsettings.LogInfo).Info("get secret with kubeconfig")
 
-	// When running in the management cluster, drift-detection-manager will need
+	// When running in the management cluster, sveltos-agent will need
 	// to access Secret and Cluster/SveltosCluster (to verify existence)
 	s := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(s); err != nil {
@@ -435,7 +465,7 @@ func getManagedClusterRestConfig(ctx context.Context, cfg *rest.Config, logger l
 		panic(1)
 	}
 
-	// In this mode, drift-detection-manager is running in the management cluster.
+	// In this mode, sveltos-agent is running in the management cluster.
 	// It access the managed cluster from here.
 	var currentCfg *rest.Config
 	currentCfg, err = clusterproxy.GetKubernetesRestConfig(ctx, c, clusterNamespace, clusterName, "", "",
@@ -482,4 +512,24 @@ func getDiagnosticsOptions() metricsserver.Options {
 		SecureServing:  true,
 		FilterProvider: filters.WithAuthenticationAndAuthorization,
 	}
+}
+
+func restartIfNeeded(ctx context.Context, cancel context.CancelFunc, restConfig *rest.Config, logger logr.Logger) {
+	for {
+		const interval = 10 * time.Second
+		time.Sleep(interval)
+		_, err := k8s_utils.GetKubernetesVersion(ctx, restConfig, logger)
+		if apierrors.IsUnauthorized(err) || apierrors.IsForbidden(err) {
+			logger.V(logs.LogInfo).Info(fmt.Sprintf("IsUnauthorized/IsForbidden %v. Cancel context", err))
+			cancel()
+			break
+		}
+	}
+}
+
+func registerForLogSettings(ctx context.Context, logger logr.Logger) {
+	restConfig := ctrl.GetConfigOrDie()
+	logsettings.RegisterForLogSettings(ctx,
+		libsveltosv1beta1.ComponentClassifierAgent, logger,
+		restConfig)
 }

@@ -156,10 +156,18 @@ func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, 
 // GetManager returns the manager instance implementing the ClassifierInterface.
 // Returns nil if manager has not been initialized yet
 func GetManager() *manager {
+	getManagerLock.Lock()
+	defer getManagerLock.Unlock()
 	if managerInstance != nil {
 		return managerInstance
 	}
 	return nil
+}
+
+func (m *manager) Reset() {
+	getManagerLock.Lock()
+	defer getManagerLock.Unlock()
+	managerInstance = nil
 }
 
 func (m *manager) RegisterClassifierMethod(react ReactToNotification) {
