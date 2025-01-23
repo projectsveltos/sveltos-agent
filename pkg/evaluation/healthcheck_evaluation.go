@@ -57,44 +57,50 @@ func (m *manager) evaluateHealthChecks(ctx context.Context, wg *sync.WaitGroup) 
 	var once sync.Once
 
 	for {
-		// Sleep before next evaluation
-		time.Sleep(m.interval)
+		select {
+		case <-ctx.Done():
+			m.log.V(logs.LogInfo).Info("Context canceled. Exiting evaluation.")
+			return // Exit the goroutine
+		default:
+			// Sleep before next evaluation
+			time.Sleep(m.interval)
 
-		m.log.V(logs.LogDebug).Info("Evaluating HealthChecks")
-		m.mu.Lock()
-		// Copy queue content. That is only operation that
-		// needs to be done in a mutex protect section
-		jobQueueCopy := make([]string, len(m.healthCheckJobQueue))
-		i := 0
-		for k := range m.healthCheckJobQueue {
-			jobQueueCopy[i] = k
-			i++
-		}
-		// Reset current queue
-		m.healthCheckJobQueue = make(map[string]bool)
-		m.mu.Unlock()
-
-		failedEvaluations := make([]string, 0)
-
-		for i := range jobQueueCopy {
-			m.log.V(logs.LogDebug).Info(fmt.Sprintf("Evaluating HealthCheck %s", jobQueueCopy[i]))
-			err := m.evaluateHealthCheckInstance(ctx, jobQueueCopy[i])
-			if err != nil {
-				m.log.V(logs.LogInfo).Error(err,
-					fmt.Sprintf("failed to evaluate HealthCheck %s", jobQueueCopy[i]))
-				failedEvaluations = append(failedEvaluations, jobQueueCopy[i])
+			m.log.V(logs.LogDebug).Info("Evaluating HealthChecks")
+			m.mu.Lock()
+			// Copy queue content. That is only operation that
+			// needs to be done in a mutex protect section
+			jobQueueCopy := make([]string, len(m.healthCheckJobQueue))
+			i := 0
+			for k := range m.healthCheckJobQueue {
+				jobQueueCopy[i] = k
+				i++
 			}
-		}
+			// Reset current queue
+			m.healthCheckJobQueue = make(map[string]bool)
+			m.mu.Unlock()
 
-		// Re-queue all HealthChecks whose evaluation failed
-		for i := range failedEvaluations {
-			m.log.V(logs.LogDebug).Info(fmt.Sprintf("requeuing HealthCheck %s for evaluation", failedEvaluations[i]))
-			m.EvaluateHealthCheck(failedEvaluations[i])
-		}
+			failedEvaluations := make([]string, 0)
 
-		once.Do(func() {
-			wg.Done()
-		})
+			for i := range jobQueueCopy {
+				m.log.V(logs.LogDebug).Info(fmt.Sprintf("Evaluating HealthCheck %s", jobQueueCopy[i]))
+				err := m.evaluateHealthCheckInstance(ctx, jobQueueCopy[i])
+				if err != nil {
+					m.log.V(logs.LogInfo).Error(err,
+						fmt.Sprintf("failed to evaluate HealthCheck %s", jobQueueCopy[i]))
+					failedEvaluations = append(failedEvaluations, jobQueueCopy[i])
+				}
+			}
+
+			// Re-queue all HealthChecks whose evaluation failed
+			for i := range failedEvaluations {
+				m.log.V(logs.LogDebug).Info(fmt.Sprintf("requeuing HealthCheck %s for evaluation", failedEvaluations[i]))
+				m.EvaluateHealthCheck(failedEvaluations[i])
+			}
+
+			once.Do(func() {
+				wg.Done()
+			})
+		}
 	}
 }
 
