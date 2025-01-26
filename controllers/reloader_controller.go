@@ -258,7 +258,7 @@ func (r *ReloaderReconciler) updateMaps(reloader *libsveltosv1beta1.Reloader) {
 
 // react gets called when an instance of passed in gvk has been modified.
 // This method queues all Reloader currently using that gvk to be evaluated.
-func (r *ReloaderReconciler) react(gvk *schema.GroupVersionKind) {
+func (r *ReloaderReconciler) react(gvk *schema.GroupVersionKind, _ interface{}) {
 	r.Mux.RLock()
 	defer r.Mux.RUnlock()
 

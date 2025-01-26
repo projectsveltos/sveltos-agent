@@ -108,6 +108,9 @@ func (m *manager) buildList(ctx context.Context) (map[schema.GroupVersionKind]bo
 		resources[k] = true
 	}
 
+	// Always watch for Secrets since this is where NATS configuration is
+	resources[*getSecretGVK()] = true
+
 	return resources, nil
 }
 
@@ -388,18 +391,24 @@ func (m *manager) gvkInstalled(gvk *schema.GroupVersionKind,
 	return apiResources[*gvk]
 }
 
-func (m *manager) react(gvk *schema.GroupVersionKind) {
+func (m *manager) react(gvk *schema.GroupVersionKind, obj interface{}) {
 	if m.reactClassifier != nil {
-		m.reactClassifier(gvk)
+		m.reactClassifier(gvk, obj)
 	}
 
 	if m.reactHealthCheck != nil {
-		m.reactHealthCheck(gvk)
+		m.reactHealthCheck(gvk, obj)
 	}
 
 	if m.reactEventSource != nil {
-		m.reactEventSource(gvk)
+		m.reactEventSource(gvk, obj)
 	}
+
+	if m.reactReloader != nil {
+		m.reactReloader(gvk, obj)
+	}
+
+	m.reactToNATS(gvk, obj)
 }
 
 func (m *manager) startWatcher(ctx context.Context, gvk *schema.GroupVersionKind) error {
@@ -468,15 +477,15 @@ func (m *manager) runInformer(stopCh <-chan struct{}, s cache.SharedIndexInforme
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			logger.V(logsettings.LogDebug).Info("got add notification")
-			react(gvk)
+			react(gvk, obj)
 		},
 		DeleteFunc: func(obj interface{}) {
 			logger.V(logsettings.LogDebug).Info("got delete notification")
-			react(gvk)
+			react(gvk, obj)
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			logger.V(logsettings.LogDebug).Info("got update notification")
-			react(gvk)
+			react(gvk, newObj)
 		},
 	}
 	_, err := s.AddEventHandler(handlers)

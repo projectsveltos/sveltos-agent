@@ -230,7 +230,7 @@ func (r *ClassifierReconciler) updateMaps(classifier *libsveltosv1beta1.Classifi
 
 // react gets called when an instance of passed in gvk has been modified.
 // This method queues all Classifier currently using that gvk to be evaluated.
-func (r *ClassifierReconciler) react(gvk *schema.GroupVersionKind) {
+func (r *ClassifierReconciler) react(gvk *schema.GroupVersionKind, _ interface{}) {
 	r.Mux.RLock()
 	defer r.Mux.RUnlock()
 

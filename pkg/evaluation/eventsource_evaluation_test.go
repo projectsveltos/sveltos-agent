@@ -97,7 +97,7 @@ status:
   replicas: %d`
 )
 
-var _ = Describe("Manager: healthcheck evaluation", func() {
+var _ = Describe("Manager: eventSource evaluation", func() {
 	var eventSource *libsveltosv1beta1.EventSource
 	var clusterNamespace string
 	var clusterName string
@@ -394,7 +394,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 		}
 		matchingResources := []corev1.ObjectReference{*deplRef}
 
-		Expect(evaluation.CreateEventReport(manager, context.TODO(), eventSource, matchingResources, nil)).To(Succeed())
+		Expect(evaluation.CreateEventReport(manager, context.TODO(), eventSource, matchingResources,
+			nil, nil)).To(Succeed())
 
 		Eventually(func() bool {
 			eventReport := &libsveltosv1beta1.EventReport{}
@@ -450,7 +451,8 @@ var _ = Describe("Manager: healthcheck evaluation", func() {
 			Kind:       "Deployment",
 		}
 		matchingResources := []corev1.ObjectReference{*deplRef}
-		Expect(evaluation.CreateEventReport(manager, context.TODO(), eventSource, matchingResources, nil)).To(Succeed())
+		Expect(evaluation.CreateEventReport(manager, context.TODO(), eventSource, matchingResources,
+			nil, nil)).To(Succeed())
 
 		Eventually(func() bool {
 			eventReport := &libsveltosv1beta1.EventReport{}
