@@ -223,7 +223,7 @@ func (r *HealthCheckReconciler) updateMaps(healthCheck *libsveltosv1beta1.Health
 
 // react gets called when an instance of passed in gvk has been modified.
 // This method queues all HealthCheck currently using that gvk to be evaluated.
-func (r *HealthCheckReconciler) react(gvk *schema.GroupVersionKind) {
+func (r *HealthCheckReconciler) react(gvk *schema.GroupVersionKind, _ interface{}) {
 	r.Mux.RLock()
 	defer r.Mux.RUnlock()
 

@@ -110,7 +110,7 @@ var _ = Describe("Manager: watchers", func() {
 		manager := evaluation.GetManager()
 		gvks, err := evaluation.BuildList(manager, context.TODO())
 		Expect(err).To(BeNil())
-		Expect(len(gvks)).To(Equal(2))
+		Expect(len(gvks)).To(Equal(3))
 		for i := range classifier.Spec.DeployedResourceConstraint.ResourceSelectors {
 			rs := classifier.Spec.DeployedResourceConstraint.ResourceSelectors[i]
 			gvk := schema.GroupVersionKind{

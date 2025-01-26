@@ -44,7 +44,7 @@ var (
 	managerInstance *manager
 )
 
-type ReactToNotification func(gvk *schema.GroupVersionKind)
+type ReactToNotification func(gvk *schema.GroupVersionKind, obj interface{})
 
 // manager represents a client implementing the ClassifierInterface
 type manager struct {
@@ -64,7 +64,8 @@ type manager struct {
 	// resourcesToWatch contains list of GVKs to watch
 	resourcesToWatch []schema.GroupVersionKind
 
-	mu *sync.Mutex
+	mu   *sync.Mutex
+	nats *sync.RWMutex
 
 	// classifierJobQueue contains name of all Classifier instances that need to be evaluated
 	classifierJobQueue map[string]bool
@@ -74,6 +75,10 @@ type manager struct {
 
 	// eventSourceJobQueue contains name of all EventSource instances that need to be evaluated
 	eventSourceJobQueue map[string]bool
+
+	// natsEventSources contains name of all EventSource instances that need to process incoming
+	// NATS messages
+	natsEventSources map[string]bool
 
 	// reloaderJobQueue contains:
 	// - kind:name of all Reloader instances that need to be evaluated
@@ -98,6 +103,8 @@ type manager struct {
 	reactHealthCheck ReactToNotification
 	reactEventSource ReactToNotification
 	reactReloader    ReactToNotification
+
+	messagingConfigurationHash []byte
 }
 
 // InitializeManager initializes a manager implementing the ClassifierInterface
@@ -115,8 +122,10 @@ func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, 
 			managerInstance.healthCheckJobQueue = make(map[string]bool)
 			managerInstance.eventSourceJobQueue = make(map[string]bool)
 			managerInstance.reloaderJobQueue = make(map[string]bool)
+			managerInstance.natsEventSources = make(map[string]bool)
 			managerInstance.interval = time.Duration(intervalInSecond) * time.Second
 			managerInstance.mu = &sync.Mutex{}
+			managerInstance.nats = &sync.RWMutex{}
 
 			managerInstance.resourcesToWatch = make([]schema.GroupVersionKind, 0)
 			managerInstance.rebuildResourceToWatch = 0
@@ -132,6 +141,8 @@ func InitializeManager(ctx context.Context, l logr.Logger, config *rest.Config, 
 			managerInstance.clusterType = cluserType
 
 			initializeReloaderMaps()
+
+			go managerInstance.listenForCloudEvents(ctx)
 
 			var wg sync.WaitGroup
 
@@ -219,6 +230,34 @@ func (m *manager) EvaluateEventSource(eventSourceName string) {
 	logger.V(logs.LogDebug).Info("queue eventSource for evaluation")
 
 	m.eventSourceJobQueue[eventSourceName] = true
+}
+
+// RegisterNatsEventSource registers an EventSource that need to be evaluated
+// anytime a CloudEvent is received over a NATS subject
+func (m *manager) RegisterNatsEventSource(eventSourceName string) {
+	m.nats.Lock()
+	defer m.nats.Unlock()
+
+	logger := m.log
+	logger = logger.WithValues("eventSource", eventSourceName)
+
+	logger.V(logs.LogDebug).Info("eventSource needs to process CloudEvents")
+
+	m.natsEventSources[eventSourceName] = true
+}
+
+// UnregisterNatsEventSource removes an EventSource from the list of EventSources
+// that are actively handling NATS messages.
+func (m *manager) UnregisterNatsEventSource(eventSourceName string) {
+	m.nats.Lock()
+	defer m.nats.Unlock()
+
+	logger := m.log
+	logger = logger.WithValues("eventSource", eventSourceName)
+
+	logger.V(logs.LogDebug).Info("eventSource needs to process CloudEvents")
+
+	delete(m.natsEventSources, eventSourceName)
 }
 
 // EvaluateReloader queues a Reloader instance for evaluation
@@ -325,5 +364,13 @@ func (m *manager) storeVersionForCompatibilityChecks(ctx context.Context, versio
 		}
 		m.log.V(logs.LogInfo).Info(fmt.Sprintf("failed to store version %s for compatibility checks: %v", version, err))
 		time.Sleep(time.Second)
+	}
+}
+
+func getSecretGVK() *schema.GroupVersionKind {
+	return &schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "Secret",
 	}
 }
