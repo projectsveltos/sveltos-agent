@@ -36,6 +36,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+	"k8s.io/client-go/util/retry"
 
 	libsveltosv1beta1 "github.com/projectsveltos/libsveltos/api/v1beta1"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
@@ -111,7 +112,7 @@ func (m *manager) evaluateEventSources(ctx context.Context, wg *sync.WaitGroup) 
 func (m *manager) evaluateEventSourceInstance(ctx context.Context, eventName string) error {
 	event := &libsveltosv1beta1.EventSource{}
 
-	logger := m.log.WithValues("event", eventName)
+	logger := m.log.WithValues("eventSource", eventName)
 	logger.V(logs.LogDebug).Info("evaluating")
 
 	err := m.Client.Get(ctx, types.NamespacedName{Name: eventName}, event)
@@ -133,8 +134,8 @@ func (m *manager) evaluateEventSourceInstance(ctx context.Context, eventName str
 		return err
 	}
 
-	if collectedResources == nil || matchingResources == nil {
-		err = m.createEventReport(ctx, event, matchingResources, nil)
+	if collectedResources == nil || len(matchingResources) == 0 {
+		err = m.createEventReport(ctx, event, matchingResources, nil, nil)
 		if err != nil {
 			logger.Error(err, "failed to create/update EventReport")
 			return err
@@ -146,7 +147,7 @@ func (m *manager) evaluateEventSourceInstance(ctx context.Context, eventName str
 			return err
 		}
 
-		err = m.createEventReport(ctx, event, matchingResources, jsonResources)
+		err = m.createEventReport(ctx, event, matchingResources, jsonResources, nil)
 		if err != nil {
 			logger.Error(err, "failed to create/update EventReport")
 			return err
@@ -166,46 +167,55 @@ func (m *manager) evaluateEventSourceInstance(ctx context.Context, eventName str
 
 // createEventReport creates EventReport or updates it if already exists.
 func (m *manager) createEventReport(ctx context.Context, event *libsveltosv1beta1.EventSource,
-	matchinResources []corev1.ObjectReference, jsonResources []byte) error {
+	matchinResources []corev1.ObjectReference, jsonResources []byte, cloudEvent []byte) error {
 
 	logger := m.log.WithValues("event", event.Name)
 
-	eventReport := &libsveltosv1beta1.EventReport{}
-	err := m.Get(ctx,
-		types.NamespacedName{Namespace: utils.ReportNamespace, Name: event.Name}, eventReport)
-	if err == nil {
-		return m.updateEventReport(ctx, event, matchinResources, jsonResources, eventReport)
-	}
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		eventReport := &libsveltosv1beta1.EventReport{}
+		err := m.Get(ctx,
+			types.NamespacedName{Namespace: utils.ReportNamespace, Name: event.Name}, eventReport)
+		if err == nil {
+			return m.updateEventReport(ctx, event, matchinResources, jsonResources, cloudEvent, eventReport)
+		}
 
-	if err != nil && !apierrors.IsNotFound(err) {
-		m.log.Error(err, "failed to get EventReport")
-		return err
-	}
+		if err != nil && !apierrors.IsNotFound(err) {
+			m.log.Error(err, "failed to get EventReport")
+			return err
+		}
 
-	m.log.V(logs.LogInfo).Info("creating EventReport")
-	eventReport = m.getEventReport(event.Name, matchinResources, jsonResources)
-	err = m.Create(ctx, eventReport)
-	if err != nil {
-		logger.Error(err, "failed to create eventReport")
-		return err
-	}
+		m.log.V(logs.LogInfo).Info("creating EventReport")
+		eventReport = m.getEventReport(event.Name, matchinResources, jsonResources, cloudEvent)
+		err = m.Create(ctx, eventReport)
+		if err != nil {
+			logger.Error(err, "failed to create eventReport")
+			return err
+		}
 
-	return m.updateEventReportStatus(ctx, eventReport)
+		return m.updateEventReportStatus(ctx, eventReport)
+	})
+	return err
 }
 
 // updateEventReport updates EventReport
 func (m *manager) updateEventReport(ctx context.Context, event *libsveltosv1beta1.EventSource,
-	matchinResources []corev1.ObjectReference, jsonResources []byte,
+	matchinResources []corev1.ObjectReference, jsonResources []byte, cloudEvent []byte,
 	eventReport *libsveltosv1beta1.EventReport) error {
 
 	logger := m.log.WithValues("event", event.Name)
 	logger.V(logs.LogDebug).Info("updating eventReport")
+
 	if eventReport.Labels == nil {
 		eventReport.Labels = map[string]string{}
 	}
 	eventReport.Labels[libsveltosv1beta1.EventSourceNameLabel] = event.Name
-	eventReport.Spec.MatchingResources = matchinResources
-	eventReport.Spec.Resources = jsonResources
+	if matchinResources != nil {
+		eventReport.Spec.MatchingResources = matchinResources
+		eventReport.Spec.Resources = jsonResources
+	}
+	if cloudEvent != nil {
+		eventReport.Spec.CloudEvents = append(eventReport.Spec.CloudEvents, cloudEvent)
+	}
 
 	err := m.Update(ctx, eventReport)
 	if err != nil {
@@ -272,7 +282,7 @@ func (m *manager) getEventMatchingResources(ctx context.Context, event *libsvelt
 	}
 
 	if resources == nil {
-		return nil, nil, nil
+		return []corev1.ObjectReference{}, nil, nil
 	}
 
 	matchingResources := make([]corev1.ObjectReference, 0)
@@ -546,9 +556,9 @@ func (m *manager) fetchResourcesMatchingResourceSelector(ctx context.Context,
 
 // getEventReport returns EventReport instance that needs to be created
 func (m *manager) getEventReport(eventName string, matchingResources []corev1.ObjectReference,
-	jsonResources []byte) *libsveltosv1beta1.EventReport {
+	jsonResources []byte, cloudEvent []byte) *libsveltosv1beta1.EventReport {
 
-	return &libsveltosv1beta1.EventReport{
+	er := &libsveltosv1beta1.EventReport{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: utils.ReportNamespace,
 			Name:      eventName,
@@ -557,11 +567,19 @@ func (m *manager) getEventReport(eventName string, matchingResources []corev1.Ob
 			},
 		},
 		Spec: libsveltosv1beta1.EventReportSpec{
-			EventSourceName:   eventName,
-			MatchingResources: matchingResources,
-			Resources:         jsonResources,
+			EventSourceName: eventName,
 		},
 	}
+
+	if matchingResources != nil {
+		er.Spec.MatchingResources = matchingResources
+		er.Spec.Resources = jsonResources
+	}
+	if cloudEvent != nil {
+		er.Spec.CloudEvents = [][]byte{cloudEvent}
+	}
+
+	return er
 }
 
 func (m *manager) marshalSliceOfUnstructured(collectedResources []unstructured.Unstructured) ([]byte, error) {
