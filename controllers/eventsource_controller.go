@@ -130,6 +130,7 @@ func (r *EventSourceReconciler) reconcileDelete(ctx context.Context,
 	// Queue EventSource for evaluation
 	manager := evaluation.GetManager()
 	manager.EvaluateEventSource(eventSourceScope.Name())
+	manager.UnregisterNatsEventSource(eventSourceScope.Name())
 
 	canRemove, err := r.canRemoveFinalizer(ctx, eventSourceScope)
 	if err != nil {
@@ -169,6 +170,12 @@ func (r *EventSourceReconciler) reconcileNormal(ctx context.Context,
 	// Queue EventSource for evaluation
 	manager := evaluation.GetManager()
 	manager.EvaluateEventSource(eventSourceScope.Name())
+
+	if eventSourceScope.EventSource.Spec.MessagingMatchCriteria != nil {
+		manager.RegisterNatsEventSource(eventSourceScope.Name())
+	} else {
+		manager.UnregisterNatsEventSource(eventSourceScope.Name())
+	}
 
 	logger.V(logs.LogInfo).Info("reconciliation succeeded")
 	return nil
@@ -223,7 +230,7 @@ func (r *EventSourceReconciler) updateMaps(eventSource *libsveltosv1beta1.EventS
 
 // react gets called when an instance of passed in gvk has been modified.
 // This method queues all EventSource currently using that gvk to be evaluated.
-func (r *EventSourceReconciler) react(gvk *schema.GroupVersionKind) {
+func (r *EventSourceReconciler) react(gvk *schema.GroupVersionKind, _ interface{}) {
 	r.Mux.RLock()
 	defer r.Mux.RUnlock()
 

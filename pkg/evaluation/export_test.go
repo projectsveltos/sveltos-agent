@@ -90,6 +90,25 @@ var (
 	SendReloaderReportToMgtmCluster = (*manager).sendReloaderReportToMgtmCluster
 )
 
+// nats
+var (
+	ProcessCloudEvent          = (*manager).processCloudEvent
+	LoadMessagingConfiguration = (*manager).loadMessagingConfiguration
+	ConnectOptions             = (*manager).connectOptions
+	IsCloudEventAMatch         = (*manager).isCloudEventAMatch
+)
+
+type (
+	MessagingAuthorization = messagingAuthorization
+	MessagingUser          = messagingUser
+)
+
+const (
+	NatsSecretNamespace = natsSecretNamespace
+	NatsSecretName      = natsSecretName
+	NatsKey             = natsKey
+)
+
 func GetReloaderMap() map[corev1.ObjectReference]*libsveltosset.Set {
 	return reloaderMap
 }
@@ -127,7 +146,9 @@ func InitializeManagerWithSkip(ctx context.Context, l logr.Logger, config *rest.
 			managerInstance = &manager{log: l, Client: c, config: config}
 			managerInstance.classifierJobQueue = make(map[string]bool)
 			managerInstance.healthCheckJobQueue = make(map[string]bool)
+			managerInstance.natsEventSources = make(map[string]bool)
 			managerInstance.interval = time.Duration(intervalInSecond) * time.Second
+			managerInstance.nats = &sync.RWMutex{}
 			managerInstance.mu = &sync.Mutex{}
 
 			managerInstance.resourcesToWatch = make([]schema.GroupVersionKind, 0)
