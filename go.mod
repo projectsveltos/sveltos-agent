@@ -1,6 +1,6 @@
 module github.com/projectsveltos/sveltos-agent
 
-go 1.23.4
+go 1.23.5
 
 require (
 	emperror.dev/errors v0.8.1
@@ -13,8 +13,8 @@ require (
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
 	github.com/pkg/errors v0.9.1
-	github.com/projectsveltos/libsveltos v0.45.1-0.20250130084419-654edc85ca98
-	github.com/spf13/pflag v1.0.5
+	github.com/projectsveltos/libsveltos v0.46.0
+	github.com/spf13/pflag v1.0.6
 	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/text v0.21.0
 	k8s.io/api v0.32.1
@@ -24,8 +24,8 @@ require (
 	k8s.io/component-base v0.32.1
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
-	sigs.k8s.io/cluster-api v1.9.3
-	sigs.k8s.io/controller-runtime v0.20.0
+	sigs.k8s.io/cluster-api v1.9.4
+	sigs.k8s.io/controller-runtime v0.20.1
 )
 
 require (
