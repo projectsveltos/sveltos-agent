@@ -530,6 +530,6 @@ func restartIfNeeded(ctx context.Context, cancel context.CancelFunc, restConfig 
 func registerForLogSettings(ctx context.Context, logger logr.Logger) {
 	restConfig := ctrl.GetConfigOrDie()
 	logsettings.RegisterForLogSettings(ctx,
-		libsveltosv1beta1.ComponentClassifierAgent, logger,
+		libsveltosv1beta1.ComponentSveltosAgent, logger,
 		restConfig)
 }
