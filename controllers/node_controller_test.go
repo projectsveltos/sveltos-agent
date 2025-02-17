@@ -95,7 +95,7 @@ var _ = Describe("Controllers: node controller", func() {
 			Scheme: scheme,
 		}
 
-		controllers.SetKubernetesVersion(reconciler, "v1.31.0")
+		controllers.SetKubernetesVersion(reconciler, "v1.32.0")
 
 		nodeName := client.ObjectKey{
 			Name: node.Name,

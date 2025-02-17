@@ -40,9 +40,9 @@ import (
 )
 
 const (
-	higherVersion  = "v1.31.1"
-	currentVersion = "v1.31.0" // taken from KUBEBUILDER_ENVTEST_KUBERNETES_VERSION in Makefile
-	lowerVersion   = "v1.30.0"
+	higherVersion  = "v1.32.1"
+	currentVersion = "v1.32.0" // taken from KUBEBUILDER_ENVTEST_KUBERNETES_VERSION in Makefile
+	lowerVersion   = "v1.31.0"
 )
 
 var (
