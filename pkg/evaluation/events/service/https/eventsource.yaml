@@ -9,7 +9,7 @@ spec:
  - group: ""
    version: "v1"
    kind: "Service"
-   script: |
+   evaluate: |
      function evaluate()
        hs = {}
        hs.matching = false
