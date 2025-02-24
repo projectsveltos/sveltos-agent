@@ -1,6 +1,6 @@
 module github.com/projectsveltos/sveltos-agent
 
-go 1.23.5
+go 1.23.6
 
 require (
 	emperror.dev/errors v0.8.1
@@ -8,11 +8,11 @@ require (
 	github.com/TwiN/go-color v1.4.1
 	github.com/cloudevents/sdk-go/v2 v2.15.2
 	github.com/go-logr/logr v1.4.2
-	github.com/nats-io/nats.go v1.39.0
+	github.com/nats-io/nats.go v1.39.1
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
 	github.com/pkg/errors v0.9.1
-	github.com/projectsveltos/libsveltos v0.48.1
+	github.com/projectsveltos/libsveltos v0.48.2-0.20250224123442-b672af4e6104
 	github.com/spf13/pflag v1.0.6
 	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/text v0.22.0
