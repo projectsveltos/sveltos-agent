@@ -36,7 +36,7 @@ ARCH ?= amd64
 OS ?= $(shell uname -s | tr A-Z a-z)
 K8S_LATEST_VER ?= $(shell curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
 export CONTROLLER_IMG ?= $(REGISTRY)/$(IMAGE_NAME)
-TAG ?= v0.51.1
+TAG ?= main
 
 GOLANGCI_LINT_VERSION := "v1.64.7"
 CLUSTERCTL_VERSION := "v1.9.6"
