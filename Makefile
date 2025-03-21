@@ -38,8 +38,8 @@ K8S_LATEST_VER ?= $(shell curl -s https://storage.googleapis.com/kubernetes-rele
 export CONTROLLER_IMG ?= $(REGISTRY)/$(IMAGE_NAME)
 TAG ?= main
 
-GOLANGCI_LINT_VERSION := "v1.62.2"
-CLUSTERCTL_VERSION := "v1.9.5"
+GOLANGCI_LINT_VERSION := "v1.64.7"
+CLUSTERCTL_VERSION := "v1.9.6"
 
 ## Tool Binaries
 CONTROLLER_GEN := $(TOOLS_BIN_DIR)/controller-gen
